@@ -1,0 +1,40 @@
+#!/bin/bash
+
+declare CURRENT_LOCATION=$HOME/.custom_commands
+mkdir -p $CURRENT_LOCATION
+
+declare TEMP_DIR=$CURRENT_LOCATION/temp_dir
+mkdir -p $TEMP_DIR
+
+declare INPUT_FILE=$1
+
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+reset=$(tput sgr0)
+bold=$(tput bold)
+
+if [[ -f $INPUT_FILE ]]; then
+  if [[ ${INPUT_FILE: -2} == ".c" || ${INPUT_FILE: -4} == ".cpp" ]]; then
+    g++ $INPUT_FILE -o $TEMP_DIR/temp
+  else
+    echo -e "${red}${bold}Error: File format not recognized: $INPUT_FILE; Only *.c or *.cpp file allowed${reset}"
+    exit 128
+  fi
+elif [[ -d $1 ]]; then
+  echo -e "${red}${bold}Error: The directory cannot be processed${reset}"
+  exit 128
+else
+  echo -e "${red}${bold}Error: Unrecognized arguments: $INPUT_FILE${reset}"
+  exit 128
+fi
+
+if [[ -e $TEMP_DIR/temp ]]; then
+  $TEMP_DIR/temp
+  rm $TEMP_DIR/temp
+  # echo -e "${green}\rExecutin Complete${bold}${reset}"
+else
+  echo -e "${red}${bold}Error: Unexpected error occurred during compilation${reset}"
+  exit 1
+fi
+
+exit 0
