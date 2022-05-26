@@ -2,8 +2,30 @@
 
 PWD=$(dirname $(readlink -f $0))
 
-ZSHRC=$HOME/.zshrc
-VIMRC=$HOME/.vimrc
+dotfiles=(
+  .zshrc
+  .vimrc
+  .gitconfig
+  .gitconfig_personal
+  .gitconfig_professional
+)
 
-[[ -f $ZSHRC ]] || ln -s $PWD/.zshrc $ZSHRC && echo "$ZSHRC already exists. skipped."
-[[ -f $VIMRC ]] || ln -s $PWD/.vimrc $VIMRC && echo "$VIMRC already exists. skipped."
+echo "Installing dotfiles..."
+for file in ${dotfiles[*]}; do
+  overwrite=false
+  if [[ -f $HOME/$file ]]; then
+    rm $HOME/$file
+    overwrite=true
+  fi
+  ln -s $PWD/$file $HOME/$file
+  echo "\t$file linked. $([[ $overwrite == true ]] && echo '(overwritten)')"
+done
+echo "Done."
+
+GIT_HOOKS_DIR=$HOME/.git-template/hooks
+if [[ ! -d "$GIT_HOOKS_DIR" ]]; then
+  echo "\nGit hooks directory not found. Creating..."
+  mkdir -p $GIT_HOOKS_DIR
+  git clone https://gist.github.com/d8a4ce41e4bb52e352d45306691e3122.git ~/.git-template/hooks --quiet
+  echo "Git hooks installed. Check it out $GIT_HOOKS_DIR"
+fi
