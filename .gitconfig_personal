@@ -1,0 +1,6 @@
+[user]
+name = jinyongp
+email = dev.jinyongp@gmail.com
+signingkey = CACC87A04D3B216B
+[commit]
+gpgsign = true
