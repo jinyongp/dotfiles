@@ -1,3 +1,6 @@
 [user]
 name = jinyongp
 email = jinyongp@datable.co.kr
+signingkey = 51EA64E17416B425
+[commit]
+gpgsign = true

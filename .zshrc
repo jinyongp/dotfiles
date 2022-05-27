@@ -12,6 +12,8 @@ export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ohmyzsh"
 
 HIST_STAMPS="yyyy-mm-dd"
 
+# Theme
+
 ZSH_THEME="powerlevel10k/powerlevel10k"
 
 POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
@@ -108,6 +110,8 @@ POWERLEVEL9K_VCS_UNTRACKED_FOREGROUND='009'
 POWERLEVEL9K_VCS_MODIFIED_BACKGROUND='none'
 POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='190'
 
+# Plugin
+
 plugins=(
   git
   virtualenv
@@ -115,19 +119,20 @@ plugins=(
   zsh-autosuggestions
   zsh-completions
   zsh-syntax-highlighting
-  conda-zsh-completion
   git-flow-completion
   zsh-better-npm-completion
 )
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
 
-autoload -Uz compinit && compinit -u
-source $ZSH/oh-my-zsh.sh
 setopt PROMPT_CR
 unsetopt PROMPT_SP
 PROMPT_EOL_MARK=
 
-ZSHRC_REAL_PATH=$(dirname $(readlink -f $HOME/.zshrc))
-source ${ZSHRC_REAL_PATH}/.zshrc_alias
-source ${ZSHRC_REAL_PATH}/.zshrc_env
+# Source
+
+[[ -f ~/.zshrc_alias ]] && source ~/.zshrc_alias || echo "~/.zshrc_alias not found"
+[[ -f ~/.zshrc_env ]] && source ~/.zshrc_env || echo "~/.zshrc_env not found"
+[[ -f ~/.zshrc_com ]] && source ~/.zshrc_com
+
+source $ZSH/oh-my-zsh.sh
