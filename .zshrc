@@ -131,8 +131,11 @@ PROMPT_EOL_MARK=
 
 # Source
 
-[[ -f ~/.zshrc_alias ]] && source ~/.zshrc_alias || echo "~/.zshrc_alias not found"
-[[ -f ~/.zshrc_env ]] && source ~/.zshrc_env || echo "~/.zshrc_env not found"
-[[ -f ~/.zshrc_com ]] && source ~/.zshrc_com
-
 source $ZSH/oh-my-zsh.sh
+
+[[ -f $HOME/.zshrc_alias ]] && source $HOME/.zshrc_alias || echo "~/.zshrc_alias not found"
+[[ -f $HOME/.zshrc_env ]] && source $HOME/.zshrc_env || echo "~/.zshrc_env not found"
+[[ -f $HOME/.zshrc_com ]] && source $HOME/.zshrc_com
+
+# direnv
+eval "$(direnv hook zsh)"
