@@ -10,7 +10,7 @@ autocrlf = input
 hooksPath = ~/.git-template/hooks
 [alias]
 lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
-[includeIf "gitdir:~/"]
+[include]
 path = ~/.gitconfig_personal
 [includeIf "gitdir:~/Workspaces/datable/"]
-path = ~/.gitconfig_professional
+path = ~/.gitconfig_company
