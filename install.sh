@@ -4,10 +4,12 @@ PWD=$(dirname $(readlink -f $0))
 
 dotfiles=(
   .zshrc
+  .zshrc_alias
+  .zshrc_env
   .vimrc
   .gitconfig
   .gitconfig_personal
-  .gitconfig_professional
+  .gitconfig_company
 )
 
 echo "Installing dotfiles..."
