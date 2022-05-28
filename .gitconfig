@@ -5,7 +5,7 @@ defaultBranch = main
 [pager]
 branch = false
 [core]
-editor = code
+editor = vi
 autocrlf = input
 hooksPath = ~/.git-template/hooks
 [alias]
