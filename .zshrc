@@ -115,6 +115,7 @@ POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='190'
 plugins=(
   git
   vundle
+  thefuck
   copyfile
   copypath
   virtualenv
