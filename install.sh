@@ -4,8 +4,10 @@ CWD=$(dirname $(readlink -f $0))
 
 dotfiles=(
   .zshrc
-  .zshrc_alias
   .zshrc_env
+  .zshrc_alias
+  .zshrc_theme
+  .zshrc_plugin
   .vimrc
   .gitconfig
   .gitconfig_personal
@@ -14,10 +16,14 @@ dotfiles=(
 
 echo -e "Installing dotfiles...\n"
 
+overwritten=()
+linked=()
+
 for file in ${dotfiles[*]}; do
+  overwrite=false
 
   if [[ -f $HOME/$file ]]; then
-    BACKUP_DIR=$CWD/backup/$(date +%Y-%m-%d-%H-%M)
+    BACKUP_DIR=$CWD/.backup/$(date +%Y-%m-%d__%H-%M)
     mkdir -p $BACKUP_DIR
     cp $HOME/$file $BACKUP_DIR/$file
     rm $HOME/$file
@@ -25,12 +31,25 @@ for file in ${dotfiles[*]}; do
   fi
 
   ln -s $CWD/$file $HOME/$file
-  [[ $? == 0 ]] &&
-    echo -e " $file is $([[ $overwrite == true ]] && echo 'overwritten' || echo 'linked')" ||
-    echo -e " $file linking failed."
+  [[ $? == 0 ]] && [[ $overwrite == true ]] &&
+    overwritten+=("$file") ||
+    linked+=("$file")
+
 done
+
+[[ ${#overwritten[@]} > 0 ]] && (
+  echo "Overwritten:"
+  printf "  %s\n" ${overwritten[@]}
+)
+
 echo
-[[ $overwrite == true ]] && echo -e "Backed up in $BACKUP_DIR\n"
+
+[[ ${#linked[@]} > 0 ]] && (
+  echo "New linked:"
+  printf "  %s\n" ${linked[@]}
+)
+
+[[ ${#overwritten[@]} > 0 ]] && echo -e "\nYour original files are backed up in $BACKUP_DIR\n"
 
 echo -e "All dotfiles installed. Enjoy! :)"
 

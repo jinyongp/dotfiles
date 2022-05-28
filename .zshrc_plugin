@@ -1,0 +1,17 @@
+plugins=(
+  git
+  vundle
+  thefuck
+  copyfile
+  copypath
+  virtualenv
+  direnv
+  alias-tips
+  zsh-autosuggestions
+  zsh-completions
+  zsh-syntax-highlighting
+  git-flow-completion
+  zsh-better-npm-completion
+)
+
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
