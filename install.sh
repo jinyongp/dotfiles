@@ -1,6 +1,6 @@
 #!/bin/bash
 
-PWD=$(dirname $(readlink -f $0))
+CWD=$(dirname $(readlink -f $0))
 
 dotfiles=(
   .zshrc
@@ -19,7 +19,7 @@ for file in ${dotfiles[*]}; do
     rm $HOME/$file
     overwrite=true
   fi
-  ln -s $PWD/$file $HOME/$file
+  ln -s $CWD/$file $HOME/$file
   echo "\t$file linked. $([[ $overwrite == true ]] && echo '(overwritten)')"
 done
 echo "Done."

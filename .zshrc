@@ -114,6 +114,9 @@ POWERLEVEL9K_VCS_MODIFIED_FOREGROUND='190'
 
 plugins=(
   git
+  vundle
+  copyfile
+  copypath
   virtualenv
   alias-tips
   zsh-autosuggestions
