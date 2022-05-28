@@ -2,10 +2,10 @@
 
 ## Install
 
-First, clone this gist.
+First, clone this repository.
 
 ```sh
-$ git clone https://gist.github.com/7ca926fda012d17ec18b0d4866b439bf.git ~/dotfiles
+$ git clone https://github.com/jinyongp/dotfiles.git ~/dotfiles
 ```
 
 Run `install.sh` to copy(symlink) all of the dotfiles in home directory.
@@ -14,7 +14,7 @@ Run `install.sh` to copy(symlink) all of the dotfiles in home directory.
 $ ~/dotfiles/install.sh
 ```
 
->The files that already existed are backed up in `dotfiles/backup` directory.
+>The files that already existed are backed up in `dotfiles/.backup` directory.
 
 ## Setup
 
