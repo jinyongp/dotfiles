@@ -19,7 +19,7 @@ for file in ${dotfiles[*]}; do
   if [[ -f $HOME/$file ]]; then
     BACKUP_DIR=$CWD/backup/$(date +%Y-%m-%d-%H-%M)
     mkdir -p $BACKUP_DIR
-    cat $HOME/$file >$BACKUP_DIR/$file
+    cp $HOME/$file $BACKUP_DIR/$file
     rm $HOME/$file
     overwrite=true
   fi

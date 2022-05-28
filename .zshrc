@@ -8,7 +8,6 @@
 
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_COMPDUMP="$ZSH_CACHE_DIR/.zcompdump"
-export ZSH_CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/ohmyzsh"
 
 HIST_STAMPS="yyyy-mm-dd"
 
@@ -119,6 +118,7 @@ plugins=(
   copyfile
   copypath
   virtualenv
+  direnv
   alias-tips
   zsh-autosuggestions
   zsh-completions
@@ -140,6 +140,3 @@ source $ZSH/oh-my-zsh.sh
 [[ -f $HOME/.zshrc_alias ]] && source $HOME/.zshrc_alias || echo "~/.zshrc_alias not found"
 [[ -f $HOME/.zshrc_env ]] && source $HOME/.zshrc_env || echo "~/.zshrc_env not found"
 [[ -f $HOME/.zshrc_com ]] && source $HOME/.zshrc_com
-
-# direnv
-eval "$(direnv hook zsh)"
