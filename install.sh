@@ -21,6 +21,7 @@ linked=()
 
 for file in ${dotfiles[*]}; do
   overwrite=false
+  filepath=$(find $CWD -name $file ! -path "*/.backup/*")
 
   if [[ -f $HOME/$file ]]; then
     BACKUP_DIR=$CWD/.backup/$(date +%Y-%m-%d__%H-%M)
@@ -30,7 +31,7 @@ for file in ${dotfiles[*]}; do
     overwrite=true
   fi
 
-  ln -s $CWD/$file $HOME/$file
+  ln -sf $filepath $HOME/$file
   [[ $? == 0 ]] && [[ $overwrite == true ]] &&
     overwritten+=("$file") ||
     linked+=("$file")
