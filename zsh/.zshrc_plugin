@@ -6,6 +6,7 @@ plugins=(
   copypath
   virtualenv
   direnv
+  git-open
   alias-tips
   zsh-autosuggestions
   zsh-completions

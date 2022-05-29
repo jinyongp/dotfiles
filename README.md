@@ -24,16 +24,16 @@ $ ~/dotfiles/install.sh
 
 Install external plugins for oh-my-zsh.
 
-
-   1. [alias-tips](https://github.com/djui/alias-tips#oh-my-zsh)
-   2. [direnv](https://github.com/direnv/direnv/blob/master/docs/installation.md#installation)
-   3. [thefuck](https://github.com/nvbn/thefuck#installation)
-   4. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions/blob/master/INSTALL.md#oh-my-zsh)
-   5. [zsh-completions](https://github.com/zsh-users/zsh-completions#oh-my-zsh)
-   6. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/INSTALL.md#oh-my-zsh)
-   7. [conda-zsh-completion](https://github.com/esc/conda-zsh-completion/blob/382d840f7ad053b3b2ccf0b1f52b26bdabaf66b3/_conda#L24)
-   8. [git-flow-completion](https://github.com/bobthecow/git-flow-completion#installation-for-zsh)
-   9. [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
+   1. [git-open](https://github.com/paulirish/git-open#oh-my-zsh)
+   2. [alias-tips](https://github.com/djui/alias-tips#oh-my-zsh)
+   3. [direnv](https://github.com/direnv/direnv/blob/master/docs/installation.md#installation)
+   4. [thefuck](https://github.com/nvbn/thefuck#installation)
+   5. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions/blob/master/INSTALL.md#oh-my-zsh)
+   6. [zsh-completions](https://github.com/zsh-users/zsh-completions#oh-my-zsh)
+   7. [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting/blob/master/INSTALL.md#oh-my-zsh)
+   8. [conda-zsh-completion](https://github.com/esc/conda-zsh-completion/blob/382d840f7ad053b3b2ccf0b1f52b26bdabaf66b3/_conda#L24)
+   9. [git-flow-completion](https://github.com/bobthecow/git-flow-completion#installation-for-zsh)
+   10. [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
 
 Run command `$ omz reload` to load `~/.zshrc`.
 
