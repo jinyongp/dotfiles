@@ -61,3 +61,5 @@ if [[ ! -d "$GIT_HOOKS_DIR" ]]; then
   git clone https://gist.github.com/d8a4ce41e4bb52e352d45306691e3122.git $GIT_HOOKS_DIR --quiet
   echo -e "Git hooks installed. Check it out $GIT_HOOKS_DIR"
 fi
+
+echo -e "\nFollow the instructions in README.md to complete the installation."

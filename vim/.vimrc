@@ -11,7 +11,6 @@ set autoindent
 set expandtab
 set shiftround
 set cindent
-set nobackup
 set tabstop=2
 set softtabstop=2
 set shiftwidth=2
@@ -36,7 +35,7 @@ set termencoding=utf-8
 set linebreak
 set wrap
 set scrolloff=1
-set sidescrolloff=5
+set sidescrolloff=1
 if has("syntax")
   syntax enable
 endif
@@ -47,6 +46,7 @@ endif
 
 set ruler
 set laststatus=2
+set showcmd
 set wildmenu
 set background=dark
 "set term=xterm-256color
@@ -54,7 +54,8 @@ set background=dark
 set history=300
 set number
 "set relativenumber
-"set cursorline
+set cursorline
+highlight clear CursorLine
 highlight CursorLineNr term=bold cterm=NONE ctermfg=cyan ctermbg=NONE
 highlight LineNr term=bold cterm=NONE ctermfg=DarkGrey ctermbg=NONE
 highlight MatchParen ctermbg=NONE
@@ -62,7 +63,7 @@ highlight Pmenu ctermbg=white ctermfg=black
 highlight PmenuSel ctermbg=darkgrey ctermfg=white
 set list listchars=tab:»\ ,trail:•
 set noerrorbells
-set mouse=a
+set mouse=nicr
 set title
 
 " -------------------- "
@@ -80,9 +81,14 @@ set langmap=ㅁㅠㅊㅇㄷㄹㅎㅗㅑㅓㅏㅣㅡㅜㅐㅔㅂㄱㄴㅅㅕㅍ�
 set nocompatible
 set autoread
 set backspace=indent,eol,start
-set noswapfile
+"set nobackup
+"set noswapfile
+set backupdir=~/.vim/backup//
+set directory=~/.vim/swap//
+set undodir=~/.vim/undo//
 "set spell
 "set spellfile=~/.vim/spell/en.utf-8.add
+set clipboard=unnamedplus
 set viminfo=
 
 " ------- "
