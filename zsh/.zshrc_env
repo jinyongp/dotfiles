@@ -51,6 +51,9 @@ if type brew &>/dev/null; then
   compinit
 fi
 
+# gh
+gh completion -s zsh > /usr/local/share/zsh/site-functions/_gh
+
 # [[ -s "/Users/jinyongp/.gvm/scripts/gvm" ]] && source "/Users/jinyongp/.gvm/scripts/gvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
