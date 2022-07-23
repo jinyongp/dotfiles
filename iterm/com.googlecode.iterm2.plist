@@ -252,8 +252,16 @@
 	<false/>
 	<key>HideScrollbar</key>
 	<false/>
+	<key>Hotkey</key>
+	<true/>
+	<key>HotkeyChar</key>
+	<integer>27</integer>
+	<key>HotkeyCode</key>
+	<integer>53</integer>
 	<key>HotkeyMigratedFromSingleToMulti</key>
 	<true/>
+	<key>HotkeyModifiers</key>
+	<integer>524576</integer>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
