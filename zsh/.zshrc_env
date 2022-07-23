@@ -17,7 +17,7 @@ export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
 
 # rbenv
-if [[ -d ~/.rbenv ]]; then
+if [[ -d $HOME/.rbenv ]]; then
   export PATH=${HOME}/.rbenv/bin:${PATH} && eval "$(rbenv init -)"
 fi
 
@@ -31,5 +31,8 @@ if type brew &>/dev/null; then
   compinit
 fi
 
-# gh
+# Github
 [ -f "$ZSH_SITE_FUNCTIONS/_gh" ] && gh completion -s zsh > $ZSH_SITE_FUNCTIONS/_gh
+
+# AWS
+[ -f "$(which aws_completer)" ] && complete -C $(which aws_completer) aws
