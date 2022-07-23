@@ -1,12 +1,12 @@
 plugins=(
   git
   vundle
-  thefuck
   copyfile
   copypath
   virtualenv
   direnv
   git-open
+  gitignore
   alias-tips
   zsh-autosuggestions
   zsh-completions
