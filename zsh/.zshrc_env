@@ -32,7 +32,4 @@ if type brew &>/dev/null; then
 fi
 
 # Github
-[ -f "$ZSH_SITE_FUNCTIONS/_gh" ] && gh completion -s zsh > $ZSH_SITE_FUNCTIONS/_gh
-
-# AWS
-[ -f "$(which aws_completer)" ] && complete -C $(which aws_completer) aws
+[[ -f "$ZSH_SITE_FUNCTIONS/_gh" ]] && gh completion -s zsh > $ZSH_SITE_FUNCTIONS/_gh
