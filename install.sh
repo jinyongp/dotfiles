@@ -14,7 +14,7 @@ dotfiles=(
   .gitconfig_company
 )
 
-echo -e "Installing dotfiles..."
+echo -e "Installing dotfiles...\n"
 
 overwritten=()
 linked=()
@@ -48,23 +48,34 @@ done
   printf "  %s\n" ${linked[@]}
 )
 
-[[ ${#overwritten[@]} > 0 ]] && echo -e "\nYour original files are backed up in $BACKUP_DIR"
+echo
+[[ ${#overwritten[@]} > 0 ]] && echo -e "Your original files are backed up in $BACKUP_DIR"
+echo -e "\nAll dotfiles installed! Run \033[1;32m$ omz reload\033[0m to reload your shell."
 
-echo -e "All dotfiles installed. Enjoy! :)"
+hooks=(
+  pre-push
+  post-checkout
+)
 
-GIT_HOOKS_DIR=$HOME/.git-template/hooks
+GIT_HOOKS_DIR=$HOME/.git_template/hooks
 if [[ ! -d "$GIT_HOOKS_DIR" ]]; then
   echo -e "Git hooks not found. Installing..."
   mkdir -p $GIT_HOOKS_DIR
-  git clone https://gist.github.com/d8a4ce41e4bb52e352d45306691e3122.git $GIT_HOOKS_DIR --quiet
+
+
+  for file in ${hooks[*]}; do
+    ln -sf $CWD/git/hooks/$file $GIT_HOOKS_DIR/$file
+  done
+  git config --global core.hooksPath $GIT_HOOKS_DIR
   echo -e "Git hooks installed. Check it out $GIT_HOOKS_DIR"
 fi
 
 KEY_BINDINGS_DIR=$HOME/Library/KeyBindings
 DEFAULT_KEY_BINDING_FILE="DefaultkeyBinding.dict"
-ORIGINAL_KEY_BINDING_FILE=$KEY_BINDINGS_DIR/$DEFAULT_KEY_BINDING_FILE
-[[ -f $ORIGINAL_KEY_BINDING_FILE ]] && cp $ORIGINAL_KEY_BINDING_FILE $BACKUP_DIR/$DEFAULT_KEY_BINDING_FILE
-mkdir -p $KEY_BINDINGS_DIR && ln -sf $CWD/dict/$DEFAULT_KEY_BINDING_FILE $ORIGINAL_KEY_BINDING_FILE
-echo -e "\nDefault key bindings installed. Check it out $ORIGINAL_KEY_BINDING_FILE"
-
-echo -e "\nFollow the instructions in README.md to complete the installation."
+if [[ ! -f "$KEY_BINDINGS_DIR/$DEFAULT_KEY_BINDING_FILE" ]]; then
+  echo -e "Key bindings not found. Installing..."
+  ORIGINAL_KEY_BINDING_FILE=$KEY_BINDINGS_DIR/$DEFAULT_KEY_BINDING_FILE
+  [[ -f $ORIGINAL_KEY_BINDING_FILE ]] && cp $ORIGINAL_KEY_BINDING_FILE $BACKUP_DIR/$DEFAULT_KEY_BINDING_FILE
+  mkdir -p $KEY_BINDINGS_DIR && ln -sf $CWD/dict/$DEFAULT_KEY_BINDING_FILE $ORIGINAL_KEY_BINDING_FILE
+  echo -e "\nDefault key bindings installed. Check it out $ORIGINAL_KEY_BINDING_FILE"
+fi

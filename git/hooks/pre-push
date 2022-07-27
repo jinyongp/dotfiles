@@ -1,0 +1,12 @@
+#!/bin/bash
+
+set -e
+
+if [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; then
+  echo -e '\033[0;33m[WARN] WIP Commit Detected. UNWIP by running \033[0;32m$ gunwip\033[0m'
+  echo -en "\nCommit: "
+  git --no-pager log HEAD --stat -n 1 --pretty=format:"%B"
+  echo
+  exit 1
+fi
+
