@@ -1,17 +1,15 @@
 [pull]
-rebase = true
+	rebase = true
 [init]
-defaultBranch = main
+	defaultBranch = main
 [pager]
-branch = false
+	branch = false
 [core]
-editor = vi
-autocrlf = input
-	hooksPath = /Users/datable/.git_template/hooks
-ignorecase = false
-[alias]
-lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+	editor = vi
+	autocrlf = input
+	hooksPath = ~/.git_template/hooks
+	ignorecase = false
 [include]
-path = ~/.gitconfig_personal
+	path = ~/.gitconfig_personal
 [includeIf "gitdir:~/Workspaces/datable/"]
-path = ~/.gitconfig_company
+	path = ~/.gitconfig_company

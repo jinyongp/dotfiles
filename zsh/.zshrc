@@ -17,6 +17,7 @@ PROMPT_EOL_MARK=
 
 [[ -f $HOME/.zshrc_theme ]] && source $HOME/.zshrc_theme || echo "~/.zshrc_theme not found"
 [[ -f $HOME/.zshrc_plugin ]] && source $HOME/.zshrc_plugin || echo "~/.zshrc_plugin not found"
+[[ -f $HOME/./zshrc_utils ]] && source $HOME/./zshrc_utils || echo "~/.zshrc_utils not found"
 
 source $ZSH/oh-my-zsh.sh
 
