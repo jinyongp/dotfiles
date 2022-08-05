@@ -9,6 +9,10 @@
 	autocrlf = input
 	hooksPath = ~/.git_template/hooks
 	ignorecase = false
+[merge]
+	tool = code
+[mergetool "code"]
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
 [include]
 	path = ~/.gitconfig_personal
 [includeIf "gitdir:~/Workspaces/datable/"]

@@ -15,11 +15,16 @@ unsetopt PROMPT_SP
 HIST_STAMPS="yyyy-mm-dd"
 PROMPT_EOL_MARK=
 
-[[ -f $HOME/.zshrc_theme ]] && source $HOME/.zshrc_theme || echo "~/.zshrc_theme not found"
-[[ -f $HOME/.zshrc_plugin ]] && source $HOME/.zshrc_plugin || echo "~/.zshrc_plugin not found"
-[[ -f $HOME/./zshrc_utils ]] && source $HOME/./zshrc_utils || echo "~/.zshrc_utils not found"
+zsh_files=(
+  .zshrc_theme
+  .zshrc_plugin
+  .zshrc_utils
+  .zshrc_alias
+  .zshrc_env
+)
+
+for file in ${zsh_files[*]}; do
+  [[ -f "$HOME/$file" ]] && source "$HOME/$file" || echo "$file not found"
+done
 
 source $ZSH/oh-my-zsh.sh
-
-[[ -f $HOME/.zshrc_alias ]] && source $HOME/.zshrc_alias || echo "~/.zshrc_alias not found"
-[[ -f $HOME/.zshrc_env ]] && source $HOME/.zshrc_env || echo "~/.zshrc_env not found"
