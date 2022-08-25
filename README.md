@@ -32,7 +32,8 @@ Install external plugins for oh-my-zsh.
    6. [conda-zsh-completion](https://github.com/esc/conda-zsh-completion/blob/382d840f7ad053b3b2ccf0b1f52b26bdabaf66b3/_conda#L24)
    7. [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
 
-And, install [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) Theme!
+And, install [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) Theme! (I'm using [Fira Code Nerd Font](https://github.com/ryanoasis/nerd-fonts#option-4-homebrew-fonts).)
+
 
 Run command `$ omz reload` to load `~/.zshrc`.
 
