@@ -5,7 +5,6 @@ plugins=(
   copypath
   virtualenv
   direnv
-  git-open
   gitignore
   alias-tips
   zsh-autosuggestions
