@@ -12,6 +12,7 @@ plugins=(
   zsh-syntax-highlighting
   git-flow-completion
   zsh-better-npm-completion
+  conda-zsh-completion
 )
 
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
