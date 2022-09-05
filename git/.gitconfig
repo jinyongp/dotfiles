@@ -2,13 +2,18 @@
 	rebase = true
 [init]
 	defaultBranch = main
+	templateDir = ~/.git_template
 [pager]
 	branch = false
 [core]
-	editor = vi
+	editor = code --wait
 	autocrlf = input
 	hooksPath = ~/.git_template/hooks
 	ignorecase = false
+[diff]
+	tool = code
+[difftool "code"]
+	cmd = code --wait --diff $LOCAL $REMOTE
 [merge]
 	tool = code
 [mergetool "code"]

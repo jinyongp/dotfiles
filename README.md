@@ -1,8 +1,8 @@
 # My Custom Dotfiles
 
-## Install
+## Installation
 
-First, clone this repository.
+First, clone this repository in `$HOME` directory.
 
 ```sh
 $ git clone https://github.com/jinyongp/dotfiles.git ~/dotfiles
