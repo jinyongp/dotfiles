@@ -9,10 +9,10 @@ plugins=(
   alias-tips
   zsh-autosuggestions
   zsh-completions
-  zsh-syntax-highlighting
+  fast-syntax-highlighting
   git-flow-completion
   zsh-better-npm-completion
   conda-zsh-completion
 )
 
-ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=245'
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"
