@@ -1,0 +1,50 @@
+#!/bin/bash
+
+CURRENT_LOCATION=$HOME/.commands
+TEMP_DIR=$CURRENT_LOCATION/temp_dir
+
+mkdir -p $TEMP_DIR
+
+INPUT_FILE=$1
+FILENAME=$(basename ${INPUT_FILE%.*})
+
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+reset=$(tput sgr0)
+bold=$(tput bold)
+
+if [[ -z $INPUT_FILE ]]; then
+  echo -e "Example usage:"
+  echo -e "\trun <filename>"
+  exit 1
+fi
+
+if [[ -f $INPUT_FILE ]]; then
+
+  if [[ 
+    ${INPUT_FILE: -2} == ".c" ||
+    ${INPUT_FILE: -3} == ".cc" ||
+    ${INPUT_FILE: -4} == ".cpp" ]]; then
+    clang++ -std=c++17 $INPUT_FILE -o $TEMP_DIR/$FILENAME
+  else
+    echo -e "${red}${bold}Error: File extension is not recognized: $INPUT_FILE"
+    exit 128
+  fi
+elif [[ -d $1 ]]; then
+  echo -e "${red}${bold}Error: The directory cannot be processed${reset}"
+  exit 128
+else
+  echo -e "${red}${bold}Error: Unrecognized arguments: $INPUT_FILE${reset}"
+  exit 128
+fi
+
+if [[ -e $TEMP_DIR/$FILENAME ]]; then
+  exec -a "./$FILENAME" $TEMP_DIR/$FILENAME ${@:2}
+  rm $TEMP_DIR/$FILENAME
+  # echo -e "${green}\rExecution Complete${bold}${reset}"
+else
+  echo -e "${red}${bold}Error: Unexpected error occurred during compilation${reset}"
+  exit 1
+fi
+
+exit 0
