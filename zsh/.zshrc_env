@@ -1,5 +1,5 @@
 # Editor (https://github.com/macvim-dev/macvim)
-export EDITOR=$(which mvim) || $(which vim)
+export EDITOR=$(which mvim)
 
 # Manpage (https://github.com/sharkdp/bat)
 export MANPAGER="sh -c 'col -bx | bat -l man -p'"

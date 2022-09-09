@@ -1,24 +1,24 @@
 [pull]
-	rebase = true
+  rebase = true
 [init]
-	defaultBranch = main
-	templateDir = ~/.git_template
+  defaultBranch = main
+  templateDir = ~/.git_template
 [pager]
-	branch = false
+  branch = false
 [core]
-	editor = code --wait
-	autocrlf = input
-	hooksPath = ~/.git_template/hooks
-	ignorecase = false
+  editor = code --wait
+  autocrlf = input
+  hooksPath = ~/.git_template/hooks
+  ignorecase = false
 [diff]
-	tool = code
+  tool = code
 [difftool "code"]
-	cmd = code --wait --diff $LOCAL $REMOTE
+  cmd = code --wait --diff $LOCAL $REMOTE
 [merge]
-	tool = code
+  tool = code
 [mergetool "code"]
-	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+  cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
 [include]
-	path = ~/.gitconfig_personal
+  path = ~/.gitconfig_personal
 [includeIf "gitdir:~/Workspaces/datable/"]
-	path = ~/.gitconfig_company
+  path = ~/.gitconfig_company

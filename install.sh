@@ -50,27 +50,16 @@ done
 )
 
 echo
-[[ ${#overwritten[@]} > 0 ]] && echo -e "Your original files are backed up in $BACKUP_DIR"
+[[ ${#overwritten[@]} > 0 ]] && echo -e "Backup files in $BACKUP_DIR"
 echo -e "\nAll dotfiles installed!"
-echo -e "Need to run \033[1;32m$ omz reload\033[0m to reload your shell."
-echo
+echo -e "Need to restart your terminal to apply changes.\n"
 
-GIT_HOOKS_DIR=$HOME/.git_template/hooks
-if [[ ! -d "$GIT_HOOKS_DIR" ]]; then
+GIT_TEMPLATE_DIR=$HOME/.git_template
+GIT_HOOKS_DIR=$GIT_TEMPLATE_DIR/hooks
+if [[ ! -d "$GIT_TEMPLATE_DIR" ]]; then
   echo -e "Git hooks not found. Installing..."
   mkdir -p $GIT_HOOKS_DIR
 
   ln -sf $CWD/git/hooks $GIT_HOOKS_DIR
-  echo -e "Git hooks installed. Check it out $GIT_HOOKS_DIR"
-  echo -e "Run \033[1;32m$ git config --global core.hooksPath ~/.git_template/hooks\033[0m"
-fi
-
-KEY_BINDINGS_DIR=$HOME/Library/KeyBindings
-DEFAULT_KEY_BINDING_FILE="DefaultkeyBinding.dict"
-if [[ ! -f "$KEY_BINDINGS_DIR/$DEFAULT_KEY_BINDING_FILE" ]]; then
-  echo -e "Key bindings not found. Installing..."
-  ORIGINAL_KEY_BINDING_FILE=$KEY_BINDINGS_DIR/$DEFAULT_KEY_BINDING_FILE
-  [[ -f $ORIGINAL_KEY_BINDING_FILE ]] && cp $ORIGINAL_KEY_BINDING_FILE $BACKUP_DIR/$DEFAULT_KEY_BINDING_FILE
-  mkdir -p $KEY_BINDINGS_DIR && ln -sf $CWD/dict/$DEFAULT_KEY_BINDING_FILE $ORIGINAL_KEY_BINDING_FILE
-  echo -e "\nDefault key bindings installed. Check it out $ORIGINAL_KEY_BINDING_FILE"
+  echo -e "Done."
 fi

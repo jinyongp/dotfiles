@@ -10,7 +10,6 @@ plugins=(
   zsh-autosuggestions
   zsh-completions
   fast-syntax-highlighting
-  git-flow-completion
   zsh-better-npm-completion
   conda-zsh-completion
 )
