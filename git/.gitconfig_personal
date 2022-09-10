@@ -4,3 +4,5 @@
   signingkey = EB97E4344C1848F7
 [commit]
   gpgsign = true
+[tag]
+  gpgsign = true

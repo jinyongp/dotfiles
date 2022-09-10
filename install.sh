@@ -36,7 +36,6 @@ for file in ${dotfiles[*]}; do
   [[ $? == 0 ]] && [[ $overwrite == true ]] &&
     overwritten+=("$file") ||
     linked+=("$file")
-
 done
 
 [[ ${#overwritten[@]} > 0 ]] && (
@@ -63,3 +62,5 @@ if [[ ! -d "$GIT_TEMPLATE_DIR" ]]; then
   ln -sf $CWD/git/hooks $GIT_HOOKS_DIR
   echo -e "Done."
 fi
+
+mkdir -p $HOME/.vim/undo $HOME/.vim/backup $HOME/.vim/swap
