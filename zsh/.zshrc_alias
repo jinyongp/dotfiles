@@ -16,3 +16,6 @@ alias ls="exa --grid --classify --icons --color=automatic --header --sort=type -
 alias lsd="ls --only-dirs"
 alias la="ls --all --long"
 alias lst="ls --reverse --tree"
+
+# Bat
+alias bat="bat --theme base16"
