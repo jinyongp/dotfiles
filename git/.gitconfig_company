@@ -1,3 +1,7 @@
 [user]
   name = jinyongp
   email = jinyongp@datable.co.kr
+[commit]
+  gpgsign = false
+[tag]
+  gpgsign = false
