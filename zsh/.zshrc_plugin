@@ -7,6 +7,7 @@ plugins=(
   copypath
   virtualenv
   gitignore
+  git-open
   alias-tips
   zsh-autosuggestions
   zsh-completions

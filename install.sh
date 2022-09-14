@@ -23,7 +23,7 @@ if type brew &>/dev/null; then
       echo -e "$(cyan Already installed)"
     else
       brew install $formula
-      echo -e "$(green Done)"
+      echo -e "$(green Installed)"
     fi
   done
 
@@ -34,7 +34,7 @@ if type brew &>/dev/null; then
       echo -e "$(cyan Already installed)"
     else
       brew install --cask $cask &>/dev/null
-      echo -e "$(green Done)"
+      echo -e "$(green Installed)"
     fi
   done
   echo -e "$(green Installing homebrew packages... Done)\n"
@@ -44,13 +44,15 @@ if type brew &>/dev/null; then
 fi
 
 if type brew &>/dev/null; then
-  echo -ne "$(green Installing fonts... )"
+  echo -ne "$(green Installing awesome fonts... )"
   nerd_font="font-fira-code-nerd-font"
   brew list $nerd_font &>/dev/null || {
     brew tap homebrew/cask-fonts &>/dev/null
     brew install --cask $nerd_font &>/dev/null
   }
-  IFS=$'\n' && internal_fonts=($(find $CWD/assets/fonts -name '*.?tf'))
+  IFS=$'\n'
+  internal_fonts=($(find $CWD/assets/fonts -name '*.?tf'))
+  IFS=$' '
   for font in ${internal_fonts[*]}; do
     font_name=$(basename $font)
     if [[ ! -f $HOME/Library/Fonts/$font_name ]]; then
@@ -68,18 +70,19 @@ if [[ ! -d "$ZSH" ]]; then
 fi
 
 if [[ -d "$ZSH" ]]; then
-  echo -ne "$(green "Installing powerlevel10k theme... ")"
+  echo -ne "$(green Installing powerlevel10k theme... )"
   git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k &>/dev/null & wait
   echo -e "$(green Done)"
 
-  echo -ne "$(green "Installing vundlevim... ")"
-  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim
+  echo -ne "$(green Installing vundlevim... )"
+  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim &>/dev/null & wait
   echo -e "$(green Done)"
 
-  echo -e "$(green "Installing oh-my-zsh plugins... ")"
+  echo -e "$(green Installing oh-my-zsh plugins... )"
   local PLUGINS_DIR="${ZSH_CUSTOM:=$HOME/.oh-my-zsh/custom}/plugins"
   local plugins=(
     djui/alias-tips
+    paulirish/git-open
     zsh-users/zsh-completions
     zsh-users/zsh-autosuggestions
     esc/conda-zsh-completion
@@ -92,10 +95,11 @@ if [[ -d "$ZSH" ]]; then
     if [[ -d "$PLUGINS_DIR/$plugin_name" ]]; then
       echo -e "$(cyan Already installed)"
     else
-      git clone "https://github.com/$plugin" "$PLUGINS_DIR/$plugin_name" &>/dev/null
-      echo -e "$(green Done)"
+      git clone "https://github.com/$plugin.git" "$PLUGINS_DIR/$plugin_name" &>/dev/null
+      echo -e "$(green Installed)"
+    fi
   done
-  echo -e "$(green "Installing oh-my-zsh plugins... Done")"
+  echo -e "$(green Installing oh-my-zsh plugins... Done)"
   echo
 fi
 
@@ -112,7 +116,7 @@ dotfiles=(
   .gitconfig_company
 )
 
-echo -e "$(green Installing dotfiles...)\n"
+echo -e "$(green Installing dotfiles...)"
 
 overwritten=()
 linked=()
