@@ -1,10 +1,11 @@
 plugins=(
   git
+  rust
+  direnv
   vundle
   copyfile
   copypath
   virtualenv
-  direnv
   gitignore
   alias-tips
   zsh-autosuggestions
