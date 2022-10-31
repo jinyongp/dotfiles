@@ -150,7 +150,6 @@
       "algorithm" : 0
     }
   },
-  "Prevent Opening in a Tab" : true,
   "Flashing Bell" : false,
   "Cursor Guide Color" : {
     "Red Component" : 0.70214027166366577,
@@ -453,13 +452,13 @@
     "Blue Component" : 0.2588235438
   },
   "Use Bold Font" : true,
-  "Silence Bell" : false,
+  "Silence Bell" : true,
   "Ansi 12 Color" : {
     "Green Component" : 0.59999999999999998,
     "Red Component" : 0.42352941176470588,
     "Blue Component" : 0.73333333333333328
   },
-  "Window Type" : 15,
+  "Window Type" : 0,
   "Use Bright Bold" : true,
   "Cursor Text Color" : {
     "Green Component" : 0.08235294371843338,
@@ -510,7 +509,7 @@
   "AWDS Pane Directory" : "",
   "Blur" : true,
   "Vertical Spacing" : 1.1000000000000001,
-  "Normal Font" : "Monocraft 11",
+  "Normal Font" : "MonocraftNerdFontComplete-Medium 11",
   "Ansi 7 Color" : {
     "Green Component" : 0.81568628549575806,
     "Red Component" : 0.81568628549575806,
@@ -536,13 +535,13 @@
     "Red Component" : 0.49031879989999999,
     "Blue Component" : 0.8118151991
   },
-  "Transparency" : 0.29999999999999999,
+  "Transparency" : 0.10495345744680858,
   "Background Color" : {
     "Green Component" : 0.1283406391402715,
     "Red Component" : 0.1283406391402715,
     "Blue Component" : 0.1283406391402715
   },
-  "Screen" : -2,
+  "Screen" : -1,
   "AWDS Window Option" : "No",
   "Initial Use Transparency" : true,
   "Non Ascii Font" : "FiraCodeNerdFontComplete-Regular 12",
