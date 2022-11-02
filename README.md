@@ -1,6 +1,6 @@
 # My Dotfiles
 
-##
+## Getting Started
 
 Clone this repository.
 
@@ -20,7 +20,7 @@ $ ~/dotfiles/install.sh
 
 ### Homebrew
 
-[Install Homebrew](https://brew.sh/index_ko) and some packages
+[Install Homebrew](https://brew.sh) and some packages
 
 - Formulae
 

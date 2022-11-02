@@ -1,6 +1,6 @@
 #!/bin/bash
 
-CURRENT_LOCATION=$HOME/.commands
+CURRENT_LOCATION=$HOME/.scripts
 TEMP_DIR=$CURRENT_LOCATION/temp_dir
 
 mkdir -p $TEMP_DIR

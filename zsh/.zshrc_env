@@ -8,8 +8,8 @@ export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 
-# Custom Path
-export PATH=~/.commands:$PATH
+# Custom Scripts
+export PATH=~/.scripts:$PATH
 
 # NVM
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
@@ -24,6 +24,11 @@ fi
 # Github
 if type gh &>/dev/null; then
   gh completion -s zsh > $(brew --prefix)/share/zsh/site-functions/_gh
+fi
+
+# ngrok
+if type ngrok &>/dev/null; then
+  source <(ngrok completion)
 fi
 
 # >>> conda initialize >>>

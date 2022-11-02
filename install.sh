@@ -12,6 +12,11 @@ if ! type brew &>/dev/null; then
   echo -ne "$(green Installing homebrew...)"
   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   echo -e "$(green Done)"
+else
+  echo -e "$(cyan 'Homebrew is already installed!')"
+  echo -e "$(green 'Updating homebrew... ')"
+  brew update && brew upgrade && brew cleanup
+  echo -e "$(green 'Update homebrew... Done')" 
 fi
 
 if type brew &>/dev/null; then
@@ -78,6 +83,7 @@ if [[ -d "$ZSH" ]]; then
   git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim &>/dev/null & wait
   echo -e "$(green Done)"
 
+  echo
   echo -e "$(green Installing oh-my-zsh plugins... )"
   local PLUGINS_DIR="${ZSH_CUSTOM:=$HOME/.oh-my-zsh/custom}/plugins"
   local plugins=(
@@ -150,19 +156,21 @@ done
 )
 
 echo
-[[ ${#overwritten[@]} > 0 ]] && echo -e "Backup files in $BACKUP_DIR"
-echo -e "\n$(cyan All dotfiles installed!!)"
+[[ ${#overwritten[@]} > 0 ]] && (
+  echo -e "Created backup files in $BACKUP_DIR"
+)
+echo -e "\n$(cyan All dotfiles installed!!)\n"
 echo -e "Run $(green $ omz reload) to reload oh-my-zsh."
 echo -e "Run $(green $ vundle) to install vim plugins."
 
 GIT_TEMPLATE_DIR=$HOME/.git_template
 GIT_HOOKS_DIR=$GIT_TEMPLATE_DIR/hooks
 if [[ ! -d "$GIT_TEMPLATE_DIR" ]]; then
-  echo -e "Git hooks not found. Installing..."
+  echo -e "Git hooks not found. Installing... "
   mkdir -p $GIT_HOOKS_DIR
 
   ln -sf $CWD/git/hooks $GIT_HOOKS_DIR
-  echo -e "Done."
+  echo -e "Done"
 fi
 
 mkdir -p $HOME/.vim/undo $HOME/.vim/backup $HOME/.vim/swap
