@@ -25,7 +25,7 @@ $ ~/dotfiles/install.sh
 - Formulae
 
   ```
-  brew install jq bat direnv gnupg exa gh node
+  brew install jq bat direnv gnupg exa gh fd
   ```
 
 - Casks

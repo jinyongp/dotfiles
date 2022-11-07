@@ -21,18 +21,21 @@ fi
 
 if type brew &>/dev/null; then
   echo -e "$(green Installing homebrew packages...)"
-  local formulaes=(jq bat direnv gnupg exa gh node)
+  local formulaes=(jq bat direnv gnupg exa gh fd)
   for formula in ${formulaes[*]}; do
     echo -ne "Installing $formula... "
     if brew list $formula &>/dev/null; then
       echo -e "$(cyan Already installed)"
     else
-      brew install $formula
+      brew install $formula &>/dev/null
       echo -e "$(green Installed)"
     fi
   done
 
-  local casks=(iterm2 miniconda karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code)
+  local casks=(
+    iterm2 miniconda karabiner-elements raycast macvim
+    keka kekaexternalhelper google-chrome visual-studio-code
+  )
   for cask in ${casks[*]}; do
     echo -ne "Installing $cask... "
     if brew list $cask &>/dev/null; then
@@ -49,7 +52,7 @@ if type brew &>/dev/null; then
 fi
 
 if type brew &>/dev/null; then
-  echo -ne "$(green Installing awesome fonts... )"
+  echo -ne "$(green Installing awesome nerd fonts... )"
   nerd_font="font-fira-code-nerd-font"
   brew list $nerd_font &>/dev/null || {
     brew tap homebrew/cask-fonts &>/dev/null

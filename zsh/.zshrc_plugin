@@ -9,8 +9,8 @@ plugins=(
   gitignore
   git-open
   alias-tips
-  zsh-autosuggestions
   zsh-completions
+  zsh-autosuggestions
   fast-syntax-highlighting
   zsh-better-npm-completion
   conda-zsh-completion
