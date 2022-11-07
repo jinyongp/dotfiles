@@ -8,7 +8,7 @@ Clone this repository.
 $ git clone https://github.com/jinyongp/dotfiles.git ~/dotfiles
 ```
 
-Run `install.sh` to install all packages and plugins, and copy(symlink) all of the dotfiles in home directory.
+Run `install.sh` to install all packages and plugins I'm using, and copy(symlink) all of the dotfiles in home directory. All of the installation processes will proceed automatically.
 
 ```sh
 $ ~/dotfiles/install.sh
@@ -16,27 +16,29 @@ $ ~/dotfiles/install.sh
 
 > The files that already existed are backed up in `.backup` directory.
 
-## Installed packages and plugins
+## Installing packages and plugins
 
 ### Homebrew
 
-[Install Homebrew](https://brew.sh) and some packages
+[Install Homebrew](https://brew.sh) with my favorite packages!
 
-- Formulae
+I prefer to install most packages using homebrew as mush as possible.
 
-  ```
-  brew install jq bat direnv gnupg exa gh fd
-  ```
+_Formulae_
 
-- Casks
+```
+$ brew install jq bat direnv gnupg exa gh fd
+```
 
-  ```
-  brew install --cask iterm2 miniconda karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code
-  ```
+_Casks_
+
+```
+$ brew install --cask iterm2 miniconda karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code
+```
 
 ### Oh My Zsh
 
-[Install Oh My Zsh](https://ohmyz.sh/#install) and some plugins as below
+[Install Oh My Zsh](https://ohmyz.sh/#install) with awesome omz plugins!
 
 - [alias-tips](https://github.com/djui/alias-tips#oh-my-zsh)
 - [zsh-completions](https://github.com/zsh-users/zsh-completions#oh-my-zsh)
@@ -45,18 +47,18 @@ $ ~/dotfiles/install.sh
 - [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
 - [conda-zsh-completion](https://github.com/esc/conda-zsh-completion/blob/382d840f7ad053b3b2ccf0b1f52b26bdabaf66b3/_conda#L24)
 
-And, install [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) Theme!
+I'm using [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) theme.
 
-> Run command `$ omz reload` to load `~/.zshrc`.
+Run command `$ omz reload` to load omz plugins.
 
 ### VundleVim
 
 - [Install VundleVim](https://github.com/VundleVim/Vundle.vim#quick-start)
-- Run command [`$ vundle`](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/vundle) to install vundlevim plugins.
+- Run command [`$ vundle`](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/vundle) to install vim plugins. (not my concern)
 
 ### Assets
 
-- [Install nerd-font](https://github.com/ryanoasis/nerd-fonts#option-4-homebrew-fonts) using homebrew
+- [Install nerd-font](https://github.com/ryanoasis/nerd-fonts#option-4-homebrew-fonts) using homebrew.
 
   ```sh
   $ brew tap homebrew/cask-fonts
