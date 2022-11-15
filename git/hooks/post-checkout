@@ -2,25 +2,28 @@
 
 set -e
 
-while [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; do
-  echo -e '\033[0;33m[WARN] WIP Commit Detected.\033[0m'
+. $HOME/.zshrc_utils
+
+if [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; then
+  echo -e "$(yellow "[WARN] WIP commit detected.")"
   echo -en "\nCommit: "
   git --no-pager log HEAD --stat -n 1 --pretty=format:"%B"
-  echo ""
-  read -p "$(echo -e "\033[0;32m[NOTE] UNWIP? (Y/n) \033[0m")" answer < /dev/tty
-
-  case $answer in
-  y | yes | '')
-    git reset HEAD~1 --quiet
-    echo -e '\033[32m[NOTE] UNWIP Completed.\033[0m'
-    ;;
-  n | no)
-    echo -e '\033[0;31m[WARN] UNWIP Canceled.\033[0m'
-    break
-    ;;
-  *)
-    echo -e '\033[0;33m[WARN] Y or n (default "y")\033[0m'
-    continue
-    ;;
-  esac
-done
+  echo
+  while true; do
+    read -p "$(echo -e "$(green "[NOTE] UNWIP? (Y/n)") ")" -n1 answer </dev/tty
+    case $answer in
+    Y | y | '')
+      git reset HEAD~1 --quiet
+      echo -e "\n$(green "[NOTE] Done.")"
+      break
+      ;;
+    n )
+      echo -e "\n$(red "[WARN] Canceled.")"
+      break
+      ;;
+    *)
+      echo -ne "$(yellow " - Y or n (default \"y\")")\n"
+      ;;
+    esac
+  done
+fi

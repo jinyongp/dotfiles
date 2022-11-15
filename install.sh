@@ -33,7 +33,7 @@ if type brew &>/dev/null; then
   done
 
   local casks=(
-    iterm2 miniconda karabiner-elements raycast macvim
+    iterm2 karabiner-elements raycast macvim
     keka kekaexternalhelper google-chrome visual-studio-code
   )
   for cask in ${casks[*]}; do
@@ -169,10 +169,10 @@ echo -e "Run $(green $ vundle) to install vim plugins."
 GIT_TEMPLATE_DIR=$HOME/.git_template
 GIT_HOOKS_DIR=$GIT_TEMPLATE_DIR/hooks
 if [[ ! -d "$GIT_TEMPLATE_DIR" ]]; then
-  echo -e "Git hooks not found. Installing... "
-  mkdir -p $GIT_HOOKS_DIR
+  echo -e "\nGit hooks not found. Installing... "
+  mkdir -p $GIT_TEMPLATE_DIR
 
-  ln -sf $CWD/git/hooks $GIT_HOOKS_DIR
+  ln -sf $CWD/git/hooks $GIT_TEMPLATE_DIR
   echo -e "Done"
 fi
 

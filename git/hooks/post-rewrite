@@ -1,0 +1,3 @@
+#!/bin/bash
+
+. $PWD/.git/hooks/post-merge

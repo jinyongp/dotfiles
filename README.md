@@ -33,7 +33,7 @@ $ brew install jq bat direnv gnupg exa gh fd
 _Casks_
 
 ```
-$ brew install --cask iterm2 miniconda karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code
+$ brew install --cask iterm2 karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code
 ```
 
 ### Oh My Zsh
