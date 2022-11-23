@@ -26,16 +26,22 @@ if type ngrok &>/dev/null; then
   source <(ngrok completion)
 fi
 
+# deno
+if type deno &>/dev/null; then
+  deno completions zsh > "$(brew --prefix)/share/zsh/site-functions/_deno"
+fi
+
 # >>> conda initialize >>>
 # !! Contents within this block are managed by 'conda init' !!
-__conda_setup="$('/opt/homebrew/Caskroom/miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+miniconda="$(brew --prefix)/Caskroom/miniconda"
+__conda_setup="$('$miniconda/base/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
 if [ $? -eq 0 ]; then
   eval "$__conda_setup"
 else
-  if [ -f "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh" ]; then
-    . "/opt/homebrew/Caskroom/miniconda/base/etc/profile.d/conda.sh"
+  if [ -f "$miniconda/base/etc/profile.d/conda.sh" ]; then
+    . "$miniconda/base/etc/profile.d/conda.sh"
   else
-    export PATH="/opt/homebrew/Caskroom/miniconda/base/bin:$PATH"
+    export PATH="$miniconda/base/bin:$PATH"
   fi
 fi
 unset __conda_setup
