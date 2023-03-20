@@ -19,3 +19,6 @@ alias lst="ls --reverse --tree"
 
 # Bat
 alias bat="bat --theme base16"
+
+# Override
+alias gcmsg="git commit -m"
