@@ -166,13 +166,20 @@ echo -e "\n$(cyan All dotfiles installed!!)\n"
 echo -e "Run $(green $ omz reload) to reload oh-my-zsh."
 echo -e "Run $(green $ vundle) to install vim plugins."
 
-GIT_TEMPLATE_DIR=$HOME/.git_template
-GIT_HOOKS_DIR=$GIT_TEMPLATE_DIR/hooks
-if [[ ! -d "$GIT_TEMPLATE_DIR" ]]; then
+GIT_DIR=$HOME/.git
+if [[ ! -d "$GIT_DIR/hooks" ]]; then
   echo -e "\nGit hooks not found. Installing... "
-  mkdir -p $GIT_TEMPLATE_DIR
+  mkdir -p $GIT_DIR
 
-  ln -sf $CWD/git/hooks $GIT_TEMPLATE_DIR
+  ln -sf $CWD/git/hooks $GIT_DIR
+  echo -e "Done"
+fi
+
+if [[ ! -d "$GIT_DIR/templates" ]]; then
+  echo -e "\nGit templates not found. Installing... "
+  mkdir -p $GIT_DIR
+
+  ln -sf $CWD/git/templates $GIT_DIR
   echo -e "Done"
 fi
 
