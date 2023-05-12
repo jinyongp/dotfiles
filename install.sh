@@ -119,6 +119,7 @@ dotfiles=(
   .zshrc_alias
   .zshrc_theme
   .zshrc_plugin
+  .zshrc_private
   .vimrc
   .gitconfig
   .gitconfig_personal

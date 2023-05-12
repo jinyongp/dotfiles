@@ -1,8 +1,8 @@
 cxxflags
 dotfiles
-Fira
-graphity
+fira
 hashup
+jinyong
 jinyongp
 nuxt
 postcss
