@@ -1,4 +1,5 @@
 .backup
 .DS_Store
 
-.zshrc_private
+private.zsh
+*.zwc

@@ -114,16 +114,8 @@ fi
 
 dotfiles=(
   .zshrc
-  .zshrc_env
-  .zshrc_utils
-  .zshrc_alias
-  .zshrc_theme
-  .zshrc_plugin
-  .zshrc_private
   .vimrc
   .gitconfig
-  .gitconfig_personal
-  .gitconfig_company
 )
 
 echo -e "$(green Installing dotfiles...)"
