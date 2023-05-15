@@ -5,10 +5,14 @@
 Clone this repository.
 
 ```sh
-$ git clone https://github.com/jinyongp/dotfiles.git ~/dotfiles
+$ git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles # ".dotfiles" should start with dot(.)
+
+# ...cloning
+
+$ cd ~/.dotfiles && ./install.zsh
 ```
 
-Run `install.sh` to install all packages and plugins I'm using, and copy(symlink) all of the dotfiles in home directory. All of the installation processes will proceed automatically.
+Run `install.zsh` to install all packages and plugins I'm using, and copy(symlink) all of the dotfiles in home directory. All of the installation processes will proceed automatically.
 
 ```sh
 $ ~/dotfiles/install.sh

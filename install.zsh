@@ -2,10 +2,7 @@
 
 CWD=$(cd "$(dirname "$0")" && pwd)
 
-reset='\033[0m'
-green() { printf "\033[0;32m$*$reset" }
-cyan() { printf "\033[0;36m$*$reset" }
-red() { printf "\033[0;31m$*$reset" }
+source $CWD/utils/colors.zsh
 
 if ! type brew &>/dev/null; then
   echo
@@ -16,7 +13,7 @@ else
   echo -e "$(cyan 'Homebrew is already installed!')"
   echo -e "$(green 'Updating homebrew... ')"
   brew update && brew upgrade && brew cleanup
-  echo -e "$(green 'Update homebrew... Done')" 
+  echo -e "$(green 'Update homebrew... Done')"
 fi
 
 if type brew &>/dev/null; then
@@ -52,7 +49,7 @@ if type brew &>/dev/null; then
 fi
 
 if type brew &>/dev/null; then
-  echo -ne "$(green Installing awesome nerd fonts... )"
+  echo -ne "$(green Installing awesome nerd fonts...)"
   nerd_font="font-fira-code-nerd-font"
   brew list $nerd_font &>/dev/null || {
     brew tap homebrew/cask-fonts &>/dev/null
@@ -73,21 +70,24 @@ fi
 if [[ ! -d "$ZSH" ]]; then
   echo
   echo -ne "$(green "Installing oh-my-zsh... ")"
-  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &>/dev/null & wait
+  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &>/dev/null &
+  wait
   echo -e "$(green Done)"
 fi
 
 if [[ -d "$ZSH" ]]; then
-  echo -ne "$(green Installing powerlevel10k theme... )"
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k &>/dev/null & wait
+  echo -ne "$(green Installing powerlevel10k theme...)"
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k &>/dev/null &
+  wait
   echo -e "$(green Done)"
 
-  echo -ne "$(green Installing vundlevim... )"
-  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim &>/dev/null & wait
+  echo -ne "$(green Installing vundlevim...)"
+  git clone https://github.com/VundleVim/Vundle.vim.git ~/.vim/bundle/Vundle.vim &>/dev/null &
+  wait
   echo -e "$(green Done)"
 
   echo
-  echo -e "$(green Installing oh-my-zsh plugins... )"
+  echo -e "$(green Installing oh-my-zsh plugins...)"
   local PLUGINS_DIR="${ZSH_CUSTOM:=$HOME/.oh-my-zsh/custom}/plugins"
   local plugins=(
     djui/alias-tips
@@ -158,22 +158,5 @@ echo
 echo -e "\n$(cyan All dotfiles installed!!)\n"
 echo -e "Run $(green $ omz reload) to reload oh-my-zsh."
 echo -e "Run $(green $ vundle) to install vim plugins."
-
-GIT_DIR=$HOME/.git
-if [[ ! -d "$GIT_DIR/hooks" ]]; then
-  echo -e "\nGit hooks not found. Installing... "
-  mkdir -p $GIT_DIR
-
-  ln -sf $CWD/git/hooks $GIT_DIR
-  echo -e "Done"
-fi
-
-if [[ ! -d "$GIT_DIR/templates" ]]; then
-  echo -e "\nGit templates not found. Installing... "
-  mkdir -p $GIT_DIR
-
-  ln -sf $CWD/git/templates $GIT_DIR
-  echo -e "Done"
-fi
 
 mkdir -p $HOME/.vim/undo $HOME/.vim/backup $HOME/.vim/swap

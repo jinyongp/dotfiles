@@ -2,7 +2,7 @@
 
 set -e
 
-source $DOTFILES/utils/colors.zsh
+source $HOME/.dotfiles/utils/colors.zsh
 
 IFS=$'\n'
 
