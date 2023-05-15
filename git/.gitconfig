@@ -1,17 +1,15 @@
-[pull]
-  rebase = true
 [init]
   defaultBranch = main
-  templateDir = ~/.git
+  templateDir = ~/.dotfiles/git
 [pager]
   branch = false
 [core]
   editor = vim
   autocrlf = input
-  hooksPath = ~/.git/hooks
+  hooksPath = ~/.dotfiles/git/hooks
   ignorecase = false
-[commit]
-  template = ~/.git/templates/gitmessage
+[pull]
+  rebase = true
 [diff]
   tool = code
 [difftool "code"]
@@ -21,6 +19,6 @@
 [mergetool "code"]
   cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
 [include]
-  path = ~/.gitconfig_personal
-[includeIf "gitdir:~/Workspaces/datable/"]
-  path = ~/.gitconfig_company
+  path = ~/.dotfiles/git/roles/personal.ini
+[includeIf "gitdir:~/Workspaces/@datable/"]
+  path = ~/.dotfiles/git/roles/company.ini

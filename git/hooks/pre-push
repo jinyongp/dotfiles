@@ -2,13 +2,13 @@
 
 set -e
 
-. $HOME/.zshrc_utils
+source $DOTFILES/utils/colors.zsh
 
-if [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; then
-  echo -e "$(yellow "[WARN] WIP commit detected. UNWIP by running") $(green $ gunwip)"
-  echo -en "\nCommit: "
-  git --no-pager log HEAD --stat -n 1 --pretty=format:"%B"
-  echo
-  exit 1
-fi
+IFS=$'\n'
 
+while read -r message; do
+  if [[ $message =~ ^--wip-- ]]; then
+    echo -e "$(yellow "[WARN] WIP commit detected. UNWIP by running") $(green "$ gunwip")"
+    exit 1
+  fi
+done <<<"$(git --no-pager show -s --format="%s" @{u}..)"

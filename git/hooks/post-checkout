@@ -2,13 +2,10 @@
 
 set -e
 
-. $HOME/.zshrc_utils
+source $DOTFILES/utils/colors.zsh
 
-if [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; then
+if [[ $(git --no-pager show -s --format="%s") =~ ^--wip-- ]]; then
   echo -e "$(yellow "[WARN] WIP commit detected.")"
-  echo -en "\nCommit: "
-  git --no-pager log HEAD --stat -n 1 --pretty=format:"%B"
-  echo
   while true; do
     read -p "$(echo -e "$(green "[NOTE] UNWIP? (Y/n)") ")" -n1 answer </dev/tty
     case $answer in
@@ -17,7 +14,7 @@ if [[ $(git --no-pager show --pretty=format:"%s" -s) =~ ^--wip-- ]]; then
       echo -e "\n$(green "[NOTE] Done.")"
       break
       ;;
-    n )
+    n)
       echo -e "\n$(red "[WARN] Canceled.")"
       break
       ;;
