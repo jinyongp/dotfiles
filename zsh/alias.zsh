@@ -22,3 +22,6 @@ alias bat="bat --theme base16"
 
 # Override
 alias gcmsg="git commit -m"
+
+# Npm
+alias npv="npm --no-git-tag-version version"
