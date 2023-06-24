@@ -17,6 +17,7 @@ CWD="$DOTFILES/zsh"
 
 source $CWD/themes/powerlevel10k.zsh
 # source $CWD/themes/spaceship.zsh
+
 source $CWD/plugin.zsh
 source $CWD/utility.zsh
 
@@ -24,3 +25,9 @@ source $ZSH/oh-my-zsh.sh
 
 source $CWD/alias.zsh
 source $CWD/env.zsh
+
+if [[ ! -f $CWD/private.zsh ]]; then
+  touch $CWD/private.zsh
+fi
+
+source $CWD/private.zsh
