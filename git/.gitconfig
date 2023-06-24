@@ -19,6 +19,6 @@
 [mergetool "code"]
   cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
 [include]
-  path = ~/.dotfiles/git/roles/personal.ini
+  path = ~/.dotfiles/git/configs/personal.ini
 [includeIf "gitdir:~/Workspaces/@datable/"]
-  path = ~/.dotfiles/git/roles/company.ini
+  path = ~/.dotfiles/git/configs/datable.ini
