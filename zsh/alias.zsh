@@ -25,3 +25,6 @@ alias gcmsg="git commit -m"
 
 # Npm
 alias npv="npm --no-git-tag-version version"
+
+# Xcode
+alias xcode="open -a Xcode"
