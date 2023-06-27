@@ -20,8 +20,9 @@ alias lst="ls --reverse --tree"
 # Bat
 alias bat="bat --theme base16"
 
-# Override
+# Git
 alias gcmsg="git commit -m"
+alias go="git open"
 
 # Npm
 alias npv="npm --no-git-tag-version version"
