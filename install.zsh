@@ -94,8 +94,8 @@ if [[ -d "$ZSH" ]]; then
     paulirish/git-open
     zsh-users/zsh-completions
     zsh-users/zsh-autosuggestions
-    esc/conda-zsh-completion
     lukechilds/zsh-better-npm-completion
+    tamcore/autoupdate-oh-my-zsh-plugins
     zdharma-continuum/fast-syntax-highlighting
   )
   for plugin in ${plugins[*]}; do

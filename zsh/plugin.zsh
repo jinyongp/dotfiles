@@ -8,12 +8,13 @@ plugins=(
   virtualenv
   gitignore
   git-open
+  autoupdate
   alias-tips
   zsh-completions
   zsh-autosuggestions
   fast-syntax-highlighting
   zsh-better-npm-completion
-  conda-zsh-completion
 )
 
+UPDATE_ZSH_DAYS=7
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"

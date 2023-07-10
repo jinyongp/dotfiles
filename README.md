@@ -45,11 +45,12 @@ $ brew install --cask iterm2 karabiner-elements raycast keka kekaexternalhelper 
 [Install Oh My Zsh](https://ohmyz.sh/#install) with awesome omz plugins!
 
 - [alias-tips](https://github.com/djui/alias-tips#oh-my-zsh)
+- [git-open](https://github.com/paulirish/git-open#oh-my-zsh)
 - [zsh-completions](https://github.com/zsh-users/zsh-completions#oh-my-zsh)
 - [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions/blob/master/INSTALL.md#oh-my-zsh)
 - [fast-syntax-highlighting](https://github.com/zdharma-continuum/fast-syntax-highlighting#oh-my-zsh)
+- [autoupdate-oh-my-zsh-plugins](https://github.com/tamcore/autoupdate-oh-my-zsh-plugins)
 - [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
-- [conda-zsh-completion](https://github.com/esc/conda-zsh-completion/blob/382d840f7ad053b3b2ccf0b1f52b26bdabaf66b3/_conda#L24)
 
 I'm using [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) theme.
 

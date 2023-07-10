@@ -21,7 +21,6 @@ alias lst="ls --reverse --tree"
 alias bat="bat --theme base16"
 
 # Git
-alias gcmsg="git commit -m"
 alias go="git open"
 
 # Npm
