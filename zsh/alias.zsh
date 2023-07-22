@@ -21,7 +21,7 @@ alias lst="ls --reverse --tree"
 alias bat="bat --theme base16"
 
 # Git
-alias go="git open"
+alias gopen="git open"
 
 # Npm
 alias npv="npm --no-git-tag-version version"
