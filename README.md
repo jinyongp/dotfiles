@@ -1,77 +1,53 @@
 # My Dotfiles
 
-## Getting Started
-
-Clone this repository.
+## Installation
 
 ```sh
-$ git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles # ".dotfiles" should start with dot(.)
-
-# ...cloning
-
-$ cd ~/.dotfiles && ./install.zsh
+$ git clone --depth 1 https://github.com/jinyongp/dotfiles.git ~/.dotfiles
 ```
-
-Run `install.zsh` to install all packages and plugins I'm using, and copy(symlink) all of the dotfiles in home directory. All of the installation processes will proceed automatically.
 
 ```sh
-$ ~/dotfiles/install.sh
+$ ~/.dotfiles/install.zsh
 ```
 
-> The files that already existed are backed up in `.backup` directory.
+## Dependencies
 
-## Installing packages and plugins
+### [homebrew](https://brew.sh/)
 
-### Homebrew
+#### Formulae
 
-[Install Homebrew](https://brew.sh) with my favorite packages!
+- [jq](https://github.com/jqlang/jq)
+- [gh](https://github.com/cli/cli)
+- [fd](https://github.com/sharkdp/fd)
+- [exa](https://github.com/ogham/exa)
+- [bat](https://github.com/sharkdp/bat)
+- [fnm](https://github.com/Schniz/fnm)
+- [direnv](https://github.com/direnv/direnv)
+- [gnupg](https://gnupg.org/)
 
-I prefer to install most packages using homebrew as mush as possible.
+#### Cask
 
-_Formulae_
+- [iterm2](https://iterm2.com/)
+- [karabiner-elements](https://karabiner-elements.pqrs.org/)
+- [raycast](https://raycast.com/)
+- [macvim](https://github.com/macvim-dev/macvim)
+- [keka](https://github.com/aonez/Keka)
+- [kekaexternalhelper](https://github.com/aonez/Keka/wiki/Default-application)
+- [google-chrome](https://www.google.com/chrome/)
+- [visual-studio-code](https://code.visualstudio.com/)
 
-```
-$ brew install jq bat direnv gnupg exa gh fd fnm
-```
+### [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh)
 
-_Casks_
+#### Plugins
 
-```
-$ brew install --cask iterm2 karabiner-elements raycast keka kekaexternalhelper google-chrome macvim visual-studio-code
-```
+- [alias-tips](https://github.com/djui/alias-tips/)
+- [git-open](https://github.com/paulirish/git-open/)
+- [zsh-completions](https://github.com/zsh-users/zsh-completions/)
+- [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions/)
+- [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion/)
+- [autoupdate-oh-my-zsh-plugins](https://github.com/tamcore/autoupdate-oh-my-zsh-plugins/)
+- [fast-syntax-highlighting](https://github.com/zdharma-continuum/fast-syntax-highlighting/)
 
-### Oh My Zsh
+#### Theme
 
-[Install Oh My Zsh](https://ohmyz.sh/#install) with awesome omz plugins!
-
-- [alias-tips](https://github.com/djui/alias-tips#oh-my-zsh)
-- [git-open](https://github.com/paulirish/git-open#oh-my-zsh)
-- [zsh-completions](https://github.com/zsh-users/zsh-completions#oh-my-zsh)
-- [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions/blob/master/INSTALL.md#oh-my-zsh)
-- [fast-syntax-highlighting](https://github.com/zdharma-continuum/fast-syntax-highlighting#oh-my-zsh)
-- [autoupdate-oh-my-zsh-plugins](https://github.com/tamcore/autoupdate-oh-my-zsh-plugins)
-- [zsh-better-npm-completion](https://github.com/lukechilds/zsh-better-npm-completion#as-an-oh-my-zsh-custom-plugin)
-
-I'm using [PowerLevel10K](https://github.com/romkatv/powerlevel10k#oh-my-zsh) theme.
-
-Run command `$ omz reload` to load omz plugins.
-
-### VundleVim
-
-- [Install VundleVim](https://github.com/VundleVim/Vundle.vim#quick-start)
-- Run command [`$ vundle`](https://github.com/ohmyzsh/ohmyzsh/tree/master/plugins/vundle) to install vim plugins. (not my concern)
-
-### Assets
-
-- [Install nerd-font](https://github.com/ryanoasis/nerd-fonts#option-4-homebrew-fonts) using homebrew.
-
-  ```sh
-  $ brew tap homebrew/cask-fonts
-  $ brew install --cask font-fira-code-nerd-font
-  ```
-
-- Copy the fonts to `~/Library/Fonts` (It is not working. Just example.)
-
-  ```sh
-  $ cp [/assets/fonts/*] ~/Library/Fonts/*
-  ```
+- [powerlevel10k](https://github.com/romkatv/powerlevel10k/)

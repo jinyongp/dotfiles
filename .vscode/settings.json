@@ -2,7 +2,4 @@
   "[shellscript]": {
     "editor.defaultFormatter": "foxundermoon.shell-format"
   },
-  "cSpell.words": [
-    "dotfiles"
-  ]
 }
