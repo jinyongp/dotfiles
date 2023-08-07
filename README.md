@@ -31,7 +31,7 @@ I prefer to install most packages using homebrew as mush as possible.
 _Formulae_
 
 ```
-$ brew install jq bat direnv gnupg exa gh fd
+$ brew install jq bat direnv gnupg exa gh fd fnm
 ```
 
 _Casks_
