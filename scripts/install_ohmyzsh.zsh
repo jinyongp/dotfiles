@@ -17,7 +17,6 @@ if [[ -d "$ZSH" ]]; then
   git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k &>/dev/null &
   wait
   echo -e "$(green Done)"
-  echo
 fi
 
 if [[ -d "$ZSH" ]]; then

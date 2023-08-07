@@ -51,4 +51,4 @@ done
   echo -e "\nCreated backup files in $BACKUP_DIR"
 )
 
-echo -e "\n$(cyan All dotfiles installed!!)\n"
+echo
