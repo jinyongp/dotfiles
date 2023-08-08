@@ -33,3 +33,6 @@ if type pyenv &>/dev/null; then
   command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
   eval "$(pyenv init -)"
 fi
+
+# fnm
+eval "$(fnm env --use-on-cd)"
