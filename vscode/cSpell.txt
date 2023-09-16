@@ -11,6 +11,7 @@ karabiner
 keka
 kekaexternalhelper
 macvim
+marp
 nuxt
 postcss
 powerlevel

@@ -3,7 +3,7 @@
 # Reset
 reset="\033[0m"
 
-# Regular Colors
+# Foreground
 black      (){ printf "\033[0;30m$*$reset"; }
 red        (){ printf "\033[0;31m$*$reset"; }
 green      (){ printf "\033[0;32m$*$reset"; }
