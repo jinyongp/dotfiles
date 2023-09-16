@@ -17,9 +17,9 @@ $ ~/.dotfiles/install.zsh
 #### Formulae
 
 - [jq](https://github.com/jqlang/jq)
-- [gh](https://github.com/cli/cli)
+- [gh](https://github.com/cli/cli)s
 - [fd](https://github.com/sharkdp/fd)
-- [exa](https://github.com/ogham/exa)
+- [eza](https://github.com/eza-community/eza)
 - [bat](https://github.com/sharkdp/bat)
 - [fnm](https://github.com/Schniz/fnm)
 - [direnv](https://github.com/direnv/direnv)

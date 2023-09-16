@@ -10,9 +10,9 @@ alias egrep='egrep --color=auto'
 alias vim='mvim -v'
 alias vi='mvim -v'
 
-# EXA
+# EZA
 alias ls=ols
-alias ls="exa --grid --classify --icons --color=automatic --header --sort=type --git"
+alias ls="eza --grid --classify --icons --color=automatic --header --sort=type --git"
 alias lsd="ls --only-dirs"
 alias la="ls --all --long"
 alias lst="ls --reverse --tree"

@@ -22,7 +22,7 @@ if type brew &>/dev/null; then
     bat    # https://github.com/sharkdp/bat
     direnv # https://github.com/direnv/direnv
     gnupg  # https://gnupg.org/
-    exa    # https://github.com/ogham/exa
+    eza    # https://github.com/eza-community/eza
     gh     # https://github.com/cli/cli
     fd     # https://github.com/sharkdp/fd
     fnm    # https://github.com/Schniz/fnm
