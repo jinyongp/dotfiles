@@ -4,11 +4,9 @@ set -e
 
 source $HOME/.dotfiles/utils/colors.zsh
 
-IFS=$'\n'
-
-while read -r message; do
+while IFS='\n' read -r message; do
   if [[ $message =~ ^--wip-- ]]; then
-    echo -e "$(yellow "[WARN] WIP commit detected. UNWIP by running") $(green "$ gunwip")"
+    echo -e "$(yellow "[WARN] WIP commit was found. Please resolve it by using") $(green "$ gunwip")"
     exit 1
   fi
-done <<<"$(git --no-pager show -s --format="%s" @{u}..)"
+done <<<"$(git log -10 --format="%s")"

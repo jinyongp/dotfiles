@@ -1,0 +1,11 @@
+#!/bin/bash
+
+set -e
+
+source $HOME/.dotfiles/utils/colors.zsh
+
+if [[ $(git show --quiet --format="%s") =~ ^--wip-- ]]; then
+  echo -e "$(blue "[NOTICE] Resolve it first by using") $(green "$ gunwip")\n"
+  git --no-pager log --oneline --decorate --color --all --pretty=format:"%C(auto)%h %C(auto)%d %C(auto)%s %C(black)%C(bold)%cr" | head -n 1
+  exit 1
+fi
