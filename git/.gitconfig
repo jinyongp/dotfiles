@@ -9,6 +9,8 @@
   hooksPath = ~/.dotfiles/git/hooks
   ignorecase = false
 	quotepath = false
+[commit]
+  template = ~/.dotfiles/git/templates/gitmessage
 [pull]
   rebase = true
 [diff]
