@@ -9,4 +9,4 @@ while IFS='\n' read -r message; do
     echo -e "$(yellow "[WARN] WIP commit was found. Please resolve it by using") $(green "$ gunwip")"
     exit 1
   fi
-done <<<"$(git log -10 --format="%s")"
+done <<<"$(git log -10 --format="%s" 2>/dev/null)"

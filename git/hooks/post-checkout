@@ -4,7 +4,7 @@ set -e
 
 source $HOME/.dotfiles/utils/colors.zsh
 
-if [[ $(git show --quiet --format="%s") =~ ^--wip-- ]]; then
+if [[ $(git show --quiet --format="%s" 2>/dev/null) =~ ^--wip-- ]]; then
   echo -e "$(yellow "[NOTICE] WIP commit was found.")"
   while true; do
     read -p "$(echo -e "$(green "Resolve? (Y/n)") ")" -n1 answer </dev/tty
