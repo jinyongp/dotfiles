@@ -22,6 +22,7 @@ alias bat="bat --theme base16"
 
 # Git
 alias gopen="git open"
+alias gpft="git push --follow-tags"
 
 # Npm
 alias npv="npm --no-git-tag-version version"
