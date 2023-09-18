@@ -11,6 +11,8 @@
 	quotepath = false
 [commit]
   template = ~/.dotfiles/git/templates/gitmessage
+[push]
+	autoSetupRemote = true
 [pull]
   rebase = true
 [diff]
