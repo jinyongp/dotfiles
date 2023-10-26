@@ -269,7 +269,7 @@
 	<key>HotkeyMigratedFromSingleToMulti</key>
 	<true/>
 	<key>HotkeyModifiers</key>
-	<integer>524576</integer>
+	<integer>524288</integer>
 	<key>New Bookmarks</key>
 	<array>
 		<dict>
@@ -1038,21 +1038,29 @@
 			<integer>0</integer>
 			<key>Selected Text Color</key>
 			<dict>
+				<key>Alpha Component</key>
+				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.81568628549575806</real>
+				<real>0.3843137254901961</real>
+				<key>Color Space</key>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.81568628549575806</real>
+				<real>0.3843137254901961</real>
 				<key>Red Component</key>
-				<real>0.81568628549575806</real>
+				<real>0.3843137254901961</real>
 			</dict>
 			<key>Selection Color</key>
 			<dict>
+				<key>Alpha Component</key>
+				<real>1</real>
 				<key>Blue Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.84705882352941175</real>
+				<key>Color Space</key>
+				<string>sRGB</string>
 				<key>Green Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.84705882352941175</real>
 				<key>Red Component</key>
-				<real>0.18823529779911041</real>
+				<real>0.84705882352941175</real>
 			</dict>
 			<key>Send Code When Idle</key>
 			<false/>
