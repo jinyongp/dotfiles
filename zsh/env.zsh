@@ -1,6 +1,6 @@
 export EDITOR=$(which vim)
 
-export BAT_THEME="Nord"
+export BAT_THEME="GitHub"
 
 # language
 export LC_ALL=en_US.UTF-8
