@@ -1,29 +1,41 @@
 [init]
-  defaultBranch = main
-  templateDir = ~/.dotfiles/git
+	defaultBranch = main
+	templateDir = ~/.dotfiles/git
 [pager]
-  branch = false
+	branch = false
+	diff = diff-so-fancy | less --tabs=2 -RFX
 [core]
-  editor = vim
-  autocrlf = input
-  hooksPath = ~/.dotfiles/git/hooks
-  ignorecase = false
+	editor = vim
+	autocrlf = input
+	hooksPath = ~/.dotfiles/git/hooks
+	ignorecase = false
 	quotepath = false
 [commit]
-  template = ~/.dotfiles/git/templates/gitmessage
+	template = ~/.dotfiles/git/templates/gitmessage
 [push]
 	autoSetupRemote = true
 [pull]
-  rebase = true
+	rebase = true
 [diff]
-  tool = code
+	tool = code
 [difftool "code"]
-  cmd = code --wait --diff $LOCAL $REMOTE
+	cmd = code --wait --diff $LOCAL $REMOTE
 [merge]
-  tool = code
+	tool = code
 [mergetool "code"]
-  cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+[interactive]
+	diffFilter = diff-so-fancy --patch
 [include]
-  path = ~/.dotfiles/git/configs/personal.ini
-[includeIf "gitdir:~/Workspaces/@datable/"]
-  path = ~/.dotfiles/git/configs/datable.ini
+	path = ~/.dotfiles/git/configs/personal.ini
+
+[color]
+	ui = true
+[color "diff-highlight"]
+	oldNormal = red
+	oldHighlight = red bold 253
+	newNormal = green
+	newHighlight = green bold 253
+[diff-so-fancy]
+	markEmptyLines = false
+
