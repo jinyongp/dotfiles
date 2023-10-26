@@ -17,5 +17,6 @@ postcss
 powerlevel
 raycast
 rgba
+tldr
 usernote
 vetur
