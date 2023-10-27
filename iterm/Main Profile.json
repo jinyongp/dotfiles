@@ -2,9 +2,11 @@
   "Working Directory" : "\/Users\/jinyongp",
   "Prompt Before Closing 2" : false,
   "Selected Text Color" : {
-    "Green Component" : 0.81568628549575806,
-    "Red Component" : 0.81568628549575806,
-    "Blue Component" : 0.81568628549575806
+    "Red Component" : 0.3843137254901961,
+    "Color Space" : "sRGB",
+    "Blue Component" : 0.3843137254901961,
+    "Alpha Component" : 1,
+    "Green Component" : 0.3843137254901961
   },
   "Rows" : 25,
   "Ansi 11 Color" : {
@@ -22,9 +24,11 @@
   "Show Status Bar" : true,
   "Character Encoding" : 4,
   "Selection Color" : {
-    "Green Component" : 0.18823529779911041,
-    "Red Component" : 0.18823529779911041,
-    "Blue Component" : 0.18823529779911041
+    "Red Component" : 0.84705882352941175,
+    "Color Space" : "sRGB",
+    "Blue Component" : 0.84705882352941175,
+    "Alpha Component" : 1,
+    "Green Component" : 0.84705882352941175
   },
   "Mouse Reporting" : true,
   "Cursor Boost" : 0,
@@ -56,11 +60,11 @@
             "path" : "path",
             "minwidth" : 0,
             "shared text color" : {
-              "Red Component" : 0.5,
+              "Red Component" : 0.90000000000000002,
               "Color Space" : "sRGB",
-              "Blue Component" : 0.25,
+              "Blue Component" : 0.63,
               "Alpha Component" : 1,
-              "Green Component" : 0.25
+              "Green Component" : 0.63
             },
             "base: priority" : 5,
             "base: compression resistance" : 1,
@@ -68,7 +72,7 @@
           },
           "layout advanced configuration dictionary value" : {
             "remove empty components" : false,
-            "auto-rainbow style" : 2,
+            "auto-rainbow style" : 3,
             "font" : ".AppleSystemUIFont 12",
             "algorithm" : 0
           }
@@ -81,20 +85,21 @@
             "minwidth" : 0,
             "iTermStatusBarGitComponentPollingIntervalKey" : 2,
             "shared text color" : {
-              "Red Component" : 0.29499999999999998,
+              "Red Component" : 0.80145,
               "Color Space" : "sRGB",
-              "Blue Component" : 0.25,
+              "Blue Component" : 0.63,
               "Alpha Component" : 1,
-              "Green Component" : 0.5
+              "Green Component" : 0.90000000000000002
             },
             "base: priority" : 5,
             "base: compression resistance" : 1,
             "maxwidth" : 1.7976931348623157e+308
           },
           "layout advanced configuration dictionary value" : {
-            "algorithm" : 0,
-            "auto-rainbow style" : 0,
-            "remove empty components" : false
+            "remove empty components" : false,
+            "auto-rainbow style" : 3,
+            "font" : ".AppleSystemUIFont 12",
+            "algorithm" : 0
           }
         }
       },
@@ -104,17 +109,17 @@
           "knobs" : {
             "base: priority" : 5,
             "shared text color" : {
-              "Red Component" : 0.25,
+              "Red Component" : 0.63,
               "Color Space" : "sRGB",
-              "Blue Component" : 0.5,
+              "Blue Component" : 0.82710000000000006,
               "Alpha Component" : 1,
-              "Green Component" : 0.33999999999999997
+              "Green Component" : 0.90000000000000002
             },
             "base: compression resistance" : 1
           },
           "layout advanced configuration dictionary value" : {
             "remove empty components" : false,
-            "auto-rainbow style" : 2,
+            "auto-rainbow style" : 3,
             "font" : ".AppleSystemUIFont 12",
             "algorithm" : 0
           }
@@ -126,17 +131,40 @@
           "knobs" : {
             "base: priority" : 5,
             "shared text color" : {
-              "Red Component" : 0.5,
+              "Red Component" : 0.65564999999999996,
               "Color Space" : "sRGB",
-              "Blue Component" : 0.38500000000000001,
+              "Blue Component" : 0.90000000000000002,
               "Alpha Component" : 1,
-              "Green Component" : 0.25
+              "Green Component" : 0.63
             },
             "base: compression resistance" : 1
           },
           "layout advanced configuration dictionary value" : {
             "remove empty components" : false,
-            "auto-rainbow style" : 2,
+            "auto-rainbow style" : 3,
+            "font" : ".AppleSystemUIFont 12",
+            "algorithm" : 0
+          }
+        }
+      },
+      {
+        "class" : "iTermStatusBarClockComponent",
+        "configuration" : {
+          "knobs" : {
+            "base: priority" : 5,
+            "shared text color" : {
+              "Red Component" : 0.90000000000000002,
+              "Color Space" : "sRGB",
+              "Blue Component" : 0.77580000000000005,
+              "Alpha Component" : 1,
+              "Green Component" : 0.63
+            },
+            "base: compression resistance" : 1,
+            "format" : "M\/dd h:mm"
+          },
+          "layout advanced configuration dictionary value" : {
+            "remove empty components" : false,
+            "auto-rainbow style" : 3,
             "font" : ".AppleSystemUIFont 12",
             "algorithm" : 0
           }
@@ -145,7 +173,7 @@
     ],
     "advanced configuration" : {
       "remove empty components" : false,
-      "auto-rainbow style" : 2,
+      "auto-rainbow style" : 3,
       "font" : ".AppleSystemUIFont 12",
       "algorithm" : 0
     }
@@ -509,7 +537,7 @@
   "AWDS Pane Directory" : "",
   "Blur" : true,
   "Vertical Spacing" : 1.1000000000000001,
-  "Normal Font" : "MonocraftNerdFontComplete-Medium 11",
+  "Normal Font" : "VictorMonoNFM-Regular 12",
   "Ansi 7 Color" : {
     "Green Component" : 0.81568628549575806,
     "Red Component" : 0.81568628549575806,
@@ -535,7 +563,7 @@
     "Red Component" : 0.49031879989999999,
     "Blue Component" : 0.8118151991
   },
-  "Transparency" : 0.10495345744680858,
+  "Transparency" : 0.095254321808510706,
   "Background Color" : {
     "Green Component" : 0.1283406391402715,
     "Red Component" : 0.1283406391402715,
