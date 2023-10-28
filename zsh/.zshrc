@@ -26,8 +26,4 @@ source $ZSH/oh-my-zsh.sh
 source $CWD/alias.zsh
 source $CWD/env.zsh
 
-if [[ ! -f $CWD/private.zsh ]]; then
-  touch $CWD/private.zsh
-fi
-
-source $CWD/private.zsh
+[ -f $CWD/private.zsh ] && source $CWD/private.zsh

@@ -13,6 +13,11 @@ function exists() {
   type "$1" &>/dev/null
 }
 
+# brew
+if exists brew; then
+  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
+fi
+
 # ngrok
 if exists ngrok; then
   source <(ngrok completion)
@@ -45,10 +50,11 @@ if exists poetry; then
   poetry completions zsh >"$(brew --prefix)/share/zsh/site-functions/_poetry"
 fi
 
-# brew
-if exists brew; then
-  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
-  autoload -Uz compinit && compinit
+# tuist
+if exists tuist; then
+  tuist --generate-completion-script >"$(brew --prefix)/share/zsh/site-functions/_tuist"
 fi
+
+autoload -Uz compinit && compinit
 
 unset -f exists
