@@ -6,7 +6,7 @@ source $ROOT/utils/colors.zsh
 
 if [[ -d "$HOME/.vim" ]]; then
   echo -ne "$(green Installing VundleVim...) "
-  git clone https://github.com/VundleVim/Vundle.vim.git $HOME/.vim/bundle/Vundle.vim &>/dev/null &
+  git clone --depth 1 https://github.com/VundleVim/Vundle.vim.git $HOME/.vim/bundle/Vundle.vim &>/dev/null &
   wait
   echo -e "$(green Done)\n"
 fi
