@@ -4,12 +4,8 @@ POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
 POWERLEVEL9K_DISABLE_HOT_RELOAD=true
 POWERLEVEL9K_MODE="nerdfont-complete"
 
-function p10k-on-post-prompt() {
-  #
-}
-
 function p10k-on-pre-prompt() {
-  [[ $P9K_TTY == old ]] && p10k display 'empty_line'=print
+  p10k display 'empty_line'=show
 }
 
 POWERLEVEL9K_TRANSIENT_PROMPT=always # "always" "same-dir" "off"
