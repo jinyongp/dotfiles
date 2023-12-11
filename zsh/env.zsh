@@ -6,8 +6,9 @@ export BAT_THEME="GitHub"
 export LC_ALL=en_US.UTF-8
 export LANG=en_US.UTF-8
 
-# custom scripts
+# Path
 export PATH=$HOME/.scripts:$PATH
+export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
 
 function exists() {
   type "$1" &>/dev/null
