@@ -790,6 +790,8 @@
 	<false/>
 	<key>FastTrackpad</key>
 	<true/>
+	<key>FlashTabBarInFullscreen</key>
+	<false/>
 	<key>GlobalKeyMap</key>
 	<dict>
 		<key>0x19-0x60000</key>
@@ -810,6 +812,8 @@
 	<key>HapticFeedbackForEsc</key>
 	<false/>
 	<key>HideScrollbar</key>
+	<false/>
+	<key>HideTab</key>
 	<false/>
 	<key>Hotkey</key>
 	<true/>
@@ -835,7 +839,7 @@
 			<key>AWDS Tab Directory</key>
 			<string></string>
 			<key>AWDS Tab Option</key>
-			<string>No</string>
+			<string>Recycle</string>
 			<key>AWDS Window Directory</key>
 			<string></string>
 			<key>AWDS Window Option</key>
@@ -1697,6 +1701,15 @@
 				<key>Red Component</key>
 				<real>0.85487538576126099</real>
 			</dict>
+			<key>Semantic History</key>
+			<dict>
+				<key>action</key>
+				<string>best editor</string>
+				<key>editor</key>
+				<string>com.github.atom</string>
+				<key>text</key>
+				<string></string>
+			</dict>
 			<key>Send Code When Idle</key>
 			<false/>
 			<key>Shortcut</key>
@@ -1744,13 +1757,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 									<key>Color Space</key>
 									<string>sRGB</string>
 									<key>Green Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 									<key>Red Component</key>
-									<real>0.90000000000000002</real>
+									<real>0.5</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1788,13 +1801,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 									<key>Color Space</key>
 									<string>sRGB</string>
 									<key>Green Component</key>
-									<real>0.90000000000000002</real>
+									<real>0.5</real>
 									<key>Red Component</key>
-									<real>0.80145</real>
+									<real>0.40875</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1826,13 +1839,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.82710000000000006</real>
+									<real>0.4325</real>
 									<key>Color Space</key>
 									<string>sRGB</string>
 									<key>Green Component</key>
-									<real>0.90000000000000002</real>
+									<real>0.5</real>
 									<key>Red Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1864,13 +1877,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.90000000000000002</real>
+									<real>0.5</real>
 									<key>Color Space</key>
 									<string>sRGB</string>
 									<key>Green Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 									<key>Red Component</key>
-									<real>0.65564999999999996</real>
+									<real>0.27374999999999994</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1904,13 +1917,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.77580000000000005</real>
+									<real>0.38500000000000001</real>
 									<key>Color Space</key>
 									<string>sRGB</string>
 									<key>Green Component</key>
-									<real>0.63</real>
+									<real>0.25</real>
 									<key>Red Component</key>
-									<real>0.90000000000000002</real>
+									<real>0.5</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -2005,6 +2018,8 @@
 			<string>kNextWindowPointerAction</string>
 		</dict>
 	</dict>
+	<key>PreserveWindowSizeWhenTabBarVisibilityChanges</key>
+	<false/>
 	<key>Print In Black And White</key>
 	<true/>
 	<key>SoundForEsc</key>
