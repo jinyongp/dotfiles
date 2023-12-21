@@ -784,6 +784,8 @@
 	<true/>
 	<key>DisableFullscreenTransparency</key>
 	<false/>
+	<key>DoubleClickPerformsSmartSelection</key>
+	<false/>
 	<key>EnableDivisionView</key>
 	<true/>
 	<key>EscapeShellCharsWithBackslash</key>
@@ -1975,6 +1977,8 @@
 	</array>
 	<key>NumberOfSpacesPerTab</key>
 	<integer>2</integer>
+	<key>OnlyWhenMoreTabs</key>
+	<false/>
 	<key>PMPrintingExpandedStateForPrint2</key>
 	<false/>
 	<key>PasteSpecialRegex</key>
@@ -2022,6 +2026,10 @@
 	<false/>
 	<key>Print In Black And White</key>
 	<true/>
+	<key>PromptOnQuit</key>
+	<false/>
+	<key>ShowFullScreenTabBar</key>
+	<false/>
 	<key>SoundForEsc</key>
 	<false/>
 	<key>SplitPaneDimmingAmount</key>
