@@ -36,6 +36,11 @@ if exists pyenv; then
   eval "$(pyenv init -)"
 fi
 
+# direnv
+if exists direnv; then
+  eval "$(direnv hook zsh)"
+fi
+
 # fnm
 if exists fnm; then
   eval "$(fnm env --use-on-cd)"
