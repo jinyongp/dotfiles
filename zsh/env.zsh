@@ -61,6 +61,11 @@ if exists tuist; then
   tuist --generate-completion-script >"$(brew --prefix)/share/zsh/site-functions/_tuist"
 fi
 
+# orb
+if exists orbctl; then
+  orbctl completion zsh >"$(brew --prefix)/share/zsh/site-functions/_orb"
+fi
+
 autoload -Uz compinit && compinit
 
 unset -f exists
