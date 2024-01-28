@@ -24,6 +24,11 @@ if exists ngrok; then
   source <(ngrok completion)
 fi
 
+# docker
+if exists docker; then
+  source <(docker completion zsh)
+fi
+
 # deno
 if exists deno; then
   deno completions zsh >"$(brew --prefix)/share/zsh/site-functions/_deno"
