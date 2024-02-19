@@ -26,7 +26,7 @@ if type brew &>/dev/null; then
     bat        # https://github.com/sharkdp/bat
     bat-extras # https://github.com/eth-p/bat-extras
     ripgrep    # https://github.com/BurntSushi/ripgrep
-    tldr       # https://github.com/tldr-pages/tldr
+    tlrc       # https://github.com/tldr-pages/tldr
     direnv     # https://github.com/direnv/direnv
     gnupg      # https://gnupg.org/
   )
