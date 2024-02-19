@@ -1,29 +1,24 @@
 # ============================= #
 # author: jinyongp              #
 # email: dev.jinyongp@gmail.com #
+# github: github.com/jinyongp   #
 # ============================= #
 
 export ZSH="$HOME/.oh-my-zsh"
 export ZSH_COMPDUMP="$ZSH_CACHE_DIR/.zcompdump"
 export DOTFILES="$HOME/.dotfiles"
 
-setopt PROMPT_CR
-unsetopt PROMPT_SP
+source $DOTFILES/zsh/themes/powerlevel10k.zsh
+# source $DOTFILES/zsh/themes/spaceship.zsh
 
-HIST_STAMPS="yyyy-mm-dd"
-PROMPT_EOL_MARK=
-
-CWD="$DOTFILES/zsh"
-
-source $CWD/themes/powerlevel10k.zsh
-# source $CWD/themes/spaceship.zsh
-
-source $CWD/plugin.zsh
-source $CWD/utility.zsh
+source $DOTFILES/zsh/plugin.zsh
+source $DOTFILES/zsh/utility.zsh
 
 source $ZSH/oh-my-zsh.sh
 
-source $CWD/alias.zsh
-source $CWD/env.zsh
+source $DOTFILES/zsh/alias.zsh
+source $DOTFILES/zsh/env.zsh
 
-[ -f $CWD/private.zsh ] && source $CWD/private.zsh
+[ -f $DOTFILES/zsh/private.zsh ] && source $DOTFILES/zsh/private.zsh
+
+unset zsh

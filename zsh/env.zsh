@@ -1,8 +1,12 @@
+# Environment variables
 export EDITOR=$(which vim)
 
 # Path
 export PATH=$HOME/.scripts:$PATH
 export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
+
+# Configuration
+HIST_STAMPS="yyyy-mm-dd"
 
 function exists() {
   type "$1" &>/dev/null

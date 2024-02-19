@@ -1,9 +1,9 @@
 # My Dotfiles
 
-Clone the repository.
+Clone the repository. Should be cloned to `~/.dotfiles`
 
 ```sh
-$ git clone --depth 1 https://github.com/jinyongp/dotfiles.git ~/.dotfiles
+$ git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles
 ```
 
 Run the [install script(s)](install.zsh)
@@ -12,3 +12,4 @@ Run the [install script(s)](install.zsh)
 $ ~/.dotfiles/install.zsh
 ```
 
+After the installation, follow the instructions.
