@@ -1,11 +1,5 @@
 export EDITOR=$(which vim)
 
-export BAT_THEME="GitHub"
-
-# language
-export LC_ALL=en_US.UTF-8
-export LANG=en_US.UTF-8
-
 # Path
 export PATH=$HOME/.scripts:$PATH
 export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
@@ -69,6 +63,11 @@ fi
 # orb
 if exists orbctl; then
   orbctl completion zsh >"$(brew --prefix)/share/zsh/site-functions/_orb"
+fi
+
+# bat
+if exists bat; then
+  export BAT_THEME="GitHub"
 fi
 
 autoload -Uz compinit && compinit
