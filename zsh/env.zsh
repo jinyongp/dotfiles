@@ -7,6 +7,7 @@ export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
 
 # Configuration
 HIST_STAMPS="yyyy-mm-dd"
+PROMPT_EOL_MARK=
 
 function exists() {
   type "$1" &>/dev/null
