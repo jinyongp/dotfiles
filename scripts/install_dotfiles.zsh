@@ -1,8 +1,8 @@
 #!/bin/zsh
 
-ROOT="$(git rev-parse --show-toplevel)"
+cd "$(dirname $0)/.."
 
-source $ROOT/utils/colors.zsh
+source ./utils/colors.zsh
 
 dotfiles=(
   .zshrc
@@ -17,11 +17,11 @@ linked=()
 
 for file in ${dotfiles[*]}; do
   overwrite=false
-  filepath=$(find $ROOT -name $file ! -path "*/.backup/*")
+  filepath=$(find . -name $file ! -path "*/.backup/*" | xargs realpath)
 
   linkpath=$HOME/$file
   if [[ -f $linkpath ]]; then
-    BACKUP_DIR=$ROOT/.backup/$(date +%Y-%m-%d__%H:%M:%S)
+    BACKUP_DIR=./.backup/$(date +%Y-%m-%d__%H:%M:%S)
     mkdir -p $BACKUP_DIR
     cp $linkpath $BACKUP_DIR/$file
     rm $linkpath
@@ -48,7 +48,7 @@ done
 )
 
 [[ ${#overwritten[@]} > 0 ]] && (
-  echo -e "\nCreated backup files in $BACKUP_DIR"
+  echo -e "\nCreated backup files in $(realpath $BACKUP_DIR)"
 )
 
 echo

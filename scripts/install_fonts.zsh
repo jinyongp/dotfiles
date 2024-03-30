@@ -1,8 +1,8 @@
 #!/bin/zsh
 
-ROOT="$(git rev-parse --show-toplevel)"
+cd "$(dirname $0)/.."
 
-source $ROOT/utils/colors.zsh
+source ./utils/colors.zsh
 
 if type brew &>/dev/null; then
   echo -ne "$(green Installing awesome nerd fonts...) "
@@ -17,7 +17,7 @@ if type brew &>/dev/null; then
       brew install --cask $nerd_font &>/dev/null
     }
   done
-  internal_fonts=($(find $ROOT/assets/fonts -name '*.?tf'))
+  internal_fonts=($(find ./assets/fonts -name '*.?tf'))
   for font in ${internal_fonts[*]}; do
     font_name=$(basename $font)
     cp $font $HOME/Library/Fonts/$font_name

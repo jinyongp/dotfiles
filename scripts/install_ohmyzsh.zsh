@@ -1,8 +1,8 @@
 #!/bin/zsh
 
-ROOT="$(git rev-parse --show-toplevel)"
+cd "$(dirname $0)/.."
 
-source $ROOT/utils/colors.zsh
+source ./utils/colors.zsh
 
 if [[ ! -d "$ZSH" ]]; then
   echo -ne "$(green Installing oh-my-zsh...) "
