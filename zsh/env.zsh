@@ -59,6 +59,6 @@ if exists bat; then
   export BAT_THEME="GitHub"
 fi
 
-autoload -Uz compinit && compinit
+compinit -d $ZSH_COMPDUMP
 
 unset -f exists
