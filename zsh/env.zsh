@@ -6,8 +6,13 @@ export PATH=$HOME/.scripts:$PATH
 export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
 
 # Configuration
+HISTSIZE=999999999
+SAVEHIST=$HISTSIZE
 HIST_STAMPS="yyyy-mm-dd"
 PROMPT_EOL_MARK=
+
+setopt hist_ignore_all_dups
+setopt hist_ignore_space
 
 function exists() {
   type "$1" &>/dev/null
