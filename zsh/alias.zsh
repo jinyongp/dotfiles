@@ -13,6 +13,7 @@ alias lst="ls --reverse --tree"
 alias gopen="git open"
 alias gpft="git push --follow-tags"
 alias 'gcm!'="gc! -m"
+alias 'gcmsg!'="gc! --message"
 
 # npm
 alias npv="npm --no-git-tag-version version"
