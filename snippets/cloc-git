@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+cmd=$(basename $0)
+tmp=$(dirname $0)/.$cmd
+
+if [ -z "$1" ]; then
+  echo "Usage: $cmd <git-url>"
+  exit 1
+fi
+
+git clone --depth 1 "$1" $tmp 2>/dev/null &&
+  echo &&
+  cloc $tmp &&
+  rm -rf $tmp
