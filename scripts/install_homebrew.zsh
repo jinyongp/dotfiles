@@ -18,17 +18,13 @@ if type brew &>/dev/null; then
   echo -e "$(green Installing homebrew formulae packages...)"
 
   packages=(
-    jq         # https://github.com/jqlang/jq
-    gh         # https://github.com/cli/cli
-    fd         # https://github.com/sharkdp/fd
-    fnm        # https://github.com/Schniz/fnm
-    eza        # https://github.com/eza-community/eza
-    bat        # https://github.com/sharkdp/bat
-    bat-extras # https://github.com/eth-p/bat-extras
-    ripgrep    # https://github.com/BurntSushi/ripgrep
-    tlrc       # https://github.com/tldr-pages/tldr
-    direnv     # https://github.com/direnv/direnv
-    gnupg      # https://gnupg.org/
+    jq            # https://github.com/jqlang/jq
+    gh            # https://github.com/cli/cli
+    fd            # https://github.com/sharkdp/fd
+    eza           # https://github.com/eza-community/eza
+    tlrc          # https://github.com/tldr-pages/tldr
+    gnupg         # https://gnupg.org/
+    diff-so-fancy # https://github.com/so-fancy/diff-so-fancy
   )
   for package in ${packages[*]}; do
     echo -ne "Installing $package... "
@@ -45,17 +41,19 @@ if type brew &>/dev/null; then
   echo -e "$(green Installing homebrew cask packages...)"
 
   packages=(
+    arc                # https://arc.net/
     iterm2             # https://iterm2.com/
     raycast            # https://raycast.com/
-    google-chrome      # https://www.google.com/chrome/
     keka               # https://github.com/aonez/Keka
     kekaexternalhelper # https://github.com/aonez/Keka/wiki/Default-application
-    visual-studio-code # https://code.visualstudio.com/
     karabiner-elements # https://karabiner-elements.pqrs.org/
+    visual-studio-code # https://code.visualstudio.com/
   )
   for package in ${packages[*]}; do
     echo -ne "Installing $package... "
-    brew install --cask $package &>/dev/null
+    brew list --cask $package &>/dev/null || {
+      brew install --cask $package &>/dev/null
+    }
     echo -e "$(green Installed)"
   done
 
