@@ -64,6 +64,10 @@ if exists bat; then
   export BAT_THEME="GitHub"
 fi
 
+if exists gh; then
+  eval "$(gh copilot alias -- zsh 2>/dev/null)"
+fi
+
 compinit -d $ZSH_COMPDUMP
 
 unset -f exists
