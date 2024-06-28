@@ -1667,13 +1667,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.25</real>
+									<real>0.63590961694717407</real>
 									<key>Color Space</key>
-									<string>sRGB</string>
+									<string>P3</string>
 									<key>Green Component</key>
-									<real>0.25</real>
+									<real>0.6414334774017334</real>
 									<key>Red Component</key>
-									<real>0.5</real>
+									<real>0.86000317335128784</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1711,13 +1711,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.25</real>
+									<real>0.65786063671112061</real>
 									<key>Color Space</key>
-									<string>sRGB</string>
+									<string>P3</string>
 									<key>Green Component</key>
-									<real>0.5</real>
+									<real>0.89695650339126587</real>
 									<key>Red Component</key>
-									<real>0.40875</real>
+									<real>0.8200916051864624</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1749,13 +1749,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.4325</real>
+									<real>0.82982355356216431</real>
 									<key>Color Space</key>
-									<string>sRGB</string>
+									<string>P3</string>
 									<key>Green Component</key>
-									<real>0.5</real>
+									<real>0.89269793033599854</real>
 									<key>Red Component</key>
-									<real>0.25</real>
+									<real>0.68831604719161987</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1787,13 +1787,13 @@
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.5</real>
+									<real>0.88044255971908569</real>
 									<key>Color Space</key>
-									<string>sRGB</string>
+									<string>P3</string>
 									<key>Green Component</key>
-									<real>0.25</real>
+									<real>0.63086748123168945</real>
 									<key>Red Component</key>
-									<real>0.27374999999999994</real>
+									<real>0.65119582414627075</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1811,7 +1811,7 @@
 					</dict>
 					<dict>
 						<key>class</key>
-						<string>iTermStatusBarClockComponent</string>
+						<string>iTermStatusBarSearchFieldComponent</string>
 						<key>configuration</key>
 						<dict>
 							<key>knobs</key>
@@ -1820,20 +1820,18 @@
 								<integer>1</integer>
 								<key>base: priority</key>
 								<real>5</real>
-								<key>format</key>
-								<string>M/dd h:mm</string>
 								<key>shared text color</key>
 								<dict>
 									<key>Alpha Component</key>
 									<real>1</real>
 									<key>Blue Component</key>
-									<real>0.38500000000000001</real>
+									<real>0.76881867647171021</real>
 									<key>Color Space</key>
-									<string>sRGB</string>
+									<string>P3</string>
 									<key>Green Component</key>
-									<real>0.25</real>
+									<real>0.64143049716949463</real>
 									<key>Red Component</key>
-									<real>0.5</real>
+									<real>0.86000508069992065</real>
 								</dict>
 							</dict>
 							<key>layout advanced configuration dictionary value</key>
@@ -1939,6 +1937,10 @@
 	<key>Print In Black And White</key>
 	<true/>
 	<key>PromptOnQuit</key>
+	<false/>
+	<key>QuitWhenAllWindowsClosed</key>
+	<true/>
+	<key>SeparateStatusBarsPerPane</key>
 	<false/>
 	<key>ShowFullScreenTabBar</key>
 	<false/>
