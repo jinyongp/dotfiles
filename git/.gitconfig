@@ -33,9 +33,9 @@
 	ui = true
 [color "diff-highlight"]
 	oldNormal = red
-	oldHighlight = red bold 253
+	oldHighlight = red bold 254
 	newNormal = green
-	newHighlight = green bold 253
+  newHighlight = green bold 254
 [diff-so-fancy]
 	markEmptyLines = false
 
