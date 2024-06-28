@@ -2,7 +2,6 @@
 export EDITOR=$(which vim)
 
 # Path
-export PATH=$HOME/.scripts:$PATH
 export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
 
 # Configuration
@@ -46,6 +45,10 @@ fi
 
 if exists fnm; then
   eval "$(fnm env --use-on-cd)"
+fi
+
+if exists pnpm; then
+  eval "$(pnpm completion zsh)"
 fi
 
 if exists poetry; then
