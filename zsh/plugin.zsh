@@ -7,10 +7,9 @@ plugins=(
   copypath
   virtualenv
   gitignore
-  git-open
   autoupdate
-  alias-tips
-  auto-notify
+  # alias-tips
+  # auto-notify
   zsh-completions
   zsh-autosuggestions
   fast-syntax-highlighting
@@ -18,7 +17,7 @@ plugins=(
 )
 
 # autoupdate
-UPDATE_ZSH_DAYS=7
+UPDATE_ZSH_DAYS=14
 
 # zsh-autosuggestions
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"

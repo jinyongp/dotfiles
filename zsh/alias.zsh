@@ -10,7 +10,6 @@ alias la="ls --all --long"
 alias lst="ls --reverse --tree"
 
 # git
-alias gopen="git open"
 alias gpft="git push --follow-tags"
 alias 'gcm!'="gc! -m"
 alias 'gcmsg!'="gc! --message"
