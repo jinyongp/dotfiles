@@ -10,17 +10,13 @@ POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
 POWERLEVEL9K_DISABLE_HOT_RELOAD=true
 POWERLEVEL9K_MODE="nerdfont-complete"
 
-if [[ $TERM_PROGRAM == "WarpTerminal" ]]; then
-  POWERLEVEL9K_TRANSIENT_PROMPT=off # "always" "same-dir" "off"
-  POWERLEVEL9K_PROMPT_ON_NEWLINE=false
-else
-  function p10k-on-pre-prompt() {
-    p10k display 'empty_line'=show
-  }
+function p10k-on-pre-prompt() {
+  p10k display empty_line=show
+}
 
-  POWERLEVEL9K_TRANSIENT_PROMPT=always # "always" "same-dir" "off"
-  POWERLEVEL9K_PROMPT_ON_NEWLINE=true
-fi
+POWERLEVEL9K_TRANSIENT_PROMPT=always # "always" "same-dir" "off"
+POWERLEVEL9K_PROMPT_ON_NEWLINE=true
+
 POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_FOREGROUND="250"
 POWERLEVEL9K_PROMPT_CHAR_ERROR_VIINS_FOREGROUND="250"
 POWERLEVEL9K_PROMPT_CHAR_OK_VIINS_CONTENT_EXPANSION="󰄾"
