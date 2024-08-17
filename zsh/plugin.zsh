@@ -1,20 +1,32 @@
 plugins=(
+  gh
   git
+  fnm
+  orb
   rust
+  pyenv
+  python
   direnv
   vundle
   copyfile
   copypath
-  virtualenv
   gitignore
+  alias-tips
   autoupdate
-  # alias-tips
+  poetry-env
   # auto-notify
   zsh-completions
   zsh-autosuggestions
   fast-syntax-highlighting
   zsh-better-npm-completion
 )
+
+# pyenv
+ZSH_PYENV_QUIET=true
+
+# python
+PYTHON_AUTO_VRUN=true
+PYTHON_VENV_NAME=venv
 
 # autoupdate
 UPDATE_ZSH_DAYS=14
