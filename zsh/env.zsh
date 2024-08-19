@@ -16,6 +16,10 @@ if exists ngrok; then
   eval "$(ngrok completion zsh)"
 fi
 
+if exists docker; then
+  source <(docker completion zsh)
+fi
+
 if exists fnm; then
   eval "$(fnm env --use-on-cd --shell zsh --version-file-strategy=recursive)"
 fi
