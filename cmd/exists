@@ -1,0 +1,10 @@
+#!/usr/bin/env zsh
+
+arg=$1
+
+if [ -z "$arg" ]; then
+  echo "Usage: exists <command>"
+  exit 1
+fi
+
+type "$arg" &>/dev/null

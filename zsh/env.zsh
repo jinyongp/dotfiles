@@ -4,10 +4,6 @@ export EDITOR=$(which vim)
 # Path
 export PATH="$(brew --prefix)/opt/postgresql@16/bin:$PATH"
 
-function exists() {
-  type "$1" &>/dev/null
-}
-
 if exists brew; then
   FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
 fi
@@ -31,7 +27,3 @@ fi
 if exists bat; then
   export BAT_THEME="ansi"
 fi
-
-# compinit -d $ZSH_COMPDUMP
-
-unfunction exists
