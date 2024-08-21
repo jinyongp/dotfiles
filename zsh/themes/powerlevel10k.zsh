@@ -1,10 +1,10 @@
 ZSH_THEME="powerlevel10k/powerlevel10k"
 
-_instant_prompt="${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${USER}.zsh"
-[[ -r $_instant_prompt ]] && {
-  POWERLEVEL9K_INSTANT_PROMPT=quiet
-  source $_instant_prompt
-}
+# _instant_prompt="${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${USER}.zsh"
+# [[ -r $_instant_prompt ]] && {
+#   POWERLEVEL9K_INSTANT_PROMPT=quiet
+#   source $_instant_prompt
+# }
 
 POWERLEVEL9K_DISABLE_CONFIGURATION_WIZARD=true
 POWERLEVEL9K_DISABLE_HOT_RELOAD=true
