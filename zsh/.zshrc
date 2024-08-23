@@ -10,6 +10,9 @@ export ZSH_COMPDUMP="$ZSH_CACHE_DIR/.zcompdump"
 export DOTFILES="$HOME/.dotfiles"
 export PATH="$DOTFILES/cmd:$PATH"
 
+LC_ALL=en_US.UTF-8
+LANG=en_US.UTF-8
+
 HISTSIZE=999999999
 SAVEHIST=$HISTSIZE
 HIST_STAMPS=yyyy-mm-dd

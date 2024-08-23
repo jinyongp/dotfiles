@@ -4,7 +4,6 @@ plugins=(
   fnm
   orb
   rust
-  pyenv
   python
   direnv
   vundle
