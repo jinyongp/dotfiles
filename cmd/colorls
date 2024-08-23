@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+_text=$@
+for i in {0..255}; do
+  color=$(printf "%03d" $i)
+  text=${_text:-$(printf "%03d" $i)}
+  printf "\x1b[48;5;${color}m ${text} \x1b[0m "
+  printf "\x1b[38;5;${color}m${text}\x1b[0m "
+
+  [ $i -lt 16 ] && [ $((($i + 1) % 8)) -eq 0 ] && echo
+  [ $i -ge 16 ] && [ $((($i - 15) % 6)) -eq 0 ] && echo
+  [ $i -lt 16 ] && [ $((($i + 1) % 16)) -eq 0 ] && echo
+  [ $i -ge 16 ] && [ $((($i - 15) % 36)) -eq 0 ] && echo
+done
