@@ -12,7 +12,6 @@ plugins=(
   gitignore
   alias-tips
   autoupdate
-  # auto-notify
   zsh-completions
   zsh-autosuggestions
   fast-syntax-highlighting

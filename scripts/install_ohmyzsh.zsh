@@ -6,16 +6,14 @@ source ./utils/colors.zsh
 
 if [[ ! -d "$ZSH" ]]; then
   echo -ne "$(green Installing oh-my-zsh...) "
-  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &>/dev/null &
-  wait
+  sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" &>/dev/null
   echo -e "$(green Done)"
   echo
 fi
 
 if [[ -d "$ZSH" ]]; then
   echo -ne "$(green Installing powerlevel10k theme...)"
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k &>/dev/null &
-  wait
+  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git $ZSH_CUSTOM/themes/powerlevel10k &>/dev/null
   echo -e "$(green Done)"
 fi
 
@@ -24,10 +22,8 @@ if [[ -d "$ZSH" ]]; then
   ZSH_PLUGINS="$ZSH_CUSTOM/plugins"
   plugins=(
     djui/alias-tips
-    paulirish/git-open
     zsh-users/zsh-completions
     zsh-users/zsh-autosuggestions
-    MichaelAquilina/zsh-auto-notify
     lukechilds/zsh-better-npm-completion
     tamcore/autoupdate-oh-my-zsh-plugins
     zdharma-continuum/fast-syntax-highlighting
@@ -42,6 +38,8 @@ if [[ -d "$ZSH" ]]; then
       echo -e "$(green Installed)"
     fi
   done
+
+  mv "$ZSH_PLUGINS/autoupdate-oh-my-zsh-plugins" "$ZSH_PLUGINS/autoupdate" &>/dev/null
 
   echo
 fi
