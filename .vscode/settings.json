@@ -1,5 +1,15 @@
 {
   "[shellscript]": {
-    "editor.defaultFormatter": "foxundermoon.shell-format"
-  }
+    "editor.defaultFormatter": "bmalehorn.shell-syntax"
+  },
+  "cSpell.customDictionaries": {
+    "custom": true,
+    "internal-terms": false,
+    "project-dictionary": {
+      "name": "Workspace",
+      "path": "${workspaceRoot}/.vscode/dictionary.txt",
+      "addWords": true,
+      "scope": "workspace"
+    },
+  },
 }

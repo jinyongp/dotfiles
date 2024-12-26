@@ -1,0 +1,6 @@
+nerdfont
+nodeenv
+nodenv
+venv
+VIINS
+virtualenv
