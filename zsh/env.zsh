@@ -12,3 +12,5 @@ fi
 if exists bat; then
   export BAT_THEME="ansi"
 fi
+
+unset NODE_ENV
