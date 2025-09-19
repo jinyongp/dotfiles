@@ -1,3 +1,4 @@
+autoenv
 autoindent
 autoread
 autoupdate
@@ -46,7 +47,6 @@ mergetool
 neocomplete
 nerdfont
 nerdtree
-nerdtree
 ngrok
 nicr
 nmap
@@ -61,7 +61,6 @@ oneline
 pmenu
 powerlevel
 powerline
-pulumi
 pulumi
 purescript
 pyenv
