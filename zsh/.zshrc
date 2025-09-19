@@ -20,8 +20,9 @@ PROMPT_EOL_MARK=
 
 zsh=$DOTFILES/zsh
 
-source $zsh/themes/powerlevel10k.zsh
+# source $zsh/themes/powerlevel10k.zsh
 # source $zsh/themes/spaceship.zsh
+source $zsh/themes/starship.zsh
 
 source $zsh/plugin.zsh
 source $ZSH/oh-my-zsh.sh
