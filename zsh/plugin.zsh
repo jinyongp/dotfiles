@@ -1,11 +1,6 @@
 plugins=(
-  gh
   git
-  fnm
-  orb
-  rust
   python
-  direnv
   vundle
   copyfile
   copypath
@@ -15,11 +10,38 @@ plugins=(
   zsh-completions
   zsh-autosuggestions
   fast-syntax-highlighting
+)
+
+typeset -A plugin_map=(
+  gh gh
+  fnm fnm
+  rust rustc
+  vundle vundle
+  direnv direnv
+)
+
+for plugin command in ${(kv)plugin_map}; do
+  if (( $+commands[$command] )); then
+    plugins+=($plugin)
+  fi
+done
+
+third_party_plugins=(
+  orb
+  alias-tips
+  autoupdate
+  zsh-completions
+  zsh-autosuggestions
+  fast-syntax-highlighting
   zsh-better-npm-completion
 )
 
-# pyenv
-ZSH_PYENV_QUIET=true
+third_party_plugins_dir="$ZSH_CUSTOM/plugins"
+for plugin in $third_party_plugins; do
+  if [[ -d $third_party_plugins_dir/$plugin ]]; then
+    plugins+=($plugin)
+  fi
+done
 
 # python
 PYTHON_AUTO_VRUN=true

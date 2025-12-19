@@ -68,6 +68,7 @@ quotepath
 realpath
 relativenumber
 runtimepath
+rustc
 savehist
 scrolloff
 scrooloose
