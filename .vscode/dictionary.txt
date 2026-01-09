@@ -101,6 +101,7 @@ virtualenv
 vlang
 vrun
 vundle
+vundlevim
 wildmenu
 zcompdump
 zdharma
