@@ -38,4 +38,3 @@
   newHighlight = green bold 254
 [diff-so-fancy]
 	markEmptyLines = false
-
