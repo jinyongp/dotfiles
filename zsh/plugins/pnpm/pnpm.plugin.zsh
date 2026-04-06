@@ -1,3 +1,9 @@
+if (( ! $+commands[corepack] )); then
+  return
+fi
+
+corepack enable
+
 if (( ! $+commands[pnpm] )); then
   return
 fi
