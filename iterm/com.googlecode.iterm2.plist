@@ -1760,8 +1760,6 @@
 			<true/>
 			<key>Window Type</key>
 			<integer>0</integer>
-			<key>Working Directory</key>
-			<string>/Users/jinyongp</string>
 		</dict>
 	</array>
 	<key>NumberOfSpacesPerTab</key>
