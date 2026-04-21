@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+INTERACTIVE_INSTALLER="$DOTFILES_ROOT/scripts/install-interactive.zsh"
+
+color_green() {
+  printf '\033[0;32m%s\033[0m\n' "$1"
+}
+
+color_yellow() {
+  printf '\033[0;33m%s\033[0m\n' "$1"
+}
+
+color_red() {
+  printf '\033[0;31m%s\033[0m\n' "$1" >&2
+}
+
+log_step() {
+  printf '\n'
+  color_green "$1"
+}
+
+detect_platform() {
+  if [[ "${OSTYPE:-}" == darwin* ]]; then
+    echo "macos"
+    return 0
+  fi
+
+  if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
+    echo "wsl"
+    return 0
+  fi
+
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "wsl"
+    return 0
+  fi
+
+  if [[ "${OSTYPE:-}" == linux* ]]; then
+    echo "linux"
+    return 0
+  fi
+
+  echo "unknown"
+}
+
+find_brew() {
+  local candidate
+
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return 0
+  fi
+
+  for candidate in \
+    /opt/homebrew/bin/brew \
+    /usr/local/bin/brew \
+    /home/linuxbrew/.linuxbrew/bin/brew \
+    "$HOME/.linuxbrew/bin/brew"
+  do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+find_zsh() {
+  local candidate
+
+  if command -v zsh >/dev/null 2>&1; then
+    command -v zsh
+    return 0
+  fi
+
+  for candidate in \
+    /bin/zsh \
+    /usr/bin/zsh \
+    /opt/homebrew/bin/zsh \
+    /usr/local/bin/zsh \
+    /home/linuxbrew/.linuxbrew/bin/zsh \
+    "$HOME/.linuxbrew/bin/zsh"
+  do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+run_as_root() {
+  if [[ "$(id -u)" -eq 0 ]]; then
+    "$@"
+    return 0
+  fi
+
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+    return 0
+  fi
+
+  color_red "This step requires root privileges, but sudo is not available."
+  return 1
+}
+
+ensure_zsh_with_apt() {
+  log_step "Bootstrapping zsh with apt"
+  color_yellow "zsh is not installed yet. Running apt-get update/install so the interactive installer can start."
+  run_as_root apt-get update
+  run_as_root apt-get install -y zsh
+}
+
+ensure_zsh_with_brew() {
+  local brew_bin
+
+  brew_bin="$(find_brew)"
+
+  log_step "Bootstrapping zsh with Homebrew"
+  color_yellow "zsh is not installed yet. Installing it with Homebrew so the interactive installer can start."
+  "$brew_bin" install zsh
+}
+
+ensure_zsh() {
+  local platform="$1"
+
+  if find_zsh >/dev/null 2>&1; then
+    return 0
+  fi
+
+  case "$platform" in
+    wsl|linux)
+      if command -v apt-get >/dev/null 2>&1; then
+        if [[ "$platform" == "wsl" ]]; then
+          color_yellow "Bootstrap uses apt only to install zsh. Inside the interactive installer you can still choose Homebrew for the rest of the setup."
+        fi
+        ensure_zsh_with_apt
+      elif find_brew >/dev/null 2>&1; then
+        ensure_zsh_with_brew
+      else
+        color_red "zsh is missing and no supported bootstrap package manager was found."
+        color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
+        return 1
+      fi
+      ;;
+    macos)
+      if find_brew >/dev/null 2>&1; then
+        ensure_zsh_with_brew
+      else
+        color_red "zsh was not found on macOS and Homebrew is unavailable."
+        color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
+        return 1
+      fi
+      ;;
+    *)
+      color_red "Unsupported platform for bootstrap."
+      return 1
+      ;;
+  esac
+
+  if ! find_zsh >/dev/null 2>&1; then
+    color_red "zsh installation did not produce a usable zsh binary."
+    return 1
+  fi
+}
+
+main() {
+  local platform zsh_bin
+
+  platform="$(detect_platform)"
+
+  if [[ "$platform" == "unknown" ]]; then
+    color_red "Unsupported platform: ${OSTYPE:-unknown}"
+    exit 1
+  fi
+
+  ensure_zsh "$platform"
+  zsh_bin="$(find_zsh)"
+
+  exec "$zsh_bin" "$INTERACTIVE_INSTALLER" "$@"
+}
+
+main "$@"

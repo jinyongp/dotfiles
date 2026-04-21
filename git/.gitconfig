@@ -27,7 +27,9 @@
 [interactive]
 	diffFilter = diff-so-fancy --patch
 [include]
-	path = ~/.dotfiles/git/configs/personal.ini
+	path = ~/.config/dotfiles/git/root.local.ini
+[include]
+	path = ~/.config/dotfiles/git/personal.local.ini
 
 [color]
 	ui = true
