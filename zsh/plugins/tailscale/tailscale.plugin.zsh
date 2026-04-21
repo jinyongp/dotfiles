@@ -8,4 +8,10 @@ if [[ ! -f "$ZSH_CACHE_DIR/completions/_tailscale" ]]; then
   _comps[tailscale]=_tailscale
 fi
 
-nohup tailscale completion zsh > $ZSH_CACHE_DIR/completions/_tailscale &!
+tailscale_completion="$(tailscale completion zsh 2>/dev/null || true)"
+
+if [[ "$tailscale_completion" == "#compdef "* ]]; then
+  source <(print -r -- "$tailscale_completion")
+fi
+
+unset tailscale_completion

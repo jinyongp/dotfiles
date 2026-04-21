@@ -1,16 +1,14 @@
-export EDITOR=$(which vim)
+source "$DOTFILES/zsh/config/common.zsh"
 
-export ANDROID_HOME=$HOME/Library/Android/sdk
-export PATH=$PATH:$ANDROID_HOME/emulator
-export PATH=$PATH:$ANDROID_HOME/platform-tools
+case "$DOTFILES_PLATFORM" in
+  macos)
+    source "$DOTFILES/zsh/config/macos.zsh"
+    ;;
+  linux|wsl)
+    source "$DOTFILES/zsh/config/linux.zsh"
+    ;;
+esac
 
-if exists brew; then
-  FPATH="$(brew --prefix)/share/zsh/site-functions:${FPATH}"
-  autoload -Uz compinit; compinit
+if [[ "$DOTFILES_PLATFORM" == "wsl" ]]; then
+  source "$DOTFILES/zsh/config/wsl.zsh"
 fi
-
-if exists bat; then
-  export BAT_THEME="ansi"
-fi
-
-unset NODE_ENV

@@ -1,9 +1,6 @@
-" ============================= "
-" author: jinyongp              "
-" email: dev.jinyongp@gmail.com "
-" ============================= "
+" Shared dotfiles Vim entrypoint.
 
-let DOTFILES=$HOME.' /.dotfiles'
+let DOTFILES = expand('~/.dotfiles')
 
 source $DOTFILES/vim/basic.vim
 source $DOTFILES/vim/plugin.vim

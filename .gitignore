@@ -3,5 +3,4 @@ __*
 .backup
 .DS_Store
 
-private.zsh
 *.zwc

@@ -8,4 +8,4 @@ if [[ ! -f "$ZSH_CACHE_DIR/completions/_ngrok" ]]; then
   _comps[ngrok]=_ngrok
 fi
 
-nohup ngrok completion zsh > $ZSH_CACHE_DIR/completions/_ngrok &!
+source <(ngrok completion zsh)

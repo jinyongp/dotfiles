@@ -1,34 +1,51 @@
-# ============================= #
-# author: jinyongp              #
-# email: dev.jinyongp@gmail.com #
-# github: github.com/jinyongp   #
-# ============================= #
+# Shared dotfiles shell entrypoint.
 
-export ZSH="$HOME/.oh-my-zsh"
-export ZSH_CACHE_DIR="$ZSH/cache"
-export ZSH_COMPDUMP="$ZSH_CACHE_DIR/.zcompdump"
-export DOTFILES="$HOME/.dotfiles"
+typeset -g _dotfiles_rc_path="${${(%):-%N}:A}"
+export DOTFILES="${DOTFILES:-${DOTFILES_ROOT:-${_dotfiles_rc_path:h:h}}}"
 export PATH="$DOTFILES/cmd:$PATH"
 
-LC_ALL=en_US.UTF-8
-LANG=en_US.UTF-8
+export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
+export DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
+export DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
 
-HISTSIZE=999999999
-SAVEHIST=$HISTSIZE
-HIST_STAMPS=yyyy-mm-dd
-PROMPT_EOL_MARK=
+export HISTSIZE=999999999
+export SAVEHIST=$HISTSIZE
+export HIST_STAMPS=yyyy-mm-dd
+export PROMPT_EOL_MARK=
 
-zsh=$DOTFILES/zsh
+zsh_root="$DOTFILES/zsh"
 
-# source $zsh/themes/powerlevel10k.zsh
-# source $zsh/themes/spaceship.zsh
-source $zsh/themes/starship.zsh
+source "$zsh_root/lib/helpers.zsh"
+dotfiles_load_install_env
+dotfiles_detect_platform
+dotfiles_configure_oh_my_zsh
 
-source $zsh/plugin.zsh
-source $ZSH/oh-my-zsh.sh
-source $zsh/alias.zsh
-source $zsh/env.zsh
+if [[ -z "${LANG:-}" ]]; then
+  if [[ "$DOTFILES_PLATFORM" == "macos" ]]; then
+    export LANG="en_US.UTF-8"
+  else
+    export LANG="C.UTF-8"
+  fi
+fi
 
-[ -f $zsh/private.zsh ] && source $zsh/private.zsh
+if [[ -z "${LC_ALL:-}" ]]; then
+  export LC_ALL="$LANG"
+fi
 
-unset zsh
+source "$zsh_root/theme.zsh"
+dotfiles_configure_theme
+source "$zsh_root/env.zsh"
+source "$zsh_root/plugin.zsh"
+
+if [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" && -d "${ZSH:-$HOME/.oh-my-zsh}" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+fi
+
+dotfiles_source_custom_plugins
+
+source "$zsh_root/alias.zsh"
+dotfiles_init_theme
+
+[[ -f "$DOTFILES_LOCAL_ZSH" ]] && source "$DOTFILES_LOCAL_ZSH"
+
+unset zsh_root _dotfiles_rc_path

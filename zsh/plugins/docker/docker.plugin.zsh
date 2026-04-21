@@ -8,4 +8,4 @@ if [[ ! -f "$ZSH_CACHE_DIR/completions/_docker" ]]; then
   _comps[docker]=_docker
 fi
 
-nohup docker completion zsh > $ZSH_CACHE_DIR/completions/_docker &!
+source <(docker completion zsh)

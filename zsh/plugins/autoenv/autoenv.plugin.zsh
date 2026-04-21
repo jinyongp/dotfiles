@@ -1,5 +1,10 @@
-if [[ -f "$(brew --prefix autoenv)/activate.sh" ]]; then
-  AUTOENV_ENABLE_LEAVE=yes
+if ! dotfiles_has_command brew; then
+  return
+fi
 
-  source "$(brew --prefix autoenv)/activate.sh"
+autoenv_prefix="$(dotfiles_brew_prefix autoenv 2>/dev/null || true)"
+
+if [[ -n "$autoenv_prefix" && -f "$autoenv_prefix/activate.sh" ]]; then
+  AUTOENV_ENABLE_LEAVE=yes
+  source "$autoenv_prefix/activate.sh"
 fi

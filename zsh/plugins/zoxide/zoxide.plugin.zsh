@@ -1,4 +1,4 @@
-if (( ! $+commands[pnpm] )); then
+if (( ! $+commands[zoxide] )); then
   return
 fi
 

@@ -1,33 +1,31 @@
 plugins=(
   git
   python
-  vundle
-  copyfile
-  copypath
   gitignore
-  alias-tips
-  autoupdate
-  zsh-completions
-  zsh-autosuggestions
-  fast-syntax-highlighting
 )
+
+if [[ "$DOTFILES_PLATFORM" == "macos" ]]; then
+  plugins+=(copyfile copypath)
+fi
+
+if dotfiles_has_command vundle; then
+  plugins+=(vundle)
+fi
 
 typeset -A plugin_map=(
   gh gh
   fnm fnm
   rust rustc
-  vundle vundle
   direnv direnv
 )
 
 for plugin command in ${(kv)plugin_map}; do
-  if (( $+commands[$command] )); then
+  if dotfiles_has_command "$command"; then
     plugins+=($plugin)
   fi
 done
 
 third_party_plugins=(
-  orb
   alias-tips
   autoupdate
   zsh-completions
@@ -37,11 +35,13 @@ third_party_plugins=(
 )
 
 third_party_plugins_dir="$ZSH_CUSTOM/plugins"
-for plugin in $third_party_plugins; do
-  if [[ -d $third_party_plugins_dir/$plugin ]]; then
-    plugins+=($plugin)
-  fi
-done
+if [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" ]]; then
+  for plugin in $third_party_plugins; do
+    if [[ -d $third_party_plugins_dir/$plugin ]]; then
+      plugins+=($plugin)
+    fi
+  done
+fi
 
 # python
 PYTHON_AUTO_VRUN=true
@@ -55,15 +55,18 @@ UPDATE_ZSH_DAYS=14
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"
 
 custom_plugins_dir="$DOTFILES/zsh/plugins"
-for plugin_dir in $custom_plugins_dir/*(/); do
-  plugin=$(basename $plugin_dir)
-  plugin_files=($plugin_dir/*.plugin.zsh(N))
+dotfiles_source_custom_plugins() {
+  local plugin_dir plugin_file
 
-  for plugin_file in $plugin_files; do
-    if [[ $(basename "$plugin_file") == -* ]]; then
-      continue
-    fi
+  for plugin_dir in $custom_plugins_dir/*(/N); do
+    plugin_files=($plugin_dir/*.plugin.zsh(N))
 
-    source $plugin_file
+    for plugin_file in $plugin_files; do
+      if [[ $(basename "$plugin_file") == -* ]]; then
+        continue
+      fi
+
+      source "$plugin_file"
+    done
   done
-done
+}
