@@ -5,21 +5,16 @@ module_fonts_supported() {
 }
 
 module_fonts_summary() {
-  echo "Install Nerd Fonts and bundled fonts"
+  echo "Install selected fonts"
 }
 
 module_fonts_details() {
-  echo "Installs Fira Code Nerd Font and Victor Mono Nerd Font via Homebrew casks."
-  echo "Also copies bundled font files from the repository's assets/fonts directory into ~/Library/Fonts."
-  echo "Useful for starship/powerlevel10k glyph rendering in terminal apps."
+  echo "Installs only the selected Nerd Fonts or bundled font families."
 }
 
-module_fonts_install() {
+macos::install_bundled_font_family() {
+  local family_dir="$1"
   local font_path font_name
-
-  dotfiles::log_step "Installing fonts"
-  package_manager::install_brew_cask font-fira-code-nerd-font
-  package_manager::install_brew_cask font-victor-mono-nerd-font
 
   mkdir -p "$HOME/Library/Fonts"
 
@@ -27,7 +22,41 @@ module_fonts_install() {
     font_name="${font_path:t}"
     cp "$font_path" "$HOME/Library/Fonts/$font_name"
     dotfiles::log_info "Installed bundled font: $font_name"
-  done < <(find "$DOTFILES_ROOT/assets/fonts" -type f \( -name '*.otf' -o -name '*.ttf' \) 2>/dev/null)
+  done < <(find "$DOTFILES_ROOT/assets/fonts/$family_dir" -type f \( -name '*.otf' -o -name '*.ttf' \) 2>/dev/null)
+}
+
+module_fonts_install_items() {
+  local -a font_ids
+  local font_id font_kind font_source
+
+  if (( $# > 0 )); then
+    font_ids=("$@")
+  else
+    font_ids=("${(@f)$(catalog::font_ids)}")
+  fi
+
+  dotfiles::log_step "Installing selected fonts"
+
+  for font_id in "${font_ids[@]}"; do
+    font_kind="$(catalog::font_kind "$font_id")"
+    font_source="$(catalog::font_source "$font_id")"
+
+    case "$font_kind" in
+      cask)
+        package_manager::install_brew_cask "$font_source"
+        ;;
+      bundled)
+        macos::install_bundled_font_family "$font_source"
+        ;;
+      *)
+        dotfiles::log_warn "Skipping unknown font item: $font_id"
+        ;;
+    esac
+  done
+}
+
+module_fonts_install() {
+  module_fonts_install_items
 }
 
 module_desktop_apps_supported() {
@@ -35,31 +64,32 @@ module_desktop_apps_supported() {
 }
 
 module_desktop_apps_summary() {
-  echo "Install macOS desktop applications"
+  echo "Install selected macOS desktop applications"
 }
 
 module_desktop_apps_details() {
-  echo "Installs these macOS apps via Homebrew cask: Arc, iTerm2, Raycast, Keka, KekaExternalHelper, Karabiner-Elements, Visual Studio Code."
-  echo "This is the most invasive macOS-only option because it installs GUI applications."
+  echo "Installs only the selected macOS applications via Homebrew cask."
+}
+
+module_desktop_apps_install_items() {
+  local -a cask_ids
+  local cask_id
+
+  if (( $# > 0 )); then
+    cask_ids=("$@")
+  else
+    cask_ids=("${(@f)$(catalog::desktop_app_ids)}")
+  fi
+
+  dotfiles::log_step "Installing selected desktop applications"
+
+  for cask_id in "${cask_ids[@]}"; do
+    package_manager::install_brew_cask "$cask_id"
+  done
 }
 
 module_desktop_apps_install() {
-  local cask_name
-  local casks=(
-    arc
-    iterm2
-    raycast
-    keka
-    kekaexternalhelper
-    karabiner-elements
-    visual-studio-code
-  )
-
-  dotfiles::log_step "Installing desktop applications"
-
-  for cask_name in "${casks[@]}"; do
-    package_manager::install_brew_cask "$cask_name"
-  done
+  module_desktop_apps_install_items
 }
 
 module_macos_defaults_supported() {

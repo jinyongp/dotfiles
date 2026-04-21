@@ -18,7 +18,7 @@ module_dotfiles_details() {
   echo "Creates symlinks for ~/.zshrc, ~/.vimrc, and ~/.gitconfig."
   echo "If those files already exist, moves them into $DOTFILES_ROOT/.backup/<timestamp> first."
   echo "This changes which config files your shell, Vim, and Git load by default."
-  echo "Also writes machine-local Git path settings and can prompt for your per-machine Git identity/signing file."
+  echo "Also writes machine-local Git path settings and applies any Git identity values passed from the bash installer."
 }
 
 dotfiles::git_local_config_tmpfile() {
@@ -87,33 +87,12 @@ dotfiles::git_personal_config_is_template() {
   return 0
 }
 
-dotfiles::signing_mode_default_index() {
-  local config_file="$1"
-  local gpg_format signing_key
-
-  gpg_format="$(dotfiles::git_config_get "$config_file" "gpg.format")"
-  signing_key="$(dotfiles::git_config_get "$config_file" "user.signingKey")"
-
-  if [[ "$gpg_format" == "ssh" ]]; then
-    echo 3
-    return 0
-  fi
-
-  if [[ -n "$signing_key" ]]; then
-    echo 2
-    return 0
-  fi
-
-  echo 1
-}
-
 dotfiles::write_personal_git_config() {
   local config_file="$1"
   local git_name="$2"
   local git_email="$3"
   local signing_mode="$4"
   local signing_key="$5"
-  local enable_signing="$6"
   local tmp_file
 
   tmp_file="$(dotfiles::git_local_config_tmpfile "$config_file")"
@@ -124,97 +103,42 @@ dotfiles::write_personal_git_config() {
   case "$signing_mode" in
     gpg)
       git config --file "$tmp_file" user.signingKey "$signing_key"
+      git config --file "$tmp_file" commit.gpgsign true
+      git config --file "$tmp_file" tag.gpgsign true
+      git config --file "$tmp_file" tag.forceSignAnnotated true
       ;;
     ssh)
       git config --file "$tmp_file" gpg.format ssh
       git config --file "$tmp_file" user.signingKey "$signing_key"
+      git config --file "$tmp_file" commit.gpgsign true
+      git config --file "$tmp_file" tag.gpgsign true
+      git config --file "$tmp_file" tag.forceSignAnnotated true
       ;;
   esac
-
-  if [[ "$enable_signing" == "yes" ]]; then
-    git config --file "$tmp_file" commit.gpgsign true
-    git config --file "$tmp_file" tag.gpgsign true
-    git config --file "$tmp_file" tag.forceSignAnnotated true
-  fi
 
   chmod 600 "$tmp_file"
   mv "$tmp_file" "$config_file"
+  dotfiles::log_success "Wrote machine-local Git config to $config_file"
 }
 
-dotfiles::prompt_for_personal_git_config() {
+dotfiles::apply_personal_git_config_from_plan() {
   local config_file="$1"
-  local git_name=""
-  local git_email=""
-  local signing_mode=""
-  local signing_key=""
-  local enable_signing="no"
-  local default_mode_index
 
-  if ! dotfiles::git_personal_config_is_template "$config_file"; then
-    dotfiles::log_info "Using existing machine-local Git config at $config_file"
+  if [[ "${DOTFILES_GIT_CONFIGURE_PERSONAL:-no}" != "yes" ]]; then
+    if ! dotfiles::git_personal_config_is_template "$config_file"; then
+      dotfiles::log_info "Using existing machine-local Git config at $config_file"
+    else
+      dotfiles::log_warn "Machine-local Git config remains unconfigured at $config_file"
+    fi
     return 0
   fi
-
-  if ! prompt::yes_no \
-    "Configure machine-local Git identity now?" \
-    "yes" \
-    "This writes $config_file for this machine only." \
-    "You can skip and edit it later if you prefer."; then
-    dotfiles::log_warn "Skipped Git identity setup. Edit $config_file later."
-    return 0
-  fi
-
-  git_name="$(prompt::read_string \
-    "Git user.name" \
-    "" \
-    "no" \
-    "Used for commits created on this machine.")"
-
-  git_email="$(prompt::read_string \
-    "Git user.email" \
-    "" \
-    "no" \
-    "Used for commits created on this machine.")"
-
-  default_mode_index="$(dotfiles::signing_mode_default_index "$config_file")"
-  signing_mode="$(prompt::choose_one_described \
-    "Configure Git signing for this machine?" \
-    "$default_mode_index" \
-    "none::Do not enable commit or tag signing in personal.local.ini." \
-    "gpg::Use an OpenPGP key ID or fingerprint in user.signingKey." \
-    "ssh::Use SSH signing with gpg.format=ssh and a public key path in user.signingKey.")"
-
-  case "$signing_mode" in
-    gpg)
-      signing_key="$(prompt::read_string \
-        "Git user.signingKey" \
-        "" \
-        "no" \
-        "Enter the GPG key ID, long fingerprint, or other value Git should use on this machine.")"
-      enable_signing="yes"
-      ;;
-    ssh)
-      signing_key="$(prompt::read_string \
-        "Git user.signingKey" \
-        "~/.ssh/id_ed25519.pub" \
-        "no" \
-        "Enter the SSH public key path Git should use on this machine.")"
-      enable_signing="yes"
-      ;;
-    none)
-      enable_signing="no"
-      ;;
-  esac
 
   dotfiles::write_personal_git_config \
     "$config_file" \
-    "$git_name" \
-    "$git_email" \
-    "$signing_mode" \
-    "$signing_key" \
-    "$enable_signing"
-
-  dotfiles::log_success "Wrote machine-local Git config to $config_file"
+    "${DOTFILES_GIT_NAME:-}" \
+    "${DOTFILES_GIT_EMAIL:-}" \
+    "${DOTFILES_GIT_SIGNING_MODE:-none}" \
+    "${DOTFILES_GIT_SIGNING_KEY:-}"
 }
 
 module_dotfiles_install() {
@@ -245,5 +169,5 @@ module_dotfiles_install() {
   done
 
   dotfiles::ensure_local_git_config_files
-  dotfiles::prompt_for_personal_git_config "$personal_file"
+  dotfiles::apply_personal_git_config_from_plan "$personal_file"
 }

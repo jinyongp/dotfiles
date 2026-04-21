@@ -1,18 +1,9 @@
 #!/bin/zsh
 
-typeset -ga DOTFILES_OMZ_PLUGIN_SPECS=(
-  "djui/alias-tips:alias-tips"
-  "zsh-users/zsh-completions:zsh-completions"
-  "zsh-users/zsh-autosuggestions:zsh-autosuggestions"
-  "lukechilds/zsh-better-npm-completion:zsh-better-npm-completion"
-  "tamcore/autoupdate-oh-my-zsh-plugins:autoupdate"
-  "zdharma-continuum/fast-syntax-highlighting:fast-syntax-highlighting"
-)
-
 shell::ensure_core_tools() {
-  package_manager::install_logical curl 1
-  package_manager::install_logical git 1
-  package_manager::install_logical zsh 1
+  package_manager::ensure_command curl curl 1
+  package_manager::ensure_command git git 1
+  package_manager::ensure_command zsh zsh 1
 }
 
 shell::ensure_oh_my_zsh() {
@@ -29,21 +20,33 @@ shell::ensure_oh_my_zsh() {
 
 shell::install_oh_my_zsh_plugins() {
   local plugin_root="$HOME/.oh-my-zsh/custom/plugins"
-  local plugin_spec repo_name target_name target_dir
+  local plugin_id repo_name target_dir
+  local -a plugin_ids
+
+  if (( $# > 0 )); then
+    plugin_ids=("$@")
+  else
+    plugin_ids=()
+  fi
 
   dotfiles::ensure_dir "$plugin_root"
 
-  for plugin_spec in "${DOTFILES_OMZ_PLUGIN_SPECS[@]}"; do
-    repo_name="${plugin_spec%%:*}"
-    target_name="${plugin_spec##*:}"
-    target_dir="$plugin_root/$target_name"
+  for plugin_id in "${plugin_ids[@]}"; do
+    repo_name="$(catalog::omz_plugin_repo "$plugin_id")"
 
-    if [[ -d "$target_dir" ]]; then
-      dotfiles::log_info "Already installed: $target_name"
+    if [[ -z "$repo_name" ]]; then
+      dotfiles::log_warn "Skipping unknown oh-my-zsh plugin: $plugin_id"
       continue
     fi
 
-    dotfiles::log_info "Cloning $target_name..."
+    target_dir="$plugin_root/$plugin_id"
+
+    if [[ -d "$target_dir" ]]; then
+      dotfiles::log_info "Already installed: $plugin_id"
+      continue
+    fi
+
+    dotfiles::log_info "Cloning $plugin_id..."
     git clone --depth=1 "https://github.com/$repo_name.git" "$target_dir"
   done
 }
@@ -84,7 +87,7 @@ shell::install_starship_fallback() {
   installer_path="$(mktemp)"
   bin_dir="${XDG_BIN_HOME:-$HOME/.local/bin}"
 
-  package_manager::install_logical curl 1
+  package_manager::ensure_command curl curl 1
   dotfiles::ensure_dir "$bin_dir"
   dotfiles::download_script "$installer_url" "$installer_path"
   sh "$installer_path" -y -b "$bin_dir"
@@ -96,36 +99,28 @@ module_oh_my_zsh_supported() {
 }
 
 module_oh_my_zsh_summary() {
-  echo "Install oh-my-zsh and plugins"
+  echo "Install oh-my-zsh and selected plugins"
 }
 
 module_oh_my_zsh_details() {
   echo "Installs zsh, curl, and git if needed, then clones oh-my-zsh into ~/.oh-my-zsh."
-  echo "Also clones alias-tips, zsh-completions, zsh-autosuggestions, zsh-better-npm-completion, autoupdate, and fast-syntax-highlighting."
+  echo "Also clones only the plugins selected during the bash prompt flow."
   if platform::is_wsl; then
     echo "On WSL, also tries to change your default shell to zsh with chsh."
   fi
 }
 
-module_oh_my_zsh_install() {
+module_oh_my_zsh_install_items() {
   dotfiles::log_step "Installing oh-my-zsh"
   shell::ensure_core_tools
   shell::ensure_oh_my_zsh
-  shell::install_oh_my_zsh_plugins
+  shell::install_oh_my_zsh_plugins "$@"
   shell::ensure_default_shell
 }
 
-module_theme_supported() {
-  return 0
-}
-
-module_theme_summary() {
-  echo "Install dependencies for the $DOTFILES_THEME theme"
-}
-
-module_theme_details() {
-  echo "Installs only the extra dependency required by the theme you choose in the next step."
-  echo "starship installs the starship binary, powerlevel10k clones the theme repo, default and none add no extra theme dependency."
+module_oh_my_zsh_install() {
+  local -a plugin_ids=("${(@f)$(catalog::omz_plugin_ids)}")
+  module_oh_my_zsh_install_items "${plugin_ids[@]}"
 }
 
 module_theme_install() {
@@ -145,13 +140,13 @@ module_theme_install() {
       if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
         shell::ensure_core_tools
         shell::ensure_oh_my_zsh
-        shell::install_oh_my_zsh_plugins
         shell::ensure_default_shell
       fi
 
       if [[ -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]]; then
         dotfiles::log_info "powerlevel10k is already installed."
       else
+        package_manager::ensure_command git git 1
         git clone --depth=1 \
           https://github.com/romkatv/powerlevel10k.git \
           "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"

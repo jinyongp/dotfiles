@@ -17,7 +17,7 @@ module_vim_details() {
 module_vim_install() {
   dotfiles::log_step "Installing Vim tooling"
   package_manager::install_logical vim 0
-  package_manager::install_logical git 1
+  package_manager::ensure_command git git 1
 
   mkdir -p "$HOME/.vim/bundle" "$HOME/.vim/undo" "$HOME/.vim/backup" "$HOME/.vim/swap"
 

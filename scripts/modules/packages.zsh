@@ -1,44 +1,34 @@
 #!/bin/zsh
 
-typeset -ga DOTFILES_BASE_PACKAGES=(
-  jq
-  gh
-  fd
-  eza
-  tldr
-  gnupg
-  diff-so-fancy
-)
-
 module_packages_supported() {
   return 0
 }
 
 module_packages_summary() {
-  echo "Base CLI packages via $DOTFILES_PACKAGE_MANAGER"
+  echo "Selected base CLI packages via $DOTFILES_PACKAGE_MANAGER"
 }
 
 module_packages_details() {
-  local native_packages=()
-  local package_name
-  local native_name
+  echo "Installs only the selected CLI packages through $DOTFILES_PACKAGE_MANAGER."
+}
 
-  for package_name in "${DOTFILES_BASE_PACKAGES[@]}"; do
-    native_name="$(package_manager::logical_to_native "$package_name" 2>/dev/null || true)"
-    [[ -n "$native_name" ]] && native_packages+=("$native_name")
+module_packages_install_items() {
+  local -a package_ids
+  local package_id
+
+  if (( $# > 0 )); then
+    package_ids=("$@")
+  else
+    package_ids=("${(@f)$(catalog::package_ids)}")
+  fi
+
+  dotfiles::log_step "Installing selected base CLI packages"
+
+  for package_id in "${package_ids[@]}"; do
+    package_manager::install_logical "$package_id" 0
   done
-
-  echo "Installs common CLI tools: jq, gh, fd, eza, tldr/tealdeer, gnupg, diff-so-fancy."
-  echo "Uses $DOTFILES_PACKAGE_MANAGER and installs these native packages: ${native_packages[*]}."
-  echo "May ask for sudo if the selected package manager requires elevated access."
 }
 
 module_packages_install() {
-  local package_name
-
-  dotfiles::log_step "Installing base CLI packages"
-
-  for package_name in "${DOTFILES_BASE_PACKAGES[@]}"; do
-    package_manager::install_logical "$package_name" 0
-  done
+  module_packages_install_items
 }

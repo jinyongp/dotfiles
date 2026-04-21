@@ -134,6 +134,19 @@ package_manager::logical_to_native() {
   esac
 }
 
+package_manager::ensure_command() {
+  local logical_name="$1"
+  local command_name="${2:-$logical_name}"
+  local required="${3:-1}"
+
+  if command -v "$command_name" >/dev/null 2>&1; then
+    dotfiles::log_info "Using existing $command_name command."
+    return 0
+  fi
+
+  package_manager::install_logical "$logical_name" "$required"
+}
+
 package_manager::install_logical() {
   local logical_name="$1"
   local required="${2:-0}"
