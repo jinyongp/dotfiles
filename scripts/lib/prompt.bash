@@ -113,9 +113,9 @@ prompt::set_result() {
 prompt::record_field() {
   local record="$1"
   local field_index="$2"
-  local id label description selected disabled
+  local id label description selected disabled status
 
-  IFS=$'\t' read -r id label description selected disabled <<<"$record"
+  IFS=$'\t' read -r id label description selected disabled status <<<"$record"
 
   case "$field_index" in
     1) printf '%s' "$id" ;;
@@ -123,6 +123,7 @@ prompt::record_field() {
     3) printf '%s' "$description" ;;
     4) printf '%s' "$selected" ;;
     5) printf '%s' "$disabled" ;;
+    6) printf '%s' "$status" ;;
   esac
 }
 
@@ -166,6 +167,58 @@ prompt::terminal_lines() {
   printf '%s' "$lines"
 }
 
+prompt::terminal_columns() {
+  local columns=""
+  local stty_size=""
+
+  if command -v tput >/dev/null 2>&1; then
+    columns="$(tput cols 2>/dev/null || true)"
+  fi
+
+  if [[ ! "$columns" =~ ^[0-9]+$ ]] || [[ "$columns" -le 0 ]]; then
+    stty_size="$(stty size 2>/dev/null || true)"
+    if [[ "$stty_size" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
+      columns="${stty_size##* }"
+    fi
+  fi
+
+  if [[ ! "$columns" =~ ^[0-9]+$ ]] || [[ "$columns" -le 0 ]]; then
+    columns=80
+  fi
+
+  printf '%s' "$columns"
+}
+
+prompt::render_option_line() {
+  local left_text="$1"
+  local status_text="${2:-}"
+  local dim_line="${3:-0}"
+  local columns padding_width padding=""
+
+  if [[ -z "$status_text" ]]; then
+    if [[ "$dim_line" == "1" ]]; then
+      printf '\033[2m%s\033[0m' "$left_text"
+    else
+      printf '%s' "$left_text"
+    fi
+    return 0
+  fi
+
+  columns="$(prompt::terminal_columns)"
+  padding_width=$((columns - ${#left_text} - ${#status_text}))
+  if [[ "$padding_width" -lt 1 ]]; then
+    padding_width=1
+  fi
+
+  printf -v padding '%*s' "$padding_width" ''
+
+  if [[ "$dim_line" == "1" ]]; then
+    printf '\033[2m%s%s%s\033[0m' "$left_text" "$padding" "$status_text"
+  else
+    printf '%s%s\033[2m%s\033[0m' "$left_text" "$padding" "$status_text"
+  fi
+}
+
 prompt::selected_labels_from_records() {
   local selected_ids="$1"
   shift || true
@@ -182,7 +235,26 @@ prompt::selected_labels_from_records() {
     esac
   done
 
+  if [[ "${#labels[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
   prompt::join_by ", " "${labels[@]}"
+}
+
+prompt::first_selectable_index() {
+  local index=0
+  local is_disabled
+
+  for is_disabled in "$@"; do
+    if [[ "$is_disabled" != "1" ]]; then
+      printf '%s' "$index"
+      return 0
+    fi
+    index=$((index + 1))
+  done
+
+  return 1
 }
 
 prompt::read_key() {
@@ -329,10 +401,11 @@ prompt::select() {
   local labels=()
   local descriptions=()
   local disabled=()
+  local statuses=()
   local current_index=0
   local index=0
-  local record id label description is_selected is_disabled
-  local key rendered_lines option_prefix current_description
+  local record id label description is_selected is_disabled status
+  local key rendered_lines option_prefix current_description rendered_option
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -340,11 +413,13 @@ prompt::select() {
     description="$(prompt::record_field "$record" 3)"
     is_selected="$(prompt::record_field "$record" 4)"
     is_disabled="$(prompt::record_field "$record" 5)"
+    status="$(prompt::record_field "$record" 6)"
 
     ids[${#ids[@]}]="$id"
     labels[${#labels[@]}]="$label"
     descriptions[${#descriptions[@]}]="$description"
     disabled[${#disabled[@]}]="$is_disabled"
+    statuses[${#statuses[@]}]="$status"
 
     if [[ "$is_selected" == "1" && "$is_disabled" != "1" ]]; then
       current_index="$index"
@@ -352,6 +427,10 @@ prompt::select() {
 
     index=$((index + 1))
   done
+
+  if [[ "${#disabled[@]}" -gt 0 && "${disabled[$current_index]}" == "1" ]]; then
+    current_index="$(prompt::first_selectable_index "${disabled[@]}" || printf '0')"
+  fi
 
   prompt::enter_raw_mode
 
@@ -373,7 +452,8 @@ prompt::select() {
         option_prefix="○"
       fi
 
-      rendered_lines[${#rendered_lines[@]}]="│  $option_prefix ${labels[$index]}"
+      rendered_option="$(prompt::render_option_line "│  $option_prefix ${labels[$index]}" "${statuses[$index]}" "${disabled[$index]}")"
+      rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
@@ -419,10 +499,11 @@ prompt::multiselect() {
   local descriptions=()
   local selected=()
   local disabled=()
+  local statuses=()
   local current_index=0
   local index=0
-  local record id label description is_selected is_disabled
-  local key rendered_lines current_description marker prefix
+  local record id label description is_selected is_disabled status
+  local key rendered_lines current_description marker prefix rendered_option
   local selected_ids="" selected_labels=""
   local total_lines reserved_lines visible_count
   local window_start window_end remaining_above remaining_below
@@ -433,12 +514,14 @@ prompt::multiselect() {
     description="$(prompt::record_field "$record" 3)"
     is_selected="$(prompt::record_field "$record" 4)"
     is_disabled="$(prompt::record_field "$record" 5)"
+    status="$(prompt::record_field "$record" 6)"
 
     ids[${#ids[@]}]="$id"
     labels[${#labels[@]}]="$label"
     descriptions[${#descriptions[@]}]="$description"
     selected[${#selected[@]}]="$is_selected"
     disabled[${#disabled[@]}]="$is_disabled"
+    statuses[${#statuses[@]}]="$status"
 
     if [[ "$is_selected" == "1" && "$is_disabled" != "1" ]]; then
       current_index="$index"
@@ -446,6 +529,10 @@ prompt::multiselect() {
 
     index=$((index + 1))
   done
+
+  if [[ "${#disabled[@]}" -gt 0 && "${disabled[$current_index]}" == "1" ]]; then
+    current_index="$(prompt::first_selectable_index "${disabled[@]}" || printf '0')"
+  fi
 
   prompt::enter_raw_mode
 
@@ -458,7 +545,7 @@ prompt::multiselect() {
     rendered_lines[${#rendered_lines[@]}]="│"
 
     total_lines="$(prompt::terminal_lines)"
-    reserved_lines=4
+    reserved_lines=6
     [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + 1))
     [[ -n "$current_description" ]] && reserved_lines=$((reserved_lines + 1))
     visible_count=$((total_lines - reserved_lines))
@@ -501,7 +588,8 @@ prompt::multiselect() {
         prefix=" "
       fi
 
-      rendered_lines[${#rendered_lines[@]}]="│  $prefix $marker ${labels[$index]}"
+      rendered_option="$(prompt::render_option_line "│  $prefix $marker ${labels[$index]}" "${statuses[$index]}" "${disabled[$index]}")"
+      rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
@@ -528,9 +616,9 @@ prompt::multiselect() {
       space)
         if [[ "${disabled[$current_index]}" != "1" ]]; then
           if [[ "${selected[$current_index]}" == "1" ]]; then
-            selected[$current_index]=0
+            selected[current_index]=0
           else
-            selected[$current_index]=1
+            selected[current_index]=1
           fi
         fi
         ;;

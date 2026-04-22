@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
+
 typeset -g DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 typeset -g DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
 typeset -g DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
@@ -123,20 +125,28 @@ dotfiles::repo_managed_zshrc_path() {
   print -r -- "$DOTFILES_ROOT/zsh/.zshrc"
 }
 
+dotfiles::current_shell_uses_repo_zshrc() {
+  [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$(dotfiles::repo_managed_zshrc_path)" ]]
+}
+
+dotfiles::plan_requires_shell_restart() {
+  if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* || " ${DOTFILES_SELECTED_MODULES:-} " == *" oh_my_zsh "* ]]; then
+    return 0
+  fi
+
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" == "1" ]] && dotfiles::current_shell_uses_repo_zshrc; then
+    return 0
+  fi
+
+  return 1
+}
+
 dotfiles::should_auto_launch_zsh() {
   if [[ "${DOTFILES_ALLOW_AUTO_LAUNCH_ZSH:-1}" != "1" ]]; then
     return 1
   fi
 
-  if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
-    return 0
-  fi
-
-  if [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$(dotfiles::repo_managed_zshrc_path)" ]]; then
-    return 0
-  fi
-
-  return 1
+  dotfiles::plan_requires_shell_restart
 }
 
 dotfiles::print_report_section() {
@@ -183,23 +193,27 @@ dotfiles::print_install_report() {
   dotfiles::print_report_section "Backed up files" "${DOTFILES_RESULT_BACKED_UP_FILES[@]}"
   dotfiles::print_report_section "Completed work" "${completed_items[@]}"
 
-  echo
-  echo "$(b_green Git personal config)"
-  echo "  - File: $personal_file_display"
-  echo "  - You can edit this file directly later."
+  if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
+    echo
+    echo "$(b_green Git personal config)"
+    echo "  - File: $personal_file_display"
+    echo "  - You can edit this file directly later."
+  fi
 
   if dotfiles::should_auto_launch_zsh; then
     next_action_message="The installer will now start a login zsh shell."
     next_action_detail="If that does not happen, run: exec zsh -l"
   else
-    next_action_message="Automatic zsh launch is skipped because dotfiles shell config is not active yet."
-    next_action_detail="Run: exec zsh -l"
+    next_action_message="No shell restart is needed for this install."
+    next_action_detail=""
   fi
 
   echo
   echo "$(b_green Next shell action)"
   echo "  - $next_action_message"
-  echo "  - $next_action_detail"
+  if [[ -n "$next_action_detail" ]]; then
+    echo "  - $next_action_detail"
+  fi
 }
 
 dotfiles::log_step() {
@@ -247,27 +261,4 @@ dotfiles::download_script() {
   dotfiles::log_info "  $url"
 
   curl -fsSL "$url" -o "$destination"
-}
-
-dotfiles::write_install_env() {
-  local env_file_exists=0
-
-  dotfiles::ensure_dir "$DOTFILES_CONFIG_DIR"
-  [[ -e "$DOTFILES_INSTALL_ENV" ]] && env_file_exists=1
-
-  cat >"$DOTFILES_INSTALL_ENV" <<EOF
-export DOTFILES_PLATFORM="$DOTFILES_PLATFORM"
-export DOTFILES_PACKAGE_MANAGER="$DOTFILES_PACKAGE_MANAGER"
-export DOTFILES_THEME="$DOTFILES_THEME"
-export DOTFILES_ENABLE_OH_MY_ZSH="$DOTFILES_ENABLE_OH_MY_ZSH"
-export DOTFILES_ROOT="$DOTFILES_ROOT"
-EOF
-
-  if [[ "$env_file_exists" == "1" ]]; then
-    dotfiles::record_file_updated "$DOTFILES_INSTALL_ENV"
-  else
-    dotfiles::record_file_created "$DOTFILES_INSTALL_ENV"
-  fi
-  dotfiles::record_completed_work "Saved installer state"
-  dotfiles::log_success "Wrote installer state to $DOTFILES_INSTALL_ENV"
 }

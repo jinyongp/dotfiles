@@ -14,15 +14,28 @@ module_fonts_details() {
 
 macos::install_bundled_font_family() {
   local family_dir="$1"
-  local font_path font_name
+  local font_path font_name target_path
+  local copied_any=0
 
   mkdir -p "$HOME/Library/Fonts"
 
   while IFS= read -r font_path; do
     font_name="${font_path:t}"
-    cp "$font_path" "$HOME/Library/Fonts/$font_name"
+    target_path="$HOME/Library/Fonts/$font_name"
+
+    if [[ -f "$target_path" ]]; then
+      dotfiles::record_reused "Bundled font: $font_name"
+      dotfiles::log_info "Already installed: $font_name"
+      continue
+    fi
+
+    cp "$font_path" "$target_path"
+    copied_any=1
+    dotfiles::record_installed "Bundled font: $font_name"
     dotfiles::log_info "Installed bundled font: $font_name"
   done < <(find "$DOTFILES_ROOT/assets/fonts/$family_dir" -type f \( -name '*.otf' -o -name '*.ttf' \) 2>/dev/null)
+
+  [[ "$copied_any" == "1" ]]
 }
 
 module_fonts_install_items() {
@@ -46,8 +59,11 @@ module_fonts_install_items() {
         package_manager::install_brew_cask "$font_source"
         ;;
       bundled)
-        macos::install_bundled_font_family "$font_source"
-        dotfiles::record_installed "Bundled font family: $(catalog::font_label "$font_id")"
+        if macos::install_bundled_font_family "$font_source"; then
+          dotfiles::record_installed "Bundled font family: $(catalog::font_label "$font_id")"
+        else
+          dotfiles::record_reused "Bundled font family: $(catalog::font_label "$font_id")"
+        fi
         ;;
       *)
         dotfiles::log_warn "Skipping unknown font item: $font_id"

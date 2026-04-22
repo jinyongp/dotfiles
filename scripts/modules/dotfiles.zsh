@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+source "$DOTFILES_ROOT/scripts/lib/git-config.sh"
+
 typeset -gA DOTFILES_LINK_TARGETS=(
   ["$DOTFILES_ROOT/zsh/.zshrc"]="$HOME/.zshrc"
   ["$DOTFILES_ROOT/vim/.vimrc"]="$HOME/.vimrc"
@@ -116,35 +118,6 @@ dotfiles::ensure_local_git_config_files() {
   fi
 }
 
-dotfiles::git_config_get() {
-  local config_file="$1"
-  local key="$2"
-
-  git config --file "$config_file" --get "$key" 2>/dev/null || true
-}
-
-dotfiles::git_personal_config_is_template() {
-  local config_file="$1"
-  local keys=(
-    user.name
-    user.email
-    user.signingKey
-    gpg.format
-    commit.gpgsign
-    tag.gpgsign
-  )
-  local key value
-
-  for key in "${keys[@]}"; do
-    value="$(dotfiles::git_config_get "$config_file" "$key")"
-    if [[ -n "$value" ]]; then
-      return 1
-    fi
-  done
-
-  return 0
-}
-
 dotfiles::write_personal_git_config() {
   local config_file="$1"
   local git_name="$2"
@@ -192,7 +165,7 @@ dotfiles::apply_personal_git_config_from_plan() {
   local config_file="$1"
 
   if [[ "${DOTFILES_GIT_CONFIGURE_PERSONAL:-no}" != "yes" ]]; then
-    if ! dotfiles::git_personal_config_is_template "$config_file"; then
+    if ! dotfiles_git_personal_config_is_template "$config_file"; then
       dotfiles::record_reused "Machine-local Git identity"
       dotfiles::log_info "Using existing machine-local Git config at $config_file"
     else

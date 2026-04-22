@@ -22,7 +22,10 @@ Run a single install target directly.
 ~/.dotfiles/install theme
 ```
 
-The top-level installer is a `bash` application. It handles the full interactive prompt flow, including module selection, per-item selection, theme choice, and optional machine-local Git identity input.
+The top-level installer is a `bash` application. It now builds an installation plan first, then runs it after a final confirmation.
+The interactive flow starts with module selection, asks only the follow-up questions needed for the selected modules, and shows a final plan summary before any installation work starts.
+That summary also calls out auto-added dependencies, reused existing setup, and any leaf modules that were skipped because no items were selected.
+The module list now starts with no preselected entries, so pressing Enter immediately exits cleanly when you do not want to install anything.
 
 Git identity input now stays on the same line as the `>` prompt, validates `user.email`, and shows a review step before continuing. The installer also explains where the machine-local Git personal file lives and that it can be edited directly later.
 
@@ -61,6 +64,8 @@ Formatter and linter behavior is project-respecting:
 - `WSL` lets you choose between `apt` and `Homebrew on Linux` for the main install flow. If `zsh` is missing, the bootstrap may use `apt` first just to install `zsh`.
 - `install list` prints the available direct-install targets for the current platform.
 - `base CLI`, `oh-my-zsh`, `fonts`, and `desktop apps` support per-item multiselect prompts.
+- Theme, package manager, and Git identity prompts are now conditional and only appear when the selected plan actually needs them.
+- Already installed shell themes, CLI packages, and oh-my-zsh plugins are shown with dim status badges in the picker, and installed packages or plugins are disabled to avoid redundant installs.
 - Multiselect prompts now use a scrolling viewport so short terminals still show the active item and hidden-item counts.
 - `dotfiles`, `neovim`, and `macOS defaults` remain atomic modules.
 - Local shell overrides belong in `~/.config/dotfiles/local.zsh`. Secrets should not be committed into the repository.

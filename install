@@ -8,6 +8,7 @@ DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 
 source "$DOTFILES_ROOT/scripts/lib/prompt.bash"
 source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+source "$DOTFILES_ROOT/scripts/lib/git-config.sh"
 
 MODULE_ORDER=(
   packages
@@ -37,8 +38,15 @@ DOTFILES_BOOTSTRAP_ZSH_STATUS="none"
 DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER=""
 DOTFILES_RUN_THEME_INSTALL="1"
 DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
+DOTFILES_REQUESTED_MODULES=""
+DOTFILES_AUTO_SELECTED_MODULES=""
+DOTFILES_SAVED_THEME=""
+DOTFILES_SAVED_ENABLE_OH_MY_ZSH=""
+DOTFILES_THEME_NEEDED="0"
+DOTFILES_PACKAGE_MANAGER_NEEDED="0"
 
 AUTO_NOTES=()
+REUSE_NOTES=()
 SKIP_NOTES=()
 
 color_green() {
@@ -66,7 +74,7 @@ display_path() {
       printf '~'
       ;;
     "$HOME"/*)
-      printf '~%s' "${path#$HOME}"
+      printf '~%s' "${path#"$HOME"}"
       ;;
     *)
       printf '%s' "$path"
@@ -94,12 +102,24 @@ current_shell_uses_repo_zshrc() {
   [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$(repo_managed_zshrc_path)" ]]
 }
 
+plan_requires_shell_restart() {
+  if module_is_selected "dotfiles" || module_is_selected "oh_my_zsh"; then
+    return 0
+  fi
+
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" == "1" ]] && current_shell_uses_repo_zshrc; then
+    return 0
+  fi
+
+  return 1
+}
+
 should_auto_launch_zsh() {
   if [[ "${DOTFILES_ALLOW_AUTO_LAUNCH_ZSH:-1}" != "1" ]]; then
     return 1
   fi
 
-  module_is_selected "dotfiles" || current_shell_uses_repo_zshrc
+  plan_requires_shell_restart
 }
 
 detect_platform() {
@@ -333,7 +353,8 @@ read_records_into_array() {
   while IFS= read -r line; do
     [[ -n "$line" ]] || continue
     quoted_line="$(printf '%q' "$line")"
-    eval "$array_name[$index]=$quoted_line"
+    # shellcheck disable=SC1087
+    eval "${array_name}[$index]=$quoted_line"
     index=$((index + 1))
   done < <("$@")
 }
@@ -379,6 +400,435 @@ selected_labels_for_items() {
   prompt::selected_labels_from_records "$selected_ids" "$@"
 }
 
+array_record_count() {
+  local array_name="$1"
+  eval "printf '%s' \"\${#${array_name}[@]}\""
+}
+
+array_record_get() {
+  local array_name="$1"
+  local index="$2"
+  eval "printf '%s' \"\${${array_name}[$index]}\""
+}
+
+array_record_set() {
+  local array_name="$1"
+  local index="$2"
+  local record="$3"
+  local quoted_record
+
+  quoted_record="$(printf '%q' "$record")"
+  # shellcheck disable=SC1087
+  eval "${array_name}[$index]=$quoted_record"
+}
+
+compose_prompt_record() {
+  local id="$1"
+  local label="$2"
+  local description="$3"
+  local is_selected="${4:-0}"
+  local is_disabled="${5:-0}"
+  local status="${6:-}"
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s' "$id" "$label" "$description" "$is_selected" "$is_disabled" "$status"
+}
+
+count_selectable_records() {
+  local record
+  local selectable=0
+
+  for record in "$@"; do
+    if [[ "$(prompt::record_field "$record" 5)" != "1" ]]; then
+      selectable=$((selectable + 1))
+    fi
+  done
+
+  printf '%s' "$selectable"
+}
+
+module_labels_for_selection() {
+  local selection="$1"
+  local labels=()
+  local module_id
+
+  for module_id in $selection; do
+    labels[${#labels[@]}]="$(catalog::module_label "$module_id")"
+  done
+
+  if [[ "${#labels[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  prompt::join_by ", " "${labels[@]}"
+}
+
+module_labels_or_none() {
+  local selection="$1"
+  local selection_labels=""
+
+  selection_labels="$(module_labels_for_selection "$selection")"
+  if [[ -n "$selection_labels" ]]; then
+    printf '%s' "$selection_labels"
+  else
+    printf 'None'
+  fi
+}
+
+plan_needs_theme_prompt() {
+  module_is_selected "dotfiles" || module_is_selected "oh_my_zsh"
+}
+
+plan_needs_package_manager() {
+  if module_is_selected "packages" \
+    || module_is_selected "neovim" \
+    || module_is_selected "oh_my_zsh" \
+    || module_is_selected "fonts" \
+    || module_is_selected "desktop_apps"; then
+    return 0
+  fi
+
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" != "1" ]]; then
+    return 1
+  fi
+
+  case "${DOTFILES_THEME:-none}" in
+    starship)
+      if command -v starship >/dev/null 2>&1; then
+        return 1
+      fi
+
+      return 0
+      ;;
+    powerlevel10k)
+      if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+        return 0
+      fi
+
+      if ! command -v git >/dev/null 2>&1; then
+        return 0
+      fi
+
+      return 1
+      ;;
+    default|none|"")
+      if [[ ! -d "$HOME/.oh-my-zsh" && "${DOTFILES_THEME:-}" == "default" ]]; then
+        return 0
+      fi
+
+      return 1
+      ;;
+  esac
+
+  return 1
+}
+
+refresh_plan_requirements() {
+  if plan_needs_theme_prompt; then
+    DOTFILES_THEME_NEEDED="1"
+  else
+    DOTFILES_THEME_NEEDED="0"
+  fi
+
+  if plan_needs_package_manager; then
+    DOTFILES_PACKAGE_MANAGER_NEEDED="1"
+  else
+    DOTFILES_PACKAGE_MANAGER_NEEDED="0"
+  fi
+}
+
+plan_has_execution_targets() {
+  [[ -n "${DOTFILES_SELECTED_MODULES:-}" || "${DOTFILES_RUN_THEME_INSTALL:-0}" == "1" ]]
+}
+
+maybe_select_theme() {
+  if plan_needs_theme_prompt; then
+    DOTFILES_THEME_NEEDED="1"
+    DOTFILES_RUN_THEME_INSTALL="1"
+    select_theme
+    return 0
+  fi
+
+  DOTFILES_THEME_NEEDED="0"
+  DOTFILES_RUN_THEME_INSTALL="0"
+}
+
+maybe_select_package_manager() {
+  if plan_needs_package_manager; then
+    DOTFILES_PACKAGE_MANAGER_NEEDED="1"
+    select_package_manager
+    return 0
+  fi
+
+  DOTFILES_PACKAGE_MANAGER_NEEDED="0"
+}
+
+record_auto_selected_module() {
+  local module_id="$1"
+  local reason="$2"
+
+  if module_is_selected "$module_id"; then
+    return 0
+  fi
+
+  DOTFILES_SELECTED_MODULES="$(add_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
+  DOTFILES_AUTO_SELECTED_MODULES="$(add_word "$DOTFILES_AUTO_SELECTED_MODULES" "$module_id")"
+  AUTO_NOTES[${#AUTO_NOTES[@]}]="$(catalog::module_label "$module_id") was added automatically because $reason."
+}
+
+remember_saved_runtime_defaults() {
+  DOTFILES_SAVED_THEME="$DOTFILES_THEME"
+  DOTFILES_SAVED_ENABLE_OH_MY_ZSH="$DOTFILES_ENABLE_OH_MY_ZSH"
+}
+
+package_command_name() {
+  local package_id="$1"
+
+  case "$DOTFILES_PACKAGE_MANAGER:$package_id" in
+    apt:fd) printf 'fdfind' ;;
+    *:gnupg) printf 'gpg' ;;
+    *) printf '%s' "$package_id" ;;
+  esac
+}
+
+package_is_installed() {
+  local package_id="$1"
+  local command_name
+
+  command_name="$(package_command_name "$package_id")"
+  command -v "$command_name" >/dev/null 2>&1
+}
+
+omz_plugin_is_installed() {
+  [[ -d "$HOME/.oh-my-zsh/custom/plugins/$1" ]]
+}
+
+brew_cask_is_installed() {
+  local cask_name="$1"
+  local brew_bin=""
+
+  brew_bin="$(find_brew 2>/dev/null || true)"
+  [[ -n "$brew_bin" ]] || return 1
+
+  "$brew_bin" list --cask "$cask_name" >/dev/null 2>&1
+}
+
+bundled_font_family_is_installed() {
+  local family_dir="$1"
+  local font_path
+  local found_any=0
+
+  while IFS= read -r font_path; do
+    [[ -n "$font_path" ]] || continue
+    found_any=1
+    [[ -f "$HOME/Library/Fonts/${font_path##*/}" ]] || return 1
+  done < <(find "$DOTFILES_ROOT/assets/fonts/$family_dir" -type f \( -name '*.otf' -o -name '*.ttf' \) 2>/dev/null)
+
+  [[ "$found_any" == "1" ]]
+}
+
+font_is_installed() {
+  local font_id="$1"
+  local font_kind font_source
+
+  font_kind="$(catalog::font_kind "$font_id")"
+  font_source="$(catalog::font_source "$font_id")"
+
+  case "$font_kind" in
+    cask) brew_cask_is_installed "$font_source" ;;
+    bundled) bundled_font_family_is_installed "$font_source" ;;
+    *) return 1 ;;
+  esac
+}
+
+desktop_app_is_installed() {
+  brew_cask_is_installed "$1"
+}
+
+theme_status_for() {
+  local theme_id="$1"
+
+  if [[ "$theme_id" == "$DOTFILES_SAVED_THEME" ]]; then
+    printf 'current'
+    return 0
+  fi
+
+  case "$theme_id" in
+    starship)
+      if command -v starship >/dev/null 2>&1; then
+        printf 'installed'
+      fi
+      ;;
+    powerlevel10k)
+      if [[ -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]]; then
+        printf 'installed'
+      fi
+      ;;
+  esac
+}
+
+annotate_theme_records() {
+  local array_name="$1"
+  local count index=0
+  local record id label description status selected
+
+  count="$(array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    status="$(theme_status_for "$id")"
+    selected=0
+
+    if [[ "$id" == "$DOTFILES_THEME" ]]; then
+      selected=1
+    fi
+
+    array_record_set "$array_name" "$index" "$(compose_prompt_record "$id" "$label" "$description" "$selected" "0" "$status")"
+    index=$((index + 1))
+  done
+}
+
+annotate_package_records() {
+  local array_name="$1"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    selected="$(prompt::record_field "$record" 4)"
+    disabled=0
+    status=""
+
+    if package_is_installed "$id"; then
+      selected=0
+      disabled=1
+      status="installed"
+    fi
+
+    array_record_set "$array_name" "$index" "$(compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
+annotate_omz_plugin_records() {
+  local array_name="$1"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    selected="$(prompt::record_field "$record" 4)"
+    disabled=0
+    status=""
+
+    if omz_plugin_is_installed "$id"; then
+      selected=0
+      disabled=1
+      status="installed"
+    fi
+
+    array_record_set "$array_name" "$index" "$(compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
+annotate_font_records() {
+  local array_name="$1"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    selected="$(prompt::record_field "$record" 4)"
+    disabled=0
+    status=""
+
+    if font_is_installed "$id"; then
+      selected=0
+      disabled=1
+      status="installed"
+    fi
+
+    array_record_set "$array_name" "$index" "$(compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
+annotate_desktop_app_records() {
+  local array_name="$1"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    selected="$(prompt::record_field "$record" 4)"
+    disabled=0
+    status=""
+
+    if desktop_app_is_installed "$id"; then
+      selected=0
+      disabled=1
+      status="installed"
+    fi
+
+    array_record_set "$array_name" "$index" "$(compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
+update_planned_oh_my_zsh_runtime() {
+  local should_enable="${DOTFILES_SAVED_ENABLE_OH_MY_ZSH:-0}"
+
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" != "1" ]]; then
+    DOTFILES_ENABLE_OH_MY_ZSH="${DOTFILES_SAVED_ENABLE_OH_MY_ZSH:-$DOTFILES_ENABLE_OH_MY_ZSH}"
+    return 0
+  fi
+
+  case "$DOTFILES_THEME" in
+    powerlevel10k|default)
+      should_enable="1"
+      if ! module_is_selected "oh_my_zsh"; then
+        if [[ -d "$HOME/.oh-my-zsh" ]]; then
+          REUSE_NOTES[${#REUSE_NOTES[@]}]="Existing oh-my-zsh will be reused because the selected theme requires it."
+        else
+          record_auto_selected_module "oh_my_zsh" "theme '$DOTFILES_THEME' requires it"
+        fi
+      fi
+      ;;
+    *)
+      if module_is_selected "oh_my_zsh"; then
+        should_enable="1"
+      elif [[ "${DOTFILES_SAVED_ENABLE_OH_MY_ZSH:-0}" == "1" && -d "$HOME/.oh-my-zsh" ]]; then
+        should_enable="1"
+        if [[ "${DOTFILES_THEME_NEEDED:-0}" == "1" ]]; then
+          REUSE_NOTES[${#REUSE_NOTES[@]}]="Existing oh-my-zsh runtime will stay enabled."
+        fi
+      else
+        should_enable="0"
+      fi
+      ;;
+  esac
+
+  DOTFILES_ENABLE_OH_MY_ZSH="$should_enable"
+}
+
 select_package_manager() {
   local selected_package_manager=""
   local options=()
@@ -411,7 +861,14 @@ saved_install_value() {
   local value=""
 
   [[ -f "$config_file" ]] || return 1
-  value="$(sed -n "s/^export ${variable_name}=\"\\(.*\\)\"$/\\1/p" "$config_file" | head -n 1)"
+  value="$(
+    bash --noprofile --norc -c '
+      config_file="$1"
+      variable_name="$2"
+      source "$config_file" >/dev/null 2>&1 || exit 1
+      printf "%s" "${!variable_name-}"
+    ' _ "$config_file" "$variable_name" 2>/dev/null
+  )"
   [[ -n "$value" ]] || return 1
   printf '%s' "$value"
 }
@@ -525,15 +982,15 @@ set_direct_items() {
 
   local selected_ids="$*"
   local records=()
-  local labels=""
+  local selected_item_labels=""
 
   load_direct_item_records "$module_id" records
 
   if [[ -n "$selected_ids" ]]; then
-    labels="$(selected_labels_for_items "$module_id" "$selected_ids" "${records[@]}")"
+    selected_item_labels="$(selected_labels_for_items "$module_id" "$selected_ids" "${records[@]}")"
   fi
 
-  set_module_items "$module_id" "$selected_ids" "$labels"
+  set_module_items "$module_id" "$selected_ids" "$selected_item_labels"
 }
 
 validate_direct_items() {
@@ -582,6 +1039,7 @@ select_theme() {
   local theme_options=()
 
   read_records_into_array theme_options catalog::theme_records
+  annotate_theme_records theme_options
   prompt::select DOTFILES_THEME "Select a shell theme." "Use ↑/↓ to choose, Enter to confirm." "${theme_options[@]}"
 }
 
@@ -590,15 +1048,16 @@ select_modules() {
 
   read_records_into_array module_options catalog::module_records "$DOTFILES_PLATFORM"
   prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "Space to toggle, Enter to confirm." "${module_options[@]}"
+  DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
 }
 
-normalize_modules_before_leaf_prompts() {
-  if [[ "$DOTFILES_THEME" == "powerlevel10k" || "$DOTFILES_THEME" == "default" ]]; then
-    if ! module_is_selected "oh_my_zsh" && [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-      DOTFILES_SELECTED_MODULES="$(add_word "$DOTFILES_SELECTED_MODULES" "oh_my_zsh")"
-      AUTO_NOTES[${#AUTO_NOTES[@]}]="oh-my-zsh was enabled automatically because the selected theme requires it."
-    fi
-  fi
+resolve_install_plan() {
+  DOTFILES_AUTO_SELECTED_MODULES=""
+  AUTO_NOTES=()
+  REUSE_NOTES=()
+
+  refresh_plan_requirements
+  update_planned_oh_my_zsh_runtime
 }
 
 leaf_prompt_title() {
@@ -624,15 +1083,27 @@ load_leaf_records() {
   local array_name="$2"
 
   case "$module_id" in
-    packages) read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER" ;;
-    oh_my_zsh) read_records_into_array "$array_name" catalog::omz_plugin_records ;;
-    fonts) read_records_into_array "$array_name" catalog::font_records ;;
-    desktop_apps) read_records_into_array "$array_name" catalog::desktop_app_records ;;
+    packages)
+      read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER"
+      annotate_package_records "$array_name"
+      ;;
+    oh_my_zsh)
+      read_records_into_array "$array_name" catalog::omz_plugin_records
+      annotate_omz_plugin_records "$array_name"
+      ;;
+    fonts)
+      read_records_into_array "$array_name" catalog::font_records
+      annotate_font_records "$array_name"
+      ;;
+    desktop_apps)
+      read_records_into_array "$array_name" catalog::desktop_app_records
+      annotate_desktop_app_records "$array_name"
+      ;;
   esac
 }
 
 prompt_for_leaf_items() {
-  local module_id leaf_ids leaf_labels
+  local module_id leaf_ids leaf_labels selectable_count
   local leaf_options=()
 
   for module_id in "${MODULE_ORDER[@]}"; do
@@ -645,6 +1116,7 @@ prompt_for_leaf_items() {
     fi
 
     load_leaf_records "$module_id" leaf_options
+    selectable_count="$(count_selectable_records "${leaf_options[@]}")"
     prompt::multiselect leaf_ids "$(leaf_prompt_title "$module_id")" "$(leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
     leaf_labels="$(selected_labels_for_items "$module_id" "$leaf_ids" "${leaf_options[@]}")"
     set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
@@ -653,12 +1125,20 @@ prompt_for_leaf_items() {
       packages|fonts|desktop_apps)
         if [[ -z "$leaf_ids" ]]; then
           DOTFILES_SELECTED_MODULES="$(remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
-          SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because no items were selected."
+          if [[ "$selectable_count" == "0" ]]; then
+            SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because all available items are already installed."
+          else
+            SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because no items were selected."
+          fi
         fi
         ;;
       oh_my_zsh)
         if [[ -z "$leaf_labels" ]]; then
-          set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
+          if [[ "$selectable_count" == "0" ]]; then
+            set_module_items "$module_id" "$leaf_ids" "All visible plugins are already installed"
+          else
+            set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
+          fi
         fi
         ;;
     esac
@@ -671,32 +1151,6 @@ git_personal_config_path() {
 
 git_personal_config_display_path() {
   display_path "$(git_personal_config_path)"
-}
-
-git_config_get() {
-  local config_file="$1"
-  local key="$2"
-
-  git config --file "$config_file" --get "$key" 2>/dev/null || true
-}
-
-git_personal_config_is_template() {
-  local config_file="$1"
-  local key
-  local value
-
-  if [[ ! -f "$config_file" ]]; then
-    return 0
-  fi
-
-  for key in user.name user.email user.signingKey gpg.format commit.gpgsign tag.gpgsign; do
-    value="$(git_config_get "$config_file" "$key")"
-    if [[ -n "$value" ]]; then
-      return 1
-    fi
-  done
-
-  return 0
 }
 
 git_email_is_valid() {
@@ -732,7 +1186,7 @@ collect_git_identity_values() {
         signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
         ;;
       ssh)
-        prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "~/.ssh/id_ed25519.pub" "no" "Enter the SSH public key path for Git signing."
+        prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "$HOME/.ssh/id_ed25519.pub" "no" "Enter the SSH public key path for Git signing."
         DOTFILES_GIT_SUMMARY="Write Git identity with SSH signing to $personal_file_display."
         signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
         ;;
@@ -771,7 +1225,7 @@ prompt_for_git_identity() {
   personal_file="$(git_personal_config_path)"
   personal_file_display="$(git_personal_config_display_path)"
 
-  if ! git_personal_config_is_template "$personal_file"; then
+  if ! dotfiles_git_personal_config_is_template "$personal_file"; then
     DOTFILES_GIT_SUMMARY="Reuse existing machine-local Git identity at $personal_file_display. You can edit it directly later."
     return 0
   fi
@@ -789,32 +1243,49 @@ prompt_for_git_identity() {
 }
 
 finalize_runtime_state() {
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" != "1" ]]; then
+    DOTFILES_ENABLE_OH_MY_ZSH="${DOTFILES_SAVED_ENABLE_OH_MY_ZSH:-$DOTFILES_ENABLE_OH_MY_ZSH}"
+    DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"
+    return 0
+  fi
+
   case "$DOTFILES_THEME" in
     powerlevel10k|default)
       DOTFILES_ENABLE_OH_MY_ZSH="1"
-      if ! module_is_selected "oh_my_zsh" && [[ -d "$HOME/.oh-my-zsh" ]]; then
-        AUTO_NOTES[${#AUTO_NOTES[@]}]="Existing oh-my-zsh will be reused because the selected theme requires it."
-      fi
       ;;
     *)
       if module_is_selected "oh_my_zsh"; then
+        DOTFILES_ENABLE_OH_MY_ZSH="1"
+      elif [[ "${DOTFILES_SAVED_ENABLE_OH_MY_ZSH:-0}" == "1" && -d "$HOME/.oh-my-zsh" ]]; then
         DOTFILES_ENABLE_OH_MY_ZSH="1"
       else
         DOTFILES_ENABLE_OH_MY_ZSH="0"
       fi
       ;;
   esac
+
+  if module_is_selected "dotfiles" || module_is_selected "oh_my_zsh"; then
+    DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
+  else
+    DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"
+  fi
 }
 
-selected_module_labels() {
-  local labels=()
-  local module_id
+planned_oh_my_zsh_runtime_label() {
+  local state_label="disabled"
 
-  for module_id in ${DOTFILES_SELECTED_MODULES}; do
-    labels[${#labels[@]}]="$(catalog::module_label "$module_id")"
-  done
+  if [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" == "1" ]]; then
+    state_label="enabled"
+  fi
 
-  prompt::join_by ", " "${labels[@]}"
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" != "1" ]] \
+    && ! module_is_selected "dotfiles" \
+    && ! module_is_selected "oh_my_zsh"; then
+    printf '%s (unchanged)' "$state_label"
+    return 0
+  fi
+
+  printf '%s' "$state_label"
 }
 
 print_plan_summary() {
@@ -823,10 +1294,22 @@ print_plan_summary() {
   local note
 
   summary_lines[${#summary_lines[@]}]="Platform: $DOTFILES_PLATFORM_LABEL"
-  summary_lines[${#summary_lines[@]}]="Package manager: $DOTFILES_PACKAGE_MANAGER"
-  summary_lines[${#summary_lines[@]}]="Theme: $(catalog::theme_label "$DOTFILES_THEME")"
-  summary_lines[${#summary_lines[@]}]="Modules: $(selected_module_labels)"
-  summary_lines[${#summary_lines[@]}]="oh-my-zsh runtime: $([[ "$DOTFILES_ENABLE_OH_MY_ZSH" == "1" ]] && echo enabled || echo disabled)"
+  if [[ "${DOTFILES_PACKAGE_MANAGER_NEEDED:-0}" == "1" ]]; then
+    summary_lines[${#summary_lines[@]}]="Package manager: $DOTFILES_PACKAGE_MANAGER"
+  else
+    summary_lines[${#summary_lines[@]}]="Package manager: not needed for selected plan"
+  fi
+  if [[ "${DOTFILES_THEME_NEEDED:-0}" == "1" ]]; then
+    summary_lines[${#summary_lines[@]}]="Theme: $(catalog::theme_label "$DOTFILES_THEME")"
+  else
+    summary_lines[${#summary_lines[@]}]="Theme: not needed for selected plan"
+  fi
+  summary_lines[${#summary_lines[@]}]="Selected modules: $(module_labels_or_none "$DOTFILES_REQUESTED_MODULES")"
+  summary_lines[${#summary_lines[@]}]="Final install modules: $(module_labels_or_none "$DOTFILES_SELECTED_MODULES")"
+  if [[ -n "$DOTFILES_AUTO_SELECTED_MODULES" ]]; then
+    summary_lines[${#summary_lines[@]}]="Auto-added modules: $(module_labels_for_selection "$DOTFILES_AUTO_SELECTED_MODULES")"
+  fi
+  summary_lines[${#summary_lines[@]}]="oh-my-zsh runtime: $(planned_oh_my_zsh_runtime_label)"
 
   for module_id in "${MODULE_ORDER[@]}"; do
     if ! module_is_selected "$module_id"; then
@@ -844,6 +1327,11 @@ print_plan_summary() {
   for note in "${AUTO_NOTES[@]:-}"; do
     [[ -n "$note" ]] || continue
     summary_lines[${#summary_lines[@]}]="Auto: $note"
+  done
+
+  for note in "${REUSE_NOTES[@]:-}"; do
+    [[ -n "$note" ]] || continue
+    summary_lines[${#summary_lines[@]}]="Reuse: $note"
   done
 
   for note in "${SKIP_NOTES[@]:-}"; do
@@ -901,10 +1389,10 @@ EOF
 }
 
 print_direct_target_list() {
-  local module_id module_label module_description
+  local module_id module_description
 
   echo "Available direct install targets:"
-  while IFS=$'\t' read -r module_id module_label module_description _; do
+  while IFS=$'\t' read -r module_id _ module_description _; do
     echo "  - $module_id: $module_description"
   done < <(catalog::module_records "$DOTFILES_PLATFORM")
   echo "  - theme: Install dependencies for the current shell theme (${DOTFILES_THEME:-starship})."
@@ -935,9 +1423,6 @@ configure_direct_install() {
 
     DOTFILES_RUN_THEME_INSTALL="1"
     DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
-    if current_shell_uses_repo_zshrc; then
-      DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
-    fi
 
     case "$DOTFILES_THEME" in
       powerlevel10k|default) DOTFILES_ENABLE_OH_MY_ZSH="1" ;;
@@ -997,11 +1482,6 @@ run_direct_install() {
       color_yellow "Run this manually: exec zsh -l"
       exit 1
     fi
-  fi
-
-  if [[ "${DOTFILES_ALLOW_AUTO_LAUNCH_ZSH:-1}" == "1" ]]; then
-    color_yellow "Skipping automatic zsh launch because $(display_path "$HOME/.zshrc") is not managed by this dotfiles repo."
-    color_yellow "Run this manually: exec zsh -l"
   fi
 }
 
@@ -1073,11 +1553,15 @@ main() {
     case "$1" in
       -h|--help|help)
         load_saved_runtime_defaults
+        select_default_package_manager
+        remember_saved_runtime_defaults
         print_direct_usage
         exit 0
         ;;
       list)
         load_saved_runtime_defaults
+        select_default_package_manager
+        remember_saved_runtime_defaults
         print_direct_target_list
         exit 0
         ;;
@@ -1093,13 +1577,26 @@ main() {
     exit 1
   fi
 
+  load_saved_runtime_defaults
+  select_default_package_manager
+  remember_saved_runtime_defaults
+
   prompt::intro "Dotfiles Installer"
   prompt::summary "Detected environment." "$DOTFILES_PLATFORM_LABEL"
-  select_package_manager
-  select_theme
   select_modules
-  normalize_modules_before_leaf_prompts
+  if [[ -z "$DOTFILES_SELECTED_MODULES" ]]; then
+    prompt::cancel "No installation modules were selected."
+    exit 0
+  fi
+  maybe_select_theme
+  maybe_select_package_manager
+  resolve_install_plan
   prompt_for_leaf_items
+  resolve_install_plan
+  if ! plan_has_execution_targets; then
+    prompt::cancel "No installation work remains after item selection."
+    exit 0
+  fi
   prompt_for_git_identity
   finalize_runtime_state
   print_plan_summary
