@@ -14,7 +14,16 @@ return {
           },
         },
         styles = {
-          comments = "italic",
+          comments = "NONE",
+          functions = "NONE",
+          keywords = "NONE",
+          variables = "NONE",
+          conditionals = "NONE",
+          constants = "NONE",
+          numbers = "NONE",
+          operators = "NONE",
+          strings = "NONE",
+          types = "NONE",
         },
       },
       groups = {
@@ -36,6 +45,40 @@ return {
           StatusLine = { bg = "#f6f8fa" },
           StatusLineNC = { bg = "#f8fafc" },
           WinSeparator = { fg = "#d0d7de" },
+
+          Comment = { fg = "#57606a", style = "NONE" },
+          ["@comment"] = { fg = "#57606a", style = "NONE" },
+          ["@comment.documentation"] = { fg = "#57606a", style = "NONE" },
+
+          Keyword = { fg = "#cf222e", style = "italic" },
+          Statement = { fg = "#cf222e", style = "italic" },
+          Conditional = { fg = "#cf222e", style = "italic" },
+          Repeat = { fg = "#cf222e", style = "italic" },
+          Exception = { fg = "#cf222e", style = "italic" },
+          ["@keyword"] = { fg = "#cf222e", style = "italic" },
+          ["@keyword.function"] = { fg = "#cf222e", style = "italic" },
+          ["@keyword.return"] = { fg = "#cf222e", style = "italic" },
+          ["@keyword.import"] = { fg = "#cf222e", style = "italic" },
+          ["@keyword.operator"] = { fg = "#cf222e", style = "italic" },
+
+          Operator = { fg = "#0550ae", style = "NONE" },
+          ["@operator"] = { fg = "#0550ae", style = "NONE" },
+
+          Boolean = { fg = "#116329", style = "italic" },
+          ["@boolean"] = { fg = "#116329", style = "italic" },
+          ["@constant.builtin"] = { fg = "#116329", style = "italic" },
+          ["@type.builtin"] = { fg = "#116329", style = "italic" },
+
+          htmlTag = { fg = "#116329", style = "italic" },
+          xmlTagName = { fg = "#116329", style = "italic" },
+          ["@tag"] = { fg = "#116329", style = "italic" },
+
+          xmlAttrib = { fg = "#0550ae", style = "italic" },
+          htmlArg = { fg = "#0550ae", style = "italic" },
+          ["@tag.attribute"] = { fg = "#0550ae", style = "italic" },
+          ["@attribute"] = { fg = "#0550ae", style = "italic" },
+
+          ["@constructor"] = { fg = "#953800", style = "italic" },
         },
       },
     },
