@@ -144,6 +144,28 @@ prompt::join_by() {
   printf '%s' "$output"
 }
 
+prompt::terminal_lines() {
+  local lines=""
+  local stty_size=""
+
+  if command -v tput >/dev/null 2>&1; then
+    lines="$(tput lines 2>/dev/null || true)"
+  fi
+
+  if [[ ! "$lines" =~ ^[0-9]+$ ]] || [[ "$lines" -le 0 ]]; then
+    stty_size="$(stty size 2>/dev/null || true)"
+    if [[ "$stty_size" =~ ^[0-9]+[[:space:]][0-9]+$ ]]; then
+      lines="${stty_size%% *}"
+    fi
+  fi
+
+  if [[ ! "$lines" =~ ^[0-9]+$ ]] || [[ "$lines" -le 0 ]]; then
+    lines=24
+  fi
+
+  printf '%s' "$lines"
+}
+
 prompt::selected_labels_from_records() {
   local selected_ids="$1"
   shift || true
@@ -233,12 +255,25 @@ prompt::text() {
   local allow_empty="${4:-no}"
   shift 4 || true
 
-  local details=("$@")
+  local validator_callback=""
+  local validator_error_message="Value is invalid."
+  local details=()
   local lines=()
   local rendered_lines=()
   local response=""
   local error_message=""
   local detail
+
+  if [[ "$#" -gt 0 ]] && declare -F "$1" >/dev/null 2>&1; then
+    validator_callback="$1"
+    shift || true
+    if [[ "$#" -gt 0 ]]; then
+      validator_error_message="$1"
+      shift || true
+    fi
+  fi
+
+  details=("$@")
 
   lines[${#lines[@]}]="◆  $question"
   for detail in "${details[@]}"; do
@@ -249,7 +284,6 @@ prompt::text() {
     lines[${#lines[@]}]="│  Default: $initial_value"
   fi
   lines[${#lines[@]}]="│"
-  lines[${#lines[@]}]="│  > "
 
   while true; do
     rendered_lines=("${lines[@]}")
@@ -258,17 +292,25 @@ prompt::text() {
     fi
 
     prompt::render_block "${rendered_lines[@]}"
+    printf '│  > '
+    PROMPT__RENDERED_LINES=$((PROMPT__RENDERED_LINES + 1))
     read -r response
 
     if [[ -z "$response" ]]; then
       response="$initial_value"
     fi
 
-    if [[ -n "$response" || "$allow_empty" == "yes" ]]; then
-      break
+    if [[ -z "$response" && "$allow_empty" != "yes" ]]; then
+      error_message="Value is required."
+      continue
     fi
 
-    error_message="Value is required."
+    if [[ -n "$validator_callback" ]] && ! "$validator_callback" "$response"; then
+      error_message="$validator_error_message"
+      continue
+    fi
+
+    break
   done
 
   prompt::clear_rendered_block
@@ -382,6 +424,8 @@ prompt::multiselect() {
   local record id label description is_selected is_disabled
   local key rendered_lines current_description marker prefix
   local selected_ids="" selected_labels=""
+  local total_lines reserved_lines visible_count
+  local window_start window_end remaining_above remaining_below
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -413,8 +457,38 @@ prompt::multiselect() {
     [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="│  $current_description"
     rendered_lines[${#rendered_lines[@]}]="│"
 
-    index=0
-    while [[ "$index" -lt "${#labels[@]}" ]]; do
+    total_lines="$(prompt::terminal_lines)"
+    reserved_lines=4
+    [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + 1))
+    [[ -n "$current_description" ]] && reserved_lines=$((reserved_lines + 1))
+    visible_count=$((total_lines - reserved_lines))
+    if [[ "$visible_count" -lt 1 ]]; then
+      visible_count=1
+    fi
+
+    window_start=$((current_index - (visible_count / 2)))
+    if [[ "$window_start" -lt 0 ]]; then
+      window_start=0
+    fi
+
+    window_end=$((window_start + visible_count - 1))
+    if [[ "$window_end" -ge "${#labels[@]}" ]]; then
+      window_end=$((${#labels[@]} - 1))
+      window_start=$((window_end - visible_count + 1))
+      if [[ "$window_start" -lt 0 ]]; then
+        window_start=0
+      fi
+    fi
+
+    remaining_above="$window_start"
+    remaining_below=$((${#labels[@]} - window_end - 1))
+
+    if [[ "$remaining_above" -gt 0 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="│  ↑ $remaining_above more"
+    fi
+
+    index="$window_start"
+    while [[ "$index" -le "$window_end" ]]; do
       if [[ "${selected[$index]}" == "1" ]]; then
         marker="◼"
       else
@@ -430,6 +504,10 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="│  $prefix $marker ${labels[$index]}"
       index=$((index + 1))
     done
+
+    if [[ "$remaining_below" -gt 0 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="│  ↓ $remaining_below more"
+    fi
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"

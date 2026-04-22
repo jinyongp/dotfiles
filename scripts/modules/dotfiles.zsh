@@ -32,6 +32,9 @@ dotfiles::git_local_config_tmpfile() {
 dotfiles::write_root_git_config() {
   local config_file="$1"
   local tmp_file
+  local config_exists=0
+
+  [[ -e "$config_file" ]] && config_exists=1
 
   tmp_file="$(dotfiles::git_local_config_tmpfile "$config_file")"
 
@@ -41,6 +44,11 @@ dotfiles::write_root_git_config() {
 
   chmod 600 "$tmp_file"
   mv "$tmp_file" "$config_file"
+  if [[ "$config_exists" == "1" ]]; then
+    dotfiles::record_file_updated "$config_file"
+  else
+    dotfiles::record_file_created "$config_file"
+  fi
   dotfiles::log_success "Wrote machine-local Git path config to $config_file"
 }
 
@@ -54,6 +62,8 @@ dotfiles::ensure_local_git_config_files() {
 
   if [[ ! -f "$personal_file" ]]; then
     cp "$DOTFILES_ROOT/git/configs/personal.local.example.ini" "$personal_file"
+    dotfiles::record_file_created "$personal_file"
+    dotfiles::record_note "Created the machine-local Git personal config from the bundled example."
     dotfiles::log_info "Created $personal_file"
   fi
 }
@@ -94,6 +104,9 @@ dotfiles::write_personal_git_config() {
   local signing_mode="$4"
   local signing_key="$5"
   local tmp_file
+  local config_exists=0
+
+  [[ -e "$config_file" ]] && config_exists=1
 
   tmp_file="$(dotfiles::git_local_config_tmpfile "$config_file")"
 
@@ -118,6 +131,12 @@ dotfiles::write_personal_git_config() {
 
   chmod 600 "$tmp_file"
   mv "$tmp_file" "$config_file"
+  if [[ "$config_exists" == "1" ]]; then
+    dotfiles::record_file_updated "$config_file"
+  else
+    dotfiles::record_file_created "$config_file"
+  fi
+  dotfiles::record_completed_work "Applied machine-local Git identity"
   dotfiles::log_success "Wrote machine-local Git config to $config_file"
 }
 
@@ -126,8 +145,10 @@ dotfiles::apply_personal_git_config_from_plan() {
 
   if [[ "${DOTFILES_GIT_CONFIGURE_PERSONAL:-no}" != "yes" ]]; then
     if ! dotfiles::git_personal_config_is_template "$config_file"; then
+      dotfiles::record_reused "Machine-local Git identity"
       dotfiles::log_info "Using existing machine-local Git config at $config_file"
     else
+      dotfiles::record_note "Machine-local Git identity remains unconfigured."
       dotfiles::log_warn "Machine-local Git config remains unconfigured at $config_file"
     fi
     return 0
@@ -154,6 +175,7 @@ module_dotfiles_install() {
     dotfiles::ensure_dir "${target_path:h}"
 
     if [[ -L "$target_path" && "$(readlink "$target_path")" == "$source_path" ]]; then
+      dotfiles::record_reused "Managed link already in place: $(dotfiles::display_path "$target_path")"
       dotfiles::log_info "Already linked: $target_path"
       continue
     fi
@@ -161,10 +183,12 @@ module_dotfiles_install() {
     if [[ -e "$target_path" || -L "$target_path" ]]; then
       dotfiles::ensure_dir "$backup_dir"
       mv "$target_path" "$backup_dir/${target_path:t}"
+      dotfiles::record_file_backed_up "$target_path" "$backup_dir/${target_path:t}"
       dotfiles::log_info "Backed up $target_path to $backup_dir"
     fi
 
     ln -s "$source_path" "$target_path"
+    dotfiles::record_file_linked "$target_path" "$source_path"
     dotfiles::log_success "Linked $target_path"
   done
 

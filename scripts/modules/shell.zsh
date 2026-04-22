@@ -10,10 +10,12 @@ shell::ensure_oh_my_zsh() {
   local target_dir="$HOME/.oh-my-zsh"
 
   if [[ -d "$target_dir" ]]; then
+    dotfiles::record_reused "oh-my-zsh framework"
     dotfiles::log_info "oh-my-zsh is already installed."
     return 0
   fi
 
+  dotfiles::record_installed "oh-my-zsh framework"
   dotfiles::log_info "Cloning oh-my-zsh..."
   git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$target_dir"
 }
@@ -42,10 +44,12 @@ shell::install_oh_my_zsh_plugins() {
     target_dir="$plugin_root/$plugin_id"
 
     if [[ -d "$target_dir" ]]; then
+      dotfiles::record_reused "oh-my-zsh plugin: $plugin_id"
       dotfiles::log_info "Already installed: $plugin_id"
       continue
     fi
 
+    dotfiles::record_installed "oh-my-zsh plugin: $plugin_id"
     dotfiles::log_info "Cloning $plugin_id..."
     git clone --depth=1 "https://github.com/$repo_name.git" "$target_dir"
   done
@@ -68,11 +72,13 @@ shell::ensure_default_shell() {
   current_shell="$(getent passwd "$USER" 2>/dev/null | cut -d: -f7)"
 
   if [[ "$current_shell" == "$zsh_bin" ]]; then
+    dotfiles::record_reused "Default shell already set to zsh"
     dotfiles::log_info "Default shell is already zsh."
     return 0
   fi
 
   if chsh -s "$zsh_bin" "$USER"; then
+    dotfiles::record_completed_work "Changed the default shell to $(dotfiles::display_path "$zsh_bin")"
     dotfiles::log_success "Changed default shell to $zsh_bin"
   else
     dotfiles::log_warn "Failed to change the default shell automatically."
@@ -90,6 +96,7 @@ shell::install_starship_fallback() {
   package_manager::ensure_command curl curl 1
   dotfiles::ensure_dir "$bin_dir"
   dotfiles::download_script "$installer_url" "$installer_path"
+  dotfiles::record_installed "starship prompt binary (fallback installer)"
   sh "$installer_path" -y -b "$bin_dir"
   rm -f "$installer_path"
 }
@@ -130,6 +137,8 @@ module_theme_install() {
     starship)
       if ! command -v starship >/dev/null 2>&1; then
         package_manager::install_logical starship 0 || true
+      else
+        dotfiles::record_reused "starship prompt binary"
       fi
 
       if ! command -v starship >/dev/null 2>&1; then
@@ -144,15 +153,18 @@ module_theme_install() {
       fi
 
       if [[ -d "$HOME/.oh-my-zsh/custom/themes/powerlevel10k" ]]; then
+        dotfiles::record_reused "powerlevel10k theme"
         dotfiles::log_info "powerlevel10k is already installed."
       else
         package_manager::ensure_command git git 1
+        dotfiles::record_installed "powerlevel10k theme"
         git clone --depth=1 \
           https://github.com/romkatv/powerlevel10k.git \
           "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
       fi
       ;;
     default|none)
+      dotfiles::record_note "No extra theme dependencies were required for '$DOTFILES_THEME'."
       dotfiles::log_info "No extra dependencies are required for theme '$DOTFILES_THEME'."
       ;;
     *)

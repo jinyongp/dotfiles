@@ -33,6 +33,8 @@ DOTFILES_GIT_EMAIL=""
 DOTFILES_GIT_SIGNING_MODE="none"
 DOTFILES_GIT_SIGNING_KEY=""
 DOTFILES_GIT_SUMMARY=""
+DOTFILES_BOOTSTRAP_ZSH_STATUS="none"
+DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER=""
 
 AUTO_NOTES=()
 SKIP_NOTES=()
@@ -52,6 +54,46 @@ color_red() {
 log_step() {
   printf '\n'
   color_green "$1"
+}
+
+display_path() {
+  local path="$1"
+
+  case "$path" in
+    "$HOME")
+      printf '~'
+      ;;
+    "$HOME"/*)
+      printf '~%s' "${path#$HOME}"
+      ;;
+    *)
+      printf '%s' "$path"
+      ;;
+  esac
+}
+
+record_bootstrap_zsh_reused() {
+  if [[ "$DOTFILES_BOOTSTRAP_ZSH_STATUS" == "none" ]]; then
+    DOTFILES_BOOTSTRAP_ZSH_STATUS="reused"
+    DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER="existing"
+  fi
+}
+
+record_bootstrap_zsh_installed() {
+  DOTFILES_BOOTSTRAP_ZSH_STATUS="installed"
+  DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER="$1"
+}
+
+repo_managed_zshrc_path() {
+  printf '%s/zsh/.zshrc' "$DOTFILES_ROOT"
+}
+
+current_shell_uses_repo_zshrc() {
+  [[ -L "$HOME/.zshrc" && "$(readlink "$HOME/.zshrc")" == "$(repo_managed_zshrc_path)" ]]
+}
+
+should_auto_launch_zsh() {
+  module_is_selected "dotfiles" || current_shell_uses_repo_zshrc
 }
 
 detect_platform() {
@@ -167,6 +209,7 @@ ensure_zsh() {
   local preferred_package_manager="${2:-}"
 
   if find_zsh >/dev/null 2>&1; then
+    record_bootstrap_zsh_reused
     return 0
   fi
 
@@ -174,6 +217,7 @@ ensure_zsh() {
     macos)
       if find_brew >/dev/null 2>&1; then
         ensure_zsh_with_brew
+        record_bootstrap_zsh_installed "brew"
       else
         color_red "zsh was not found on macOS and Homebrew is unavailable."
         color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
@@ -183,13 +227,16 @@ ensure_zsh() {
     wsl|linux)
       if [[ "$preferred_package_manager" == "brew" ]] && find_brew >/dev/null 2>&1; then
         ensure_zsh_with_brew
+        record_bootstrap_zsh_installed "brew"
       elif command -v apt-get >/dev/null 2>&1; then
         if [[ "$preferred_package_manager" == "brew" ]]; then
           color_yellow "Homebrew was selected for package installs, but zsh bootstrap is falling back to apt because brew is not ready yet."
         fi
         ensure_zsh_with_apt
+        record_bootstrap_zsh_installed "apt"
       elif find_brew >/dev/null 2>&1; then
         ensure_zsh_with_brew
+        record_bootstrap_zsh_installed "brew"
       else
         color_red "zsh is missing and no supported bootstrap package manager was found."
         color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
@@ -443,6 +490,10 @@ git_personal_config_path() {
   printf '%s/git/personal.local.ini' "$DOTFILES_CONFIG_DIR"
 }
 
+git_personal_config_display_path() {
+  display_path "$(git_personal_config_path)"
+}
+
 git_config_get() {
   local config_file="$1"
   local key="$2"
@@ -469,8 +520,69 @@ git_personal_config_is_template() {
   return 0
 }
 
+git_email_is_valid() {
+  local value="$1"
+  [[ -n "$value" && "$value" == *"@"* && "$value" != *[[:space:]]* ]]
+}
+
+collect_git_identity_values() {
+  local confirm_values=""
+  local personal_file_display
+  local signing_key_summary=""
+
+  personal_file_display="$(git_personal_config_display_path)"
+  prompt::summary "Machine-local Git config file." \
+    "Path: $personal_file_display" \
+    "The installer may create this file from the bundled example." \
+    "You can edit this file directly later."
+
+  while true; do
+    prompt::text DOTFILES_GIT_NAME "Git user.name" "" "no" "Used for commits created on this machine."
+    prompt::text DOTFILES_GIT_EMAIL "Git user.email" "" "no" git_email_is_valid \
+      "Enter an email address containing @ and no spaces." \
+      "Used for commits created on this machine."
+    prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "Use ↑/↓ to choose, Enter to confirm." \
+      $'none\tNo signing\tDo not enable commit or tag signing.\t1\t0' \
+      $'gpg\tGPG signing\tUse an OpenPGP key ID or fingerprint.\t0\t0' \
+      $'ssh\tSSH signing\tUse SSH signing with gpg.format=ssh.\t0\t0'
+
+    case "$DOTFILES_GIT_SIGNING_MODE" in
+      gpg)
+        prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "" "no" "Enter the GPG key ID or full fingerprint."
+        DOTFILES_GIT_SUMMARY="Write Git identity with GPG signing to $personal_file_display."
+        signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
+        ;;
+      ssh)
+        prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "~/.ssh/id_ed25519.pub" "no" "Enter the SSH public key path for Git signing."
+        DOTFILES_GIT_SUMMARY="Write Git identity with SSH signing to $personal_file_display."
+        signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
+        ;;
+      none)
+        DOTFILES_GIT_SIGNING_KEY=""
+        DOTFILES_GIT_SUMMARY="Write Git identity without signing to $personal_file_display."
+        signing_key_summary="user.signingKey: not set"
+        ;;
+    esac
+
+    prompt::summary "Review machine-local Git identity." \
+      "File: $personal_file_display" \
+      "user.name: $DOTFILES_GIT_NAME" \
+      "user.email: $DOTFILES_GIT_EMAIL" \
+      "Signing mode: $DOTFILES_GIT_SIGNING_MODE" \
+      "$signing_key_summary"
+    prompt::confirm confirm_values "Use these Git values?" "yes" "Enter to confirm."
+
+    if [[ "$confirm_values" == "yes" ]]; then
+      break
+    fi
+
+    prompt::summary "Machine-local Git identity." "Re-enter the Git values below."
+  done
+}
+
 prompt_for_git_identity() {
   local personal_file configure_now=""
+  local personal_file_display
 
   if ! module_is_selected "dotfiles"; then
     DOTFILES_GIT_SUMMARY="Dotfiles module not selected."
@@ -478,9 +590,10 @@ prompt_for_git_identity() {
   fi
 
   personal_file="$(git_personal_config_path)"
+  personal_file_display="$(git_personal_config_display_path)"
 
   if ! git_personal_config_is_template "$personal_file"; then
-    DOTFILES_GIT_SUMMARY="Keep existing machine-local Git identity."
+    DOTFILES_GIT_SUMMARY="Reuse existing machine-local Git identity at $personal_file_display. You can edit it directly later."
     return 0
   fi
 
@@ -488,32 +601,12 @@ prompt_for_git_identity() {
 
   if [[ "$configure_now" != "yes" ]]; then
     DOTFILES_GIT_CONFIGURE_PERSONAL="no"
-    DOTFILES_GIT_SUMMARY="Skip Git identity setup for now."
+    DOTFILES_GIT_SUMMARY="Skip Git identity setup for now. Edit $personal_file_display directly later if needed."
     return 0
   fi
 
   DOTFILES_GIT_CONFIGURE_PERSONAL="yes"
-  prompt::text DOTFILES_GIT_NAME "Git user.name" "" "no" "Used for commits created on this machine."
-  prompt::text DOTFILES_GIT_EMAIL "Git user.email" "" "no" "Used for commits created on this machine."
-  prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "Use ↑/↓ to choose, Enter to confirm." \
-    $'none\tNo signing\tDo not enable commit or tag signing.\t1\t0' \
-    $'gpg\tGPG signing\tUse an OpenPGP key ID or fingerprint.\t0\t0' \
-    $'ssh\tSSH signing\tUse SSH signing with gpg.format=ssh.\t0\t0'
-
-  case "$DOTFILES_GIT_SIGNING_MODE" in
-    gpg)
-      prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "" "no" "Enter the GPG key ID or full fingerprint."
-      DOTFILES_GIT_SUMMARY="Write Git identity with GPG signing."
-      ;;
-    ssh)
-      prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "~/.ssh/id_ed25519.pub" "no" "Enter the SSH public key path for Git signing."
-      DOTFILES_GIT_SUMMARY="Write Git identity with SSH signing."
-      ;;
-    none)
-      DOTFILES_GIT_SIGNING_KEY=""
-      DOTFILES_GIT_SUMMARY="Write Git identity without signing."
-      ;;
-  esac
+  collect_git_identity_values
 }
 
 finalize_runtime_state() {
@@ -611,6 +704,8 @@ write_install_plan() {
   write_plan_var "$plan_file" "DOTFILES_GIT_EMAIL" "$DOTFILES_GIT_EMAIL"
   write_plan_var "$plan_file" "DOTFILES_GIT_SIGNING_MODE" "$DOTFILES_GIT_SIGNING_MODE"
   write_plan_var "$plan_file" "DOTFILES_GIT_SIGNING_KEY" "$DOTFILES_GIT_SIGNING_KEY"
+  write_plan_var "$plan_file" "DOTFILES_BOOTSTRAP_ZSH_STATUS" "$DOTFILES_BOOTSTRAP_ZSH_STATUS"
+  write_plan_var "$plan_file" "DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER" "$DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER"
 
   for module_id in "${MODULE_ORDER[@]}"; do
     write_plan_var "$plan_file" "DOTFILES_SELECTED_ITEMS_${module_id}" "$(get_module_items "$module_id")"
@@ -637,6 +732,7 @@ run_install_plan() {
 
 main() {
   local proceed=""
+  local zsh_bin=""
 
   if [[ ! -t 0 ]]; then
     color_red "This installer is interactive and must be run from a TTY."
@@ -669,6 +765,19 @@ main() {
 
   run_install_plan
   prompt::outro "Installation complete."
+
+  if should_auto_launch_zsh; then
+    zsh_bin="$(find_zsh)"
+    color_yellow "Starting a login zsh shell with the installed dotfiles config."
+    if ! exec "$zsh_bin" -l; then
+      color_red "Failed to start a login zsh shell automatically."
+      color_yellow "Run this manually: exec zsh -l"
+      exit 1
+    fi
+  fi
+
+  color_yellow "Skipping automatic zsh launch because $(display_path "$HOME/.zshrc") is not managed by this dotfiles repo."
+  color_yellow "Run this manually: exec zsh -l"
 }
 
 main "$@"

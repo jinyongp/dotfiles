@@ -90,6 +90,7 @@ package_manager::ensure_brew() {
   if package_manager::brew_bin >/dev/null 2>&1; then
     package_manager::activate_brew
     DOTFILES_BREW_READY=1
+    dotfiles::record_reused "Homebrew package manager"
     return 0
   fi
 
@@ -104,6 +105,7 @@ package_manager::ensure_brew() {
 
   package_manager::activate_brew
   DOTFILES_BREW_READY=1
+  dotfiles::record_installed "Homebrew package manager"
 }
 
 package_manager::ensure_apt() {
@@ -119,6 +121,7 @@ package_manager::ensure_apt() {
   dotfiles::log_step "Refreshing apt package index"
   dotfiles::run_as_root apt-get update
   DOTFILES_APT_READY=1
+  dotfiles::record_completed_work "Refreshed apt package index"
 }
 
 package_manager::logical_to_native() {
@@ -140,6 +143,7 @@ package_manager::ensure_command() {
   local required="${3:-1}"
 
   if command -v "$command_name" >/dev/null 2>&1; then
+    dotfiles::record_reused "$command_name command"
     dotfiles::log_info "Using existing $command_name command."
     return 0
   fi
@@ -169,8 +173,10 @@ package_manager::install_logical() {
       package_manager::ensure_brew
 
       if brew list "$native_name" >/dev/null 2>&1; then
+        dotfiles::record_reused "$logical_name via Homebrew"
         dotfiles::log_info "Already installed: $logical_name"
       else
+        dotfiles::record_installed "$logical_name via Homebrew"
         dotfiles::log_info "Installing $logical_name with Homebrew..."
         brew install "$native_name"
       fi
@@ -179,6 +185,7 @@ package_manager::install_logical() {
       package_manager::ensure_apt
 
       if dpkg -s "$native_name" >/dev/null 2>&1; then
+        dotfiles::record_reused "$logical_name via apt"
         dotfiles::log_info "Already installed: $logical_name"
         return 0
       fi
@@ -193,6 +200,7 @@ package_manager::install_logical() {
         return 0
       fi
 
+      dotfiles::record_installed "$logical_name via apt"
       dotfiles::log_info "Installing $logical_name with apt..."
       dotfiles::run_as_root apt-get install -y "$native_name"
       ;;
@@ -215,10 +223,12 @@ package_manager::install_brew_cask() {
   fi
 
   if brew list --cask "$cask_name" >/dev/null 2>&1; then
+    dotfiles::record_reused "$cask_name cask"
     dotfiles::log_info "Already installed: $cask_name"
     return 0
   fi
 
+  dotfiles::record_installed "$cask_name cask"
   dotfiles::log_info "Installing $cask_name..."
   brew install --cask "$cask_name"
 }

@@ -22,8 +22,10 @@ module_vim_install() {
   mkdir -p "$HOME/.vim/bundle" "$HOME/.vim/undo" "$HOME/.vim/backup" "$HOME/.vim/swap"
 
   if [[ -d "$HOME/.vim/bundle/Vundle.vim" ]]; then
+    dotfiles::record_reused "Vundle plugin manager"
     dotfiles::log_info "Vundle is already installed."
   else
+    dotfiles::record_installed "Vundle plugin manager"
     git clone --depth=1 https://github.com/VundleVim/Vundle.vim.git "$HOME/.vim/bundle/Vundle.vim"
   fi
 }

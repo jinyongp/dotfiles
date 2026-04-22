@@ -47,6 +47,7 @@ module_fonts_install_items() {
         ;;
       bundled)
         macos::install_bundled_font_family "$font_source"
+        dotfiles::record_installed "Bundled font family: $(catalog::font_label "$font_id")"
         ;;
       *)
         dotfiles::log_warn "Skipping unknown font item: $font_id"
@@ -108,9 +109,11 @@ module_macos_defaults_details() {
 module_macos_defaults_install() {
   local keybindings_dir="$HOME/Library/KeyBindings"
   local keybindings_file="$keybindings_dir/DefaultKeyBinding.dict"
+  local keybindings_exists=0
 
   dotfiles::log_step "Applying macOS defaults"
   mkdir -p "$keybindings_dir"
+  [[ -e "$keybindings_file" ]] && keybindings_exists=1
 
   cat >"$keybindings_file" <<'EOF'
 {
@@ -119,5 +122,10 @@ module_macos_defaults_install() {
 }
 EOF
 
+  if [[ "$keybindings_exists" == "1" ]]; then
+    dotfiles::record_file_updated "$keybindings_file"
+  else
+    dotfiles::record_file_created "$keybindings_file"
+  fi
   dotfiles::log_success "Updated $keybindings_file"
 }

@@ -51,11 +51,13 @@ runner::run_module() {
   local install_items_function="module_${module}_install_items"
   local raw_items
   local -a items
+  local module_label=""
 
   if ! runner::module_selected "$module"; then
     return 0
   fi
 
+  module_label="$(catalog::module_label "$module")"
   raw_items="$(runner::selected_items_for "$module")"
 
   if typeset -f "$install_items_function" >/dev/null 2>&1; then
@@ -65,21 +67,25 @@ runner::run_module() {
       items=()
     fi
     "$install_items_function" "${items[@]}"
+    dotfiles::record_completed_work "Completed ${module_label} setup"
     return 0
   fi
 
   if typeset -f "$install_function" >/dev/null 2>&1; then
     "$install_function"
+    dotfiles::record_completed_work "Completed ${module_label} setup"
   fi
 }
 
 runner::install_theme() {
   module_theme_install
+  dotfiles::record_completed_work "Completed theme dependency setup for $(catalog::theme_label "$DOTFILES_THEME")"
 }
 
 main() {
   local module
 
+  dotfiles::record_bootstrap_results
   dotfiles::write_install_env
 
   for module in "${DOTFILES_RUN_ORDER[@]}"; do
@@ -93,6 +99,8 @@ main() {
   if ! runner::module_selected "vim"; then
     runner::install_theme
   fi
+
+  dotfiles::print_install_report
 }
 
 main "$@"
