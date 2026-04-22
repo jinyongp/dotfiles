@@ -9,6 +9,9 @@ else
 fi
 
 if dotfiles_has_command nvim; then
+  if [[ -n "${XDG_STATE_HOME:-}" ]] && dotfiles_ensure_writable_dir "$XDG_STATE_HOME/nvim"; then
+    export NVIM_LOG_FILE="$XDG_STATE_HOME/nvim/nvim.log"
+  fi
   export EDITOR="$(command -v nvim)"
   export VISUAL="$EDITOR"
 else

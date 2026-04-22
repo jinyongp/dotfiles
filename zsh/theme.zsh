@@ -21,7 +21,7 @@ dotfiles_init_theme() {
 
   case "${DOTFILES_THEME:-starship}" in
     starship)
-      if dotfiles_has_command starship; then
+      if dotfiles_has_terminal_ui && dotfiles_has_command starship; then
         source "$DOTFILES/zsh/themes/starship.zsh"
       fi
       ;;

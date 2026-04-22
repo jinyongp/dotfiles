@@ -1,14 +1,18 @@
+local util = require("core.util")
 local opt = vim.opt
-local state_dir = vim.fn.stdpath("state")
+local state_dir = util.writable_stdpath("state", "dotfiles-nvim-state")
 local state_paths = {
   backup = state_dir .. "/backup",
+  shada = state_dir .. "/shada/main.shada",
   sessions = state_dir .. "/sessions",
   swap = state_dir .. "/swap",
   undo = state_dir .. "/undo",
 }
 
 for _, path in pairs(state_paths) do
-  vim.fn.mkdir(path, "p")
+  if path ~= state_paths.shada then
+    util.ensure_dir(path)
+  end
 end
 
 opt.autoread = true
@@ -41,6 +45,7 @@ opt.number = true
 opt.pumheight = 12
 opt.relativenumber = true
 opt.scrolloff = 4
+opt.shadafile = state_paths.shada
 opt.sessionoptions = {
   "buffers",
   "curdir",

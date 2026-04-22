@@ -19,6 +19,7 @@ _dotfiles_zsh_root="$DOTFILES/zsh"
 source "$_dotfiles_zsh_root/lib/helpers.zsh"
 dotfiles_load_install_env
 dotfiles_detect_platform
+dotfiles_configure_state_home
 dotfiles_configure_oh_my_zsh
 
 if [[ -z "${LANG:-}" ]]; then
@@ -38,8 +39,13 @@ dotfiles_configure_theme
 source "$_dotfiles_zsh_root/env.zsh"
 source "$_dotfiles_zsh_root/plugin.zsh"
 
-if [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" && -d "${ZSH:-$HOME/.oh-my-zsh}" ]]; then
+if dotfiles_has_terminal_ui && [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" && -d "${ZSH:-$HOME/.oh-my-zsh}" ]]; then
   source "$ZSH/oh-my-zsh.sh"
+fi
+
+if (( ! $+functions[compdef] )); then
+  autoload -Uz compinit
+  compinit
 fi
 
 dotfiles_source_custom_plugins

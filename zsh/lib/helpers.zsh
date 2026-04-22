@@ -1,3 +1,5 @@
+source "$DOTFILES/scripts/lib/runtime-shared.zsh"
+
 dotfiles_has_command() {
   (( $+commands[$1] ))
 }
@@ -25,6 +27,23 @@ dotfiles_ensure_writable_dir() {
   [[ -d "$dir_path" && -w "$dir_path" ]]
 }
 
+dotfiles_resolve_writable_dir() {
+  local preferred_dir="$1"
+  local fallback_dir="${2:-}"
+
+  if [[ -n "$preferred_dir" ]] && dotfiles_ensure_writable_dir "$preferred_dir"; then
+    print -r -- "$preferred_dir"
+    return 0
+  fi
+
+  if [[ -n "$fallback_dir" ]] && dotfiles_ensure_writable_dir "$fallback_dir"; then
+    print -r -- "$fallback_dir"
+    return 0
+  fi
+
+  return 1
+}
+
 dotfiles_should_disable_background_updates() {
   [[ -n "${DISABLE_BACKGROUND_UPDATES:-}" ]] && return 0
   [[ -n "${AGENT_SHELL:-}" ]] && return 0
@@ -33,52 +52,43 @@ dotfiles_should_disable_background_updates() {
   [[ -n "${CODEX_CI:-}" || -n "${CODEX_SANDBOX:-}" || -n "${CODEX_THREAD_ID:-}" ]]
 }
 
+dotfiles_has_terminal_ui() {
+  [[ -t 1 ]] || return 1
+  [[ "${TERM:-}" != "dumb" ]]
+}
+
 dotfiles_configure_cache_home() {
   local preferred_cache_home fallback_cache_home
+  local resolved_cache_home=""
 
   preferred_cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
   fallback_cache_home="${${TMPDIR:-/tmp}%/}/dotfiles-cache-${UID}"
 
-  if dotfiles_ensure_writable_dir "$preferred_cache_home"; then
-    export XDG_CACHE_HOME="$preferred_cache_home"
-    return 0
-  fi
-
-  if dotfiles_ensure_writable_dir "$fallback_cache_home"; then
-    export XDG_CACHE_HOME="$fallback_cache_home"
+  if resolved_cache_home="$(dotfiles_resolve_writable_dir "$preferred_cache_home" "$fallback_cache_home" 2>/dev/null)"; then
+    export XDG_CACHE_HOME="$resolved_cache_home"
     return 0
   fi
 
   export XDG_CACHE_HOME="$preferred_cache_home"
 }
 
+dotfiles_configure_state_home() {
+  local preferred_state_home fallback_state_home
+  local resolved_state_home=""
+
+  preferred_state_home="${XDG_STATE_HOME:-$HOME/.local/state}"
+  fallback_state_home="${${TMPDIR:-/tmp}%/}/dotfiles-state-${UID}"
+
+  if resolved_state_home="$(dotfiles_resolve_writable_dir "$preferred_state_home" "$fallback_state_home" 2>/dev/null)"; then
+    export XDG_STATE_HOME="$resolved_state_home"
+    return 0
+  fi
+
+  export XDG_STATE_HOME="$preferred_state_home"
+}
+
 dotfiles_brew_bin() {
-  if dotfiles_has_command brew; then
-    command -v brew
-    return 0
-  fi
-
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    echo /opt/homebrew/bin/brew
-    return 0
-  fi
-
-  if [[ -x /usr/local/bin/brew ]]; then
-    echo /usr/local/bin/brew
-    return 0
-  fi
-
-  if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-    echo /home/linuxbrew/.linuxbrew/bin/brew
-    return 0
-  fi
-
-  if [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
-    echo "$HOME/.linuxbrew/bin/brew"
-    return 0
-  fi
-
-  return 1
+  dotfiles::brew_bin_path
 }
 
 dotfiles_brew_prefix() {
@@ -97,6 +107,10 @@ dotfiles_apply_brew_shellenv() {
 }
 
 dotfiles_load_install_env() {
+  export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
+  export DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$DOTFILES_CONFIG_DIR/install.env}"
+  export DOTFILES_LOCAL_ZSH="${DOTFILES_LOCAL_ZSH:-$DOTFILES_CONFIG_DIR/local.zsh}"
+
   if [[ -f "$DOTFILES_INSTALL_ENV" ]]; then
     source "$DOTFILES_INSTALL_ENV"
   fi
@@ -105,31 +119,16 @@ dotfiles_load_install_env() {
     export DOTFILES="$DOTFILES_ROOT"
   fi
 
-  export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
-  export DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
-  export DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
   export DOTFILES_THEME="${DOTFILES_THEME:-starship}"
 }
 
 dotfiles_detect_platform() {
-  if [[ "$OSTYPE" == darwin* ]]; then
-    export DOTFILES_PLATFORM="macos"
-    return 0
-  fi
-
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2>/dev/null; then
-    export DOTFILES_PLATFORM="wsl"
-    return 0
-  fi
-
-  if [[ "$OSTYPE" == linux* ]]; then
-    export DOTFILES_PLATFORM="linux"
-    return 0
-  fi
+  export DOTFILES_PLATFORM="$(dotfiles::detect_platform_id || true)"
+  [[ -n "$DOTFILES_PLATFORM" ]]
 }
 
 dotfiles_configure_oh_my_zsh() {
-  local resolved_zsh_cache_dir resolved_zsh_compdump_dir
+  local resolved_zsh_cache_dir resolved_zsh_compdump_dir resolved_starship_cache_dir
 
   dotfiles_configure_cache_home
 
@@ -154,7 +153,14 @@ dotfiles_configure_oh_my_zsh() {
   export ZSH_CACHE_DIR="$resolved_zsh_cache_dir"
 
   dotfiles_ensure_writable_dir "$ZSH_CACHE_DIR/completions" || true
-  dotfiles_ensure_writable_dir "$XDG_CACHE_HOME/starship" || true
+  resolved_starship_cache_dir="$(
+    dotfiles_resolve_writable_dir \
+      "${STARSHIP_CACHE:-$XDG_CACHE_HOME/starship}" \
+      "${${TMPDIR:-/tmp}%/}/dotfiles-cache-${UID}/starship" 2>/dev/null || true
+  )"
+  if [[ -n "$resolved_starship_cache_dir" ]]; then
+    export STARSHIP_CACHE="$resolved_starship_cache_dir"
+  fi
 
   if dotfiles_should_disable_background_updates; then
     export DISABLE_AUTO_UPDATE=true

@@ -57,6 +57,7 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=245"
 custom_plugins_dir="$DOTFILES/zsh/plugins"
 dotfiles_source_custom_plugins() {
   local plugin_dir plugin_file
+  local -a plugin_files
 
   for plugin_dir in $custom_plugins_dir/*(/N); do
     plugin_files=($plugin_dir/*.plugin.zsh(N))

@@ -53,32 +53,7 @@ typeset -gi DOTFILES_APT_READY=0
 typeset -gi DOTFILES_BREW_READY=0
 
 package_manager::brew_bin() {
-  if command -v brew >/dev/null 2>&1; then
-    command -v brew
-    return 0
-  fi
-
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    echo /opt/homebrew/bin/brew
-    return 0
-  fi
-
-  if [[ -x /usr/local/bin/brew ]]; then
-    echo /usr/local/bin/brew
-    return 0
-  fi
-
-  if [[ -x /home/linuxbrew/.linuxbrew/bin/brew ]]; then
-    echo /home/linuxbrew/.linuxbrew/bin/brew
-    return 0
-  fi
-
-  if [[ -x "$HOME/.linuxbrew/bin/brew" ]]; then
-    echo "$HOME/.linuxbrew/bin/brew"
-    return 0
-  fi
-
-  return 1
+  dotfiles::brew_bin_path
 }
 
 package_manager::activate_brew() {

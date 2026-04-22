@@ -75,6 +75,45 @@ function M.is_dir(path)
   return stat ~= nil and stat.type == "directory"
 end
 
+function M.ensure_dir(path)
+  if path == nil or path == "" then
+    return false
+  end
+
+  if not M.is_dir(path) then
+    local ok = pcall(vim.fn.mkdir, path, "p")
+    if not ok then
+      return false
+    end
+  end
+
+  return M.is_dir(path)
+end
+
+function M.is_writable_dir(path)
+  return M.ensure_dir(path) and vim.fn.filewritable(path) == 2
+end
+
+function M.writable_path(preferred, fallback)
+  if M.is_writable_dir(preferred) then
+    return preferred
+  end
+
+  if fallback ~= nil and fallback ~= "" and M.is_writable_dir(fallback) then
+    return fallback
+  end
+
+  return preferred
+end
+
+function M.writable_stdpath(kind, fallback_leaf)
+  local preferred = vim.fn.stdpath(kind)
+  local tmp_root = (uv.os_tmpdir and uv.os_tmpdir()) or vim.env.TMPDIR or "/tmp"
+  local fallback = M.join(tmp_root, fallback_leaf or ("dotfiles-nvim-" .. kind))
+
+  return M.writable_path(preferred, fallback)
+end
+
 function M.project_root(startpath)
   local markers = {
     "package.json",
