@@ -1,0 +1,10 @@
+[[ render 1 ]]
+◆  Enter your Git email.
+│  Used for your Git commits.
+│  Default: jinyong@example.com
+╰  > 
+◇  Enter your Git email.
+│  jinyong@example.com
+│
+[[ value ]]
+jinyong@example.com

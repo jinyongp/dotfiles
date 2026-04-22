@@ -1,0 +1,55 @@
+[[ render 1 ]]
+◆  Select base CLI packages.
+│  Required for cloning and repo workflows.
+│
+│  › ◻ git
+│    ◻ fnm
+│    ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 2 ]]
+◆  Select base CLI packages.
+│  Required for cloning and repo workflows.
+│
+│  › ◼ git
+│    ◻ fnm
+│    ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 3 ]]
+◆  Select base CLI packages.
+│  Fast Node.js version manager.
+│
+│    ◼ git
+│  › ◻ fnm
+│    ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 4 ]]
+◆  Select base CLI packages.
+│  Modern replacement for ls.
+│
+│    ◼ git
+│    ◻ fnm
+│  › ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 5 ]]
+◆  Select base CLI packages.
+│  Modern replacement for ls.
+│
+│    ◼ git
+│    ◻ fnm
+│  › ◼ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+◇  Select base CLI packages.
+│  git, eza
+│
+[[ value ]]
+git eza

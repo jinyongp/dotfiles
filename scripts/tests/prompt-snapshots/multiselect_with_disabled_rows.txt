@@ -1,0 +1,41 @@
+[[ render 1 ]]
+◆  Select base CLI packages.
+│  Smarter cd with frecency.
+│
+│    ◻ git
+│    ◻ corepack [installed]
+│  › ◼ zoxide
+│    ◻ starship [current]
+│    ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 2 ]]
+◆  Select base CLI packages.
+│  Modern replacement for ls.
+│
+│    ◻ git
+│    ◻ corepack [installed]
+│    ◼ zoxide
+│    ◻ starship [current]
+│  › ◻ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 3 ]]
+◆  Select base CLI packages.
+│  Modern replacement for ls.
+│
+│    ◻ git
+│    ◻ corepack [installed]
+│    ◼ zoxide
+│    ◻ starship [current]
+│  › ◼ eza
+│
+╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+◇  Select base CLI packages.
+│  zoxide, eza
+│
+[[ value ]]
+zoxide eza
