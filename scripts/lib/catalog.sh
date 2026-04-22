@@ -3,9 +3,9 @@ catalog::module_records() {
 
   cat <<'EOF'
 packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, tldr, gnupg, diff-so-fancy, and fnm.	0	0
-dotfiles	Dotfiles	Create symlinks for ~/.zshrc, ~/.vimrc, and ~/.gitconfig, and prepare local Git config files.	1	0
+dotfiles	Dotfiles	Create symlinks for ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, and prepare local Git config files.	1	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	1	0
-vim	Vim	Install Vim and bootstrap the existing Vundle-based setup.	0	0
+neovim	Neovim	Install Neovim with search tooling and optional TypeScript editor extras.	0	0
 EOF
 
   if [[ "$platform" == "macos" ]]; then
@@ -22,7 +22,7 @@ catalog::module_label() {
     packages) echo "Base CLI" ;;
     dotfiles) echo "Dotfiles" ;;
     oh_my_zsh) echo "oh-my-zsh" ;;
-    vim) echo "Vim" ;;
+    neovim) echo "Neovim" ;;
     fonts) echo "Fonts" ;;
     desktop_apps) echo "Desktop Apps" ;;
     macos_defaults) echo "macOS Defaults" ;;

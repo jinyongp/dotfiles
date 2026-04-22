@@ -19,14 +19,14 @@ source "$DOTFILES_ROOT/scripts/lib/packages.zsh"
 source "$DOTFILES_ROOT/scripts/modules/packages.zsh"
 source "$DOTFILES_ROOT/scripts/modules/dotfiles.zsh"
 source "$DOTFILES_ROOT/scripts/modules/shell.zsh"
-source "$DOTFILES_ROOT/scripts/modules/vim.zsh"
+source "$DOTFILES_ROOT/scripts/modules/neovim.zsh"
 source "$DOTFILES_ROOT/scripts/modules/macos.zsh"
 
 typeset -ga DOTFILES_RUN_ORDER=(
   packages
   dotfiles
   oh_my_zsh
-  vim
+  neovim
   fonts
   desktop_apps
   macos_defaults
@@ -88,17 +88,13 @@ main() {
   dotfiles::record_bootstrap_results
   dotfiles::write_install_env
 
-  for module in "${DOTFILES_RUN_ORDER[@]}"; do
-    if [[ "$module" == "vim" ]] && runner::module_selected "vim"; then
-      runner::install_theme
-    fi
-
-    runner::run_module "$module"
-  done
-
-  if ! runner::module_selected "vim"; then
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-1}" == "1" ]]; then
     runner::install_theme
   fi
+
+  for module in "${DOTFILES_RUN_ORDER[@]}"; do
+    runner::run_module "$module"
+  done
 
   dotfiles::print_install_report
 }

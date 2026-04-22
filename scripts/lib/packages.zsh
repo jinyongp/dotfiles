@@ -10,6 +10,8 @@ typeset -gA DOTFILES_BREW_FORMULAE=(
   [git]="git"
   [gnupg]="gnupg"
   [jq]="jq"
+  [neovim]="neovim"
+  [ripgrep]="ripgrep"
   [starship]="starship"
   [tldr]="tlrc"
   [unzip]="unzip"
@@ -26,6 +28,8 @@ typeset -gA DOTFILES_APT_PACKAGES=(
   [git]="git"
   [gnupg]="gnupg"
   [jq]="jq"
+  [neovim]="neovim"
+  [ripgrep]="ripgrep"
   [starship]="starship"
   [tldr]="tealdeer"
   [unzip]="unzip"
@@ -136,6 +140,50 @@ package_manager::prepend_path() {
     *":$path_entry:"*) ;;
     *) export PATH="$path_entry:$PATH" ;;
   esac
+}
+
+package_manager::npm_global_prefix() {
+  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
+    print -r -- "$XDG_DATA_HOME/npm-global"
+    return 0
+  fi
+
+  case "$DOTFILES_PLATFORM" in
+    macos) print -r -- "$HOME/Library/Application Support/npm-global" ;;
+    *) print -r -- "$HOME/.local/share/npm-global" ;;
+  esac
+}
+
+package_manager::npm_global_bin_dir() {
+  print -r -- "$(package_manager::npm_global_prefix)/bin"
+}
+
+package_manager::npm_global_package_installed() {
+  local package_name="$1"
+  local prefix
+
+  prefix="$(package_manager::npm_global_prefix)"
+  NPM_CONFIG_PREFIX="$prefix" npm list --global --depth=0 "$package_name" >/dev/null 2>&1
+}
+
+package_manager::install_npm_global() {
+  local package_name="$1"
+  local install_spec="${2:-$1}"
+  local prefix
+
+  prefix="$(package_manager::npm_global_prefix)"
+  package_manager::prepend_path "$(package_manager::npm_global_bin_dir)"
+  dotfiles::ensure_dir "$prefix"
+
+  if package_manager::npm_global_package_installed "$package_name"; then
+    dotfiles::record_reused "$package_name via npm"
+    dotfiles::log_info "Already installed: $package_name"
+    return 0
+  fi
+
+  dotfiles::record_installed "$package_name via npm"
+  dotfiles::log_info "Installing $package_name with npm..."
+  NPM_CONFIG_PREFIX="$prefix" npm install --global "$install_spec"
 }
 
 package_manager::recipe_key() {

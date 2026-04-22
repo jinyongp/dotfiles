@@ -1,0 +1,18 @@
+local map = vim.keymap.set
+local session = require("core.session")
+
+map("n", "<Esc>", "<cmd>nohlsearch<CR>", { desc = "Clear search highlight" })
+map("n", "<leader>w", "<cmd>write<CR>", { desc = "Write buffer" })
+map("n", "<leader>qq", "<cmd>confirm qall<CR>", { desc = "Quit all" })
+map("n", "<leader>bd", "<cmd>bdelete<CR>", { desc = "Delete buffer" })
+map("n", "<leader>qs", session.save, { desc = "Save session" })
+map("n", "<leader>ql", session.load, { desc = "Load session" })
+map("n", "<S-h>", "<cmd>bprevious<CR>", { desc = "Previous buffer" })
+map("n", "<S-l>", "<cmd>bnext<CR>", { desc = "Next buffer" })
+map("n", "<C-h>", "<C-w>h", { desc = "Focus left window" })
+map("n", "<C-j>", "<C-w>j", { desc = "Focus lower window" })
+map("n", "<C-k>", "<C-w>k", { desc = "Focus upper window" })
+map("n", "<C-l>", "<C-w>l", { desc = "Focus right window" })
+map("n", "[d", vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
+map("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
+map("n", "<leader>cd", vim.diagnostic.open_float, { desc = "Line diagnostics" })

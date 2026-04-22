@@ -124,6 +124,10 @@ dotfiles::repo_managed_zshrc_path() {
 }
 
 dotfiles::should_auto_launch_zsh() {
+  if [[ "${DOTFILES_ALLOW_AUTO_LAUNCH_ZSH:-1}" != "1" ]]; then
+    return 1
+  fi
+
   if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
     return 0
   fi

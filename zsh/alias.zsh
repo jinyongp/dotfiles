@@ -15,6 +15,11 @@ if dotfiles_has_command npm; then
   alias npv="npm --no-git-tag-version version"
 fi
 
+if dotfiles_has_command nvim; then
+  alias vim="nvim"
+  alias vi="nvim"
+fi
+
 if [[ "$DOTFILES_PLATFORM" == "macos" && -d /Applications/Xcode.app ]]; then
   alias xcode="open -a Xcode"
 fi

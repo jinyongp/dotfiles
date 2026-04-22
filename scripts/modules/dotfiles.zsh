@@ -3,6 +3,7 @@
 typeset -gA DOTFILES_LINK_TARGETS=(
   ["$DOTFILES_ROOT/zsh/.zshrc"]="$HOME/.zshrc"
   ["$DOTFILES_ROOT/vim/.vimrc"]="$HOME/.vimrc"
+  ["$DOTFILES_ROOT/nvim"]="$HOME/.config/nvim"
   ["$DOTFILES_ROOT/git/.gitconfig"]="$HOME/.gitconfig"
 )
 
@@ -11,14 +12,61 @@ module_dotfiles_supported() {
 }
 
 module_dotfiles_summary() {
-  echo "Symlink ~/.zshrc, ~/.vimrc, and ~/.gitconfig, then prepare local Git config"
+  echo "Symlink ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config"
 }
 
 module_dotfiles_details() {
-  echo "Creates symlinks for ~/.zshrc, ~/.vimrc, and ~/.gitconfig."
+  echo "Creates symlinks for ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig."
   echo "If those files already exist, moves them into $DOTFILES_ROOT/.backup/<timestamp> first."
-  echo "This changes which config files your shell, Vim, and Git load by default."
+  echo "This changes which config files your shell, Vim, Neovim, and Git load by default."
   echo "Also writes machine-local Git path settings and applies any Git identity values passed from the bash installer."
+}
+
+dotfiles::link_target() {
+  local source_path="$1"
+  local target_path="$2"
+  local backup_dir="$3"
+
+  dotfiles::ensure_dir "${target_path:h}"
+
+  if [[ -L "$target_path" && "$(readlink "$target_path")" == "$source_path" ]]; then
+    dotfiles::record_reused "Managed link already in place: $(dotfiles::display_path "$target_path")"
+    dotfiles::log_info "Already linked: $target_path"
+    return 0
+  fi
+
+  if [[ -e "$target_path" || -L "$target_path" ]]; then
+    dotfiles::ensure_dir "$backup_dir"
+    mv "$target_path" "$backup_dir/${target_path:t}"
+    dotfiles::record_file_backed_up "$target_path" "$backup_dir/${target_path:t}"
+    dotfiles::log_info "Backed up $target_path to $backup_dir"
+  fi
+
+  ln -s "$source_path" "$target_path"
+  dotfiles::record_file_linked "$target_path" "$source_path"
+  dotfiles::log_success "Linked $target_path"
+}
+
+dotfiles::link_repo_managed_targets() {
+  local source_path target_path backup_dir timestamp
+
+  timestamp="$(date +%Y-%m-%d__%H-%M-%S)"
+  backup_dir="$DOTFILES_ROOT/.backup/$timestamp"
+
+  for source_path target_path in "${(@kv)DOTFILES_LINK_TARGETS}"; do
+    dotfiles::link_target "$source_path" "$target_path" "$backup_dir"
+  done
+}
+
+dotfiles::link_neovim_config() {
+  local source_path="$DOTFILES_ROOT/nvim"
+  local target_path="$HOME/.config/nvim"
+  local backup_dir timestamp
+
+  timestamp="$(date +%Y-%m-%d__%H-%M-%S)"
+  backup_dir="$DOTFILES_ROOT/.backup/$timestamp"
+
+  dotfiles::link_target "$source_path" "$target_path" "$backup_dir"
 }
 
 dotfiles::git_local_config_tmpfile() {
@@ -163,34 +211,10 @@ dotfiles::apply_personal_git_config_from_plan() {
 }
 
 module_dotfiles_install() {
-  local source_path target_path backup_dir timestamp
   local personal_file="$DOTFILES_CONFIG_DIR/git/personal.local.ini"
 
   dotfiles::log_step "Installing dotfile symlinks"
-
-  timestamp="$(date +%Y-%m-%d__%H-%M-%S)"
-  backup_dir="$DOTFILES_ROOT/.backup/$timestamp"
-
-  for source_path target_path in "${(@kv)DOTFILES_LINK_TARGETS}"; do
-    dotfiles::ensure_dir "${target_path:h}"
-
-    if [[ -L "$target_path" && "$(readlink "$target_path")" == "$source_path" ]]; then
-      dotfiles::record_reused "Managed link already in place: $(dotfiles::display_path "$target_path")"
-      dotfiles::log_info "Already linked: $target_path"
-      continue
-    fi
-
-    if [[ -e "$target_path" || -L "$target_path" ]]; then
-      dotfiles::ensure_dir "$backup_dir"
-      mv "$target_path" "$backup_dir/${target_path:t}"
-      dotfiles::record_file_backed_up "$target_path" "$backup_dir/${target_path:t}"
-      dotfiles::log_info "Backed up $target_path to $backup_dir"
-    fi
-
-    ln -s "$source_path" "$target_path"
-    dotfiles::record_file_linked "$target_path" "$source_path"
-    dotfiles::log_success "Linked $target_path"
-  done
+  dotfiles::link_repo_managed_targets
 
   dotfiles::ensure_local_git_config_files
   dotfiles::apply_personal_git_config_from_plan "$personal_file"
