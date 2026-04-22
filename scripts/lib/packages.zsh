@@ -5,12 +5,14 @@ typeset -gA DOTFILES_BREW_FORMULAE=(
   [diff-so-fancy]="diff-so-fancy"
   [eza]="eza"
   [fd]="fd"
+  [fnm]="fnm"
   [gh]="gh"
   [git]="git"
   [gnupg]="gnupg"
   [jq]="jq"
   [starship]="starship"
   [tldr]="tlrc"
+  [unzip]="unzip"
   [vim]="vim"
   [zsh]="zsh"
 )
@@ -26,6 +28,7 @@ typeset -gA DOTFILES_APT_PACKAGES=(
   [jq]="jq"
   [starship]="starship"
   [tldr]="tealdeer"
+  [unzip]="unzip"
   [vim]="vim"
   [zsh]="zsh"
 )
@@ -124,6 +127,38 @@ package_manager::ensure_apt() {
   dotfiles::record_completed_work "Refreshed apt package index"
 }
 
+package_manager::prepend_path() {
+  local path_entry="$1"
+
+  [[ -d "$path_entry" ]] || return 0
+
+  case ":$PATH:" in
+    *":$path_entry:"*) ;;
+    *) export PATH="$path_entry:$PATH" ;;
+  esac
+}
+
+package_manager::recipe_key() {
+  print -r -- "${1//-/_}"
+}
+
+package_manager::recipe_install_function() {
+  print -r -- "package_recipe::$(package_manager::recipe_key "$1")_install"
+}
+
+package_manager::has_recipe_install() {
+  typeset -f "$(package_manager::recipe_install_function "$1")" >/dev/null 2>&1
+}
+
+package_manager::install_via_recipe() {
+  local logical_name="$1"
+  local required="${2:-0}"
+  local install_function
+
+  install_function="$(package_manager::recipe_install_function "$logical_name")"
+  "$install_function" "$logical_name" "$required"
+}
+
 package_manager::logical_to_native() {
   local logical_name="$1"
 
@@ -151,7 +186,7 @@ package_manager::ensure_command() {
   package_manager::install_logical "$logical_name" "$required"
 }
 
-package_manager::install_logical() {
+package_manager::install_native_logical() {
   local logical_name="$1"
   local required="${2:-0}"
   local native_name=""
@@ -207,6 +242,18 @@ package_manager::install_logical() {
   esac
 }
 
+package_manager::install_logical() {
+  local logical_name="$1"
+  local required="${2:-0}"
+
+  if package_manager::has_recipe_install "$logical_name"; then
+    package_manager::install_via_recipe "$logical_name" "$required"
+    return $?
+  fi
+
+  package_manager::install_native_logical "$logical_name" "$required"
+}
+
 package_manager::install_brew_cask() {
   local cask_key="$1"
   local cask_name="${DOTFILES_BREW_CASKS[$cask_key]:-}"
@@ -232,3 +279,16 @@ package_manager::install_brew_cask() {
   dotfiles::log_info "Installing $cask_name..."
   brew install --cask "$cask_name"
 }
+
+package_manager::load_recipes() {
+  local recipe_dir="$DOTFILES_ROOT/scripts/lib/recipes"
+  local recipe_file
+
+  [[ -d "$recipe_dir" ]] || return 0
+
+  for recipe_file in "$recipe_dir"/*.zsh(N); do
+    source "$recipe_file"
+  done
+}
+
+package_manager::load_recipes

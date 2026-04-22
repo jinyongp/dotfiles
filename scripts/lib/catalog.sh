@@ -2,7 +2,7 @@ catalog::module_records() {
   local platform="$1"
 
   cat <<'EOF'
-packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, tldr, gnupg, and diff-so-fancy.	0	0
+packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, tldr, gnupg, diff-so-fancy, and fnm.	0	0
 dotfiles	Dotfiles	Create symlinks for ~/.zshrc, ~/.vimrc, and ~/.gitconfig, and prepare local Git config files.	1	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	1	0
 vim	Vim	Install Vim and bootstrap the existing Vundle-based setup.	0	0
@@ -63,6 +63,7 @@ eza
 tldr
 gnupg
 diff-so-fancy
+fnm
 EOF
 }
 
@@ -73,6 +74,7 @@ catalog::package_native_name() {
   case "$package_manager:$package_id" in
     brew:jq) echo "jq" ;;
     brew:gh) echo "gh" ;;
+    brew:fnm) echo "fnm" ;;
     brew:fd) echo "fd" ;;
     brew:eza) echo "eza" ;;
     brew:tldr) echo "tlrc" ;;
@@ -125,6 +127,14 @@ catalog::package_records() {
         label="diff-so-fancy"
         description="Nicer Git diff presentation."
         ;;
+      fnm)
+        label="fnm"
+        if [[ "$package_manager" == "brew" ]]; then
+          description="Fast Node.js version manager via Homebrew."
+        else
+          description="Fast Node.js version manager via the official install script."
+        fi
+        ;;
     esac
 
     printf '%s\t%s\t%s\t0\t0\n' "$package_id" "$label" "$description"
@@ -135,6 +145,7 @@ catalog::package_label() {
   case "$1" in
     jq) echo "jq" ;;
     gh) echo "GitHub CLI" ;;
+    fnm) echo "fnm" ;;
     fd) echo "fd" ;;
     eza) echo "eza" ;;
     tldr) echo "tldr" ;;
