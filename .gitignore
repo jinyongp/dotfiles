@@ -3,4 +3,5 @@ __*
 .backup
 .DS_Store
 
+*.log
 *.zwc
