@@ -17,6 +17,41 @@ dotfiles_prepend_path() {
   esac
 }
 
+dotfiles_ensure_writable_dir() {
+  local dir_path="$1"
+
+  [[ -n "$dir_path" ]] || return 1
+  mkdir -p "$dir_path" 2>/dev/null || return 1
+  [[ -d "$dir_path" && -w "$dir_path" ]]
+}
+
+dotfiles_should_disable_background_updates() {
+  [[ -n "${DISABLE_BACKGROUND_UPDATES:-}" ]] && return 0
+  [[ -n "${AGENT_SHELL:-}" ]] && return 0
+  [[ -n "${AUTOMATION_SHELL:-}" ]] && return 0
+  [[ -n "${CI:-}" ]] && return 0
+  [[ -n "${CODEX_CI:-}" || -n "${CODEX_SANDBOX:-}" || -n "${CODEX_THREAD_ID:-}" ]]
+}
+
+dotfiles_configure_cache_home() {
+  local preferred_cache_home fallback_cache_home
+
+  preferred_cache_home="${XDG_CACHE_HOME:-$HOME/.cache}"
+  fallback_cache_home="${${TMPDIR:-/tmp}%/}/dotfiles-cache-${UID}"
+
+  if dotfiles_ensure_writable_dir "$preferred_cache_home"; then
+    export XDG_CACHE_HOME="$preferred_cache_home"
+    return 0
+  fi
+
+  if dotfiles_ensure_writable_dir "$fallback_cache_home"; then
+    export XDG_CACHE_HOME="$fallback_cache_home"
+    return 0
+  fi
+
+  export XDG_CACHE_HOME="$preferred_cache_home"
+}
+
 dotfiles_brew_bin() {
   if dotfiles_has_command brew; then
     command -v brew
@@ -94,10 +129,39 @@ dotfiles_detect_platform() {
 }
 
 dotfiles_configure_oh_my_zsh() {
+  local resolved_zsh_cache_dir resolved_zsh_compdump_dir
+
+  dotfiles_configure_cache_home
+
   export ZSH="$HOME/.oh-my-zsh"
-  export ZSH_CACHE_DIR="${ZSH_CACHE_DIR:-$ZSH/cache}"
-  export ZSH_COMPDUMP="${ZSH_COMPDUMP:-$ZSH_CACHE_DIR/.zcompdump}"
   export ZSH_CUSTOM="${ZSH_CUSTOM:-$ZSH/custom}"
+
+  resolved_zsh_cache_dir="${ZSH_CACHE_DIR:-}"
+  if [[ -z "$resolved_zsh_cache_dir" ]] || ! dotfiles_ensure_writable_dir "$resolved_zsh_cache_dir"; then
+    resolved_zsh_cache_dir="$XDG_CACHE_HOME/oh-my-zsh"
+    dotfiles_ensure_writable_dir "$resolved_zsh_cache_dir" || true
+  fi
+
+  resolved_zsh_compdump_dir="${ZSH_COMPDUMP:-}"
+  if [[ -n "$resolved_zsh_compdump_dir" ]]; then
+    resolved_zsh_compdump_dir="${resolved_zsh_compdump_dir:h}"
+  fi
+
+  if [[ -z "${ZSH_COMPDUMP:-}" ]] || [[ -z "$resolved_zsh_compdump_dir" ]] || ! dotfiles_ensure_writable_dir "$resolved_zsh_compdump_dir"; then
+    export ZSH_COMPDUMP="$resolved_zsh_cache_dir/.zcompdump"
+  fi
+
+  export ZSH_CACHE_DIR="$resolved_zsh_cache_dir"
+
+  dotfiles_ensure_writable_dir "$ZSH_CACHE_DIR/completions" || true
+  dotfiles_ensure_writable_dir "$XDG_CACHE_HOME/starship" || true
+
+  if dotfiles_should_disable_background_updates; then
+    export DISABLE_AUTO_UPDATE=true
+    zstyle ':omz:update' mode disabled
+    zstyle ':omz:update' verbose silent
+    export ZSH_CUSTOM_AUTOUPDATE_QUIET=true
+  fi
 
   if [[ -z "${DOTFILES_ENABLE_OH_MY_ZSH:-}" ]]; then
     if [[ -d "$ZSH" ]]; then
