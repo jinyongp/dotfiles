@@ -1,6 +1,7 @@
 # Shared dotfiles shell entrypoint.
 
 typeset -g _dotfiles_rc_path="${${(%):-%N}:A}"
+typeset -g _dotfiles_zsh_root=""
 export DOTFILES="${DOTFILES:-${DOTFILES_ROOT:-${_dotfiles_rc_path:h:h}}}"
 export PATH="$DOTFILES/cmd:$PATH"
 
@@ -13,9 +14,9 @@ export SAVEHIST=$HISTSIZE
 export HIST_STAMPS=yyyy-mm-dd
 export PROMPT_EOL_MARK=
 
-zsh_root="$DOTFILES/zsh"
+_dotfiles_zsh_root="$DOTFILES/zsh"
 
-source "$zsh_root/lib/helpers.zsh"
+source "$_dotfiles_zsh_root/lib/helpers.zsh"
 dotfiles_load_install_env
 dotfiles_detect_platform
 dotfiles_configure_oh_my_zsh
@@ -32,10 +33,10 @@ if [[ -z "${LC_ALL:-}" ]]; then
   export LC_ALL="$LANG"
 fi
 
-source "$zsh_root/theme.zsh"
+source "$_dotfiles_zsh_root/theme.zsh"
 dotfiles_configure_theme
-source "$zsh_root/env.zsh"
-source "$zsh_root/plugin.zsh"
+source "$_dotfiles_zsh_root/env.zsh"
+source "$_dotfiles_zsh_root/plugin.zsh"
 
 if [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" && -d "${ZSH:-$HOME/.oh-my-zsh}" ]]; then
   source "$ZSH/oh-my-zsh.sh"
@@ -43,9 +44,9 @@ fi
 
 dotfiles_source_custom_plugins
 
-source "$zsh_root/alias.zsh"
+source "$_dotfiles_zsh_root/alias.zsh"
 dotfiles_init_theme
 
 [[ -f "$DOTFILES_LOCAL_ZSH" ]] && source "$DOTFILES_LOCAL_ZSH"
 
-unset zsh_root _dotfiles_rc_path
+unset _dotfiles_zsh_root _dotfiles_rc_path
