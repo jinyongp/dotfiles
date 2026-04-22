@@ -1,5 +1,9 @@
 #!/bin/zsh
 
+if ! typeset -f dotfiles_style >/dev/null 2>&1 && [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/style.sh" ]]; then
+  source "$DOTFILES_ROOT/scripts/lib/style.sh"
+fi
+
 source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
 
 typeset -g DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
@@ -149,22 +153,34 @@ dotfiles::should_auto_launch_zsh() {
   dotfiles::plan_requires_shell_restart
 }
 
+dotfiles::style_path() {
+  dotfiles_path "$1"
+}
+
+dotfiles::style_command() {
+  dotfiles_code "$1"
+}
+
+dotfiles::style_link() {
+  dotfiles_link "$1" "${2:-$1}"
+}
+
 dotfiles::print_report_section() {
   local title="$1"
   shift || true
   local line
 
   echo
-  echo "$(b_green $title)"
+  echo "$(dotfiles_accent "$title")"
 
   if (( $# == 0 )); then
-    echo "  - None"
+    echo "  $(dotfiles_muted •) $(dotfiles_muted None)"
     return 0
   fi
 
   for line in "$@"; do
     [[ -n "$line" ]] || continue
-    echo "  - $line"
+    echo "  $(dotfiles_muted •) $line"
   done
 }
 
@@ -176,14 +192,14 @@ dotfiles::print_install_report() {
 
   completed_items=("${DOTFILES_RESULT_COMPLETED_WORK[@]}")
   for note in "${DOTFILES_RESULT_NOTES[@]}"; do
-    completed_items+=("Note: $note")
+    completed_items+=("$(dotfiles_warning Note:) $note")
   done
   for warning in "${DOTFILES_RESULT_WARNINGS[@]}"; do
-    completed_items+=("Warning: $warning")
+    completed_items+=("$(dotfiles_error Warning:) $warning")
   done
 
   echo
-  echo "$(green Post-install report)"
+  echo "$(dotfiles_style 'Post-install Report' bold underline cyan)"
 
   dotfiles::print_report_section "Installed items" "${DOTFILES_RESULT_INSTALLED_ITEMS[@]}"
   dotfiles::print_report_section "Reused existing items" "${DOTFILES_RESULT_REUSED_ITEMS[@]}"
@@ -195,9 +211,9 @@ dotfiles::print_install_report() {
 
   if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
     echo
-    echo "$(b_green Git personal config)"
-    echo "  - File: $personal_file_display"
-    echo "  - You can edit this file directly later."
+    echo "$(dotfiles_accent 'Git Personal Config')"
+    echo "  $(dotfiles_muted •) $(dotfiles_muted File:) $(dotfiles::style_path "$personal_file_display")"
+    echo "  $(dotfiles_muted •) $(dotfiles_muted You can edit this file directly later.)"
   fi
 
   if dotfiles::should_auto_launch_zsh; then
@@ -209,33 +225,33 @@ dotfiles::print_install_report() {
   fi
 
   echo
-  echo "$(b_green Next shell action)"
-  echo "  - $next_action_message"
+  echo "$(dotfiles_accent 'Next Shell Action')"
+  echo "  $(dotfiles_muted •) $next_action_message"
   if [[ -n "$next_action_detail" ]]; then
-    echo "  - $next_action_detail"
+    echo "  $(dotfiles_muted •) $(dotfiles::style_command "$next_action_detail")"
   fi
 }
 
 dotfiles::log_step() {
   echo
-  echo "$(green $1)"
+  echo "$(dotfiles_accent "$1")"
 }
 
 dotfiles::log_info() {
-  echo "$1"
+  echo "$(dotfiles_muted "$1")"
 }
 
 dotfiles::log_warn() {
   dotfiles::record_warning "$1"
-  echo "$(yellow $1)"
+  echo "$(dotfiles_warning "$1")"
 }
 
 dotfiles::log_success() {
-  echo "$(green $1)"
+  echo "$(dotfiles_success "$1")"
 }
 
 dotfiles::log_error() {
-  echo "$(red $1)" >&2
+  echo "$(dotfiles_error "$1")" >&2
 }
 
 dotfiles::run_as_root() {
@@ -258,7 +274,7 @@ dotfiles::download_script() {
   local destination="$2"
 
   dotfiles::log_info "Downloading:"
-  dotfiles::log_info "  $url"
+  dotfiles::log_info "  $(dotfiles::style_link "$url" "$url")"
 
   curl -fsSL "$url" -o "$destination"
 }

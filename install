@@ -6,6 +6,7 @@ DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="$DOTFILES_ROOT/scripts/run-install-plan.zsh"
 DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 
+source "$DOTFILES_ROOT/scripts/lib/style.sh"
 source "$DOTFILES_ROOT/scripts/lib/prompt.bash"
 source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
 source "$DOTFILES_ROOT/scripts/lib/git-config.sh"
@@ -50,15 +51,15 @@ REUSE_NOTES=()
 SKIP_NOTES=()
 
 color_green() {
-  printf '\033[0;32m%s\033[0m\n' "$1"
+  printf '%s\n' "$(dotfiles_success "$1")"
 }
 
 color_yellow() {
-  printf '\033[0;33m%s\033[0m\n' "$1"
+  printf '%s\n' "$(dotfiles_warning "$1")"
 }
 
 color_red() {
-  printf '\033[0;31m%s\033[0m\n' "$1" >&2
+  printf '%s\n' "$(dotfiles_error "$1")" >&2
 }
 
 log_step() {
@@ -120,6 +121,12 @@ should_auto_launch_zsh() {
   fi
 
   plan_requires_shell_restart
+}
+
+enable_interactive_style() {
+  if [[ -t 0 && -t 1 && -z "${DOTFILES_FORCE_COLOR:-}" ]]; then
+    export DOTFILES_FORCE_COLOR=1
+  fi
 }
 
 detect_platform() {
@@ -841,7 +848,7 @@ select_package_manager() {
     wsl)
       options[0]=$'apt\tapt\tUse Ubuntu/Debian packages through apt-get.\t1\t0'
       options[1]=$'brew\tHomebrew\tUse Homebrew on Linux for the main install flow.\t0\t0'
-      prompt::select selected_package_manager "Select a package manager." "Use ↑/↓ to choose, Enter to confirm." "${options[@]}"
+      prompt::select selected_package_manager "Select a package manager." "$(select_prompt_hint)" "${options[@]}"
       DOTFILES_PACKAGE_MANAGER="$selected_package_manager"
       ;;
     linux)
@@ -1040,14 +1047,22 @@ select_theme() {
 
   read_records_into_array theme_options catalog::theme_records
   annotate_theme_records theme_options
-  prompt::select DOTFILES_THEME "Select a shell theme." "Use ↑/↓ to choose, Enter to confirm." "${theme_options[@]}"
+  prompt::select DOTFILES_THEME "Select a shell theme." "$(select_prompt_hint)" "${theme_options[@]}"
+}
+
+select_prompt_hint() {
+  echo "Use ↑/↓ to choose, Enter to confirm."
+}
+
+multiselect_prompt_hint() {
+  echo "Use ↑/↓ to move, Space to toggle, Enter to confirm."
 }
 
 select_modules() {
   local module_options=()
 
   read_records_into_array module_options catalog::module_records "$DOTFILES_PLATFORM"
-  prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "Space to toggle, Enter to confirm." "${module_options[@]}"
+  prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "$(multiselect_prompt_hint)" "${module_options[@]}"
   DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
 }
 
@@ -1071,10 +1086,10 @@ leaf_prompt_title() {
 
 leaf_prompt_hint() {
   case "$1" in
-    packages) echo "Space to toggle packages, Enter to confirm." ;;
-    oh_my_zsh) echo "Space to toggle plugins, Enter to confirm." ;;
-    fonts) echo "Space to toggle fonts, Enter to confirm." ;;
-    desktop_apps) echo "Space to toggle apps, Enter to confirm." ;;
+    packages) echo "Use ↑/↓ to move, Space to toggle packages, Enter to confirm." ;;
+    oh_my_zsh) echo "Use ↑/↓ to move, Space to toggle plugins, Enter to confirm." ;;
+    fonts) echo "Use ↑/↓ to move, Space to toggle fonts, Enter to confirm." ;;
+    desktop_apps) echo "Use ↑/↓ to move, Space to toggle apps, Enter to confirm." ;;
   esac
 }
 
@@ -1174,7 +1189,7 @@ collect_git_identity_values() {
     prompt::text DOTFILES_GIT_EMAIL "Git user.email" "" "no" git_email_is_valid \
       "Enter an email address containing @ and no spaces." \
       "Used for commits created on this machine."
-    prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "Use ↑/↓ to choose, Enter to confirm." \
+    prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "$(select_prompt_hint)" \
       $'none\tNo signing\tDo not enable commit or tag signing.\t1\t0' \
       $'gpg\tGPG signing\tUse an OpenPGP key ID or fingerprint.\t0\t0' \
       $'ssh\tSSH signing\tUse SSH signing with gpg.format=ssh.\t0\t0'
@@ -1542,6 +1557,7 @@ main() {
   local proceed=""
   local zsh_bin=""
 
+  enable_interactive_style
   detect_platform
 
   if [[ "$DOTFILES_PLATFORM" == "unknown" ]]; then
