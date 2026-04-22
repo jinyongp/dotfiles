@@ -1,14 +1,23 @@
 #!/usr/bin/env bash
 
-cmd=$(basename $0)
-tmp=$(dirname $0)/.$cmd
+set -euo pipefail
 
-if [ -z "$1" ]; then
+cmd="$(basename "$0")"
+tmp_dir=""
+
+cleanup() {
+  [[ -n "$tmp_dir" && -d "$tmp_dir" ]] && rm -rf "$tmp_dir"
+}
+
+trap cleanup EXIT
+
+if [[ $# -ne 1 ]]; then
   echo "Usage: $cmd <git-url>"
   exit 1
 fi
 
-git clone --depth 1 "$1" $tmp 2>/dev/null &&
-  echo &&
-  cloc $tmp &&
-  rm -rf $tmp
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/cloc-git.XXXXXX")"
+
+git clone --depth 1 "$1" "$tmp_dir" >/dev/null 2>&1
+echo
+cloc "$tmp_dir"
