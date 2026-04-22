@@ -57,6 +57,11 @@ It does not try to list every default Vim command or every plugin-local action.
 | `>>` / `<<` | indent line right / left |
 | `=` | re-indent selected text or motion |
 
+Notes:
+
+- This config sets `clipboard=unnamedplus`, so the unnamed register is synced with the system clipboard.
+- That means ordinary `yy`, `p`, `P`, and similar register-less yank or paste commands already use the system clipboard.
+
 ## Search
 
 | Key | Meaning |
