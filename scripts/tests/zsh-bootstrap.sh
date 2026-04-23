@@ -27,9 +27,11 @@ zsh_bootstrap_test::setup_fixture() {
   FAKE_BREW_PREFIX="$WORK_DIR/homebrew"
   FNM_TEST_ROOT="$WORK_DIR/fnm"
   TEST_TMPDIR="$WORK_DIR/tmp"
+  VSCODE_SHELL_INTEGRATION_SCRIPT="$WORK_DIR/vscode-shellIntegration-rc.zsh"
 
   mkdir -p \
     "$HOME_DIR" \
+    "$HOME_DIR/.config/dotfiles" \
     "$INITIAL_BIN" \
     "$FAKE_BREW_PREFIX/bin" \
     "$FNM_TEST_ROOT/node-bin" \
@@ -79,6 +81,19 @@ zsh_bootstrap_test::setup_fixture() {
   zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/node-bin/npm" '#!/bin/sh' 'printf "npm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/Library/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/.local/share/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
+  zsh_bootstrap_test::write_executable "$INITIAL_BIN/code" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "--locate-shell-integration-path" ]; then' \
+    '  printf "%s\n" "$VSCODE_SHELL_INTEGRATION_SCRIPT"' \
+    '  exit 0' \
+    'fi' \
+    'exit 1'
+  printf '%s\n' \
+    'print -r -- "vscode-integration-loaded"' \
+    'if [[ "${VSCODE_INJECTION:-}" == "1" && -f "$USER_ZDOTDIR/.zshrc" ]]; then' \
+    '  source "$USER_ZDOTDIR/.zshrc"' \
+    'fi' \
+    >"$VSCODE_SHELL_INTEGRATION_SCRIPT"
 
   CHECK_SCRIPT="$WORK_DIR/check-toolchain.zsh"
   cat >"$CHECK_SCRIPT" <<'EOF'
@@ -108,6 +123,7 @@ zsh_bootstrap_test::run_zsh() {
     TMPDIR="$TEST_TMPDIR/" \
     FAKE_BREW_PREFIX="$FAKE_BREW_PREFIX" \
     FNM_TEST_ROOT="$FNM_TEST_ROOT" \
+    VSCODE_SHELL_INTEGRATION_SCRIPT="$VSCODE_SHELL_INTEGRATION_SCRIPT" \
     "$ZSH_BIN" "$@" >"$output_file" 2>"$error_file"
 }
 
@@ -197,6 +213,34 @@ zsh_bootstrap_test::assert_interactive_fnm_hook() {
   printf 'ok %s\n' "$name"
 }
 
+zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc() {
+  local name="vscode_injection_no_zshrc_recursion"
+  local output_file="$WORK_DIR/${name}.out"
+  local error_file="$WORK_DIR/${name}.err"
+
+  printf '%s\n' 'print -r -- "local-zsh-loaded"' >"$HOME_DIR/.config/dotfiles/local.zsh"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+    ZDOTDIR="$HOME_DIR" \
+    TERM="xterm-256color" \
+    TERM_PROGRAM="vscode" \
+    TMPDIR="$TEST_TMPDIR/" \
+    FAKE_BREW_PREFIX="$FAKE_BREW_PREFIX" \
+    FNM_TEST_ROOT="$FNM_TEST_ROOT" \
+    VSCODE_INJECTION="1" \
+    USER_ZDOTDIR="$HOME_DIR" \
+    VSCODE_SHELL_INTEGRATION_SCRIPT="$VSCODE_SHELL_INTEGRATION_SCRIPT" \
+    "$ZSH_BIN" -ic 'print -r -- vscode-shell-ready' >"$output_file" 2>"$error_file"
+
+  zsh_bootstrap_test::assert_output "$name" $'local-zsh-loaded\nvscode-shell-ready'
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
 zsh_bootstrap_test::main() {
   WORK_DIR=""
   trap '[[ -n "${WORK_DIR:-}" ]] && rm -rf "$WORK_DIR"' EXIT
@@ -211,6 +255,7 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_bootstrap_guard_not_exported
   zsh_bootstrap_test::assert_set_e_direct_bootstrap
   zsh_bootstrap_test::assert_interactive_fnm_hook
+  zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc
 
   printf 'all zsh bootstrap tests passed\n'
 }
