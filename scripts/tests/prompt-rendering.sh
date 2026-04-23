@@ -35,6 +35,13 @@ prompt_test::case_names() {
     "multiselect_with_disabled_rows"
 }
 
+prompt_test::mode_names() {
+  printf '%s\n' \
+    "compact" \
+    "plain" \
+    "rich"
+}
+
 prompt_test::write_case_input() {
   local case_name="$1"
 
@@ -50,27 +57,97 @@ prompt_test::write_case_input() {
 
 prompt_test::run_case_to_file() {
   local case_name="$1"
-  local output_file="$2"
+  local mode="$2"
+  local output_file="$3"
 
   prompt_test::write_case_input "$case_name" \
-    | DOTFILES_ROOT="$DOTFILES_ROOT" bash "$0" --case "$case_name" \
+    | DOTFILES_ROOT="$DOTFILES_ROOT" DOTFILES_INSTALL_UI_MODE="$mode" bash "$0" --case "$case_name" --mode "$mode" \
     >"$output_file"
 }
 
-prompt_test::compare_case() {
+prompt_test::assert_compact_expectations() {
   local case_name="$1"
-  local work_dir="$2"
-  local raw_file="$work_dir/${case_name}.raw"
-  local actual_file="$work_dir/${case_name}.txt"
-  local expected_file="$SNAPSHOT_DIR/${case_name}.txt"
+  local actual_file="$2"
 
-  prompt_test::run_case_to_file "$case_name" "$raw_file"
+  case "$case_name" in
+    select_basic)
+      perl -0ne 'exit(!/Cross-platform prompt using the Starship binary\.\n   ● starship/s)' "$actual_file" \
+        || prompt_test::fail "compact select_basic should keep dense spacing"
+      ;;
+    select_with_disabled_and_status)
+      grep -Fq "starship [current]" "$actual_file" \
+        || prompt_test::fail "compact select_with_disabled_and_status should render inline current status"
+      grep -Fq "powerlevel10k [installed]" "$actual_file" \
+        || prompt_test::fail "compact select_with_disabled_and_status should render inline installed status"
+      ;;
+  esac
+}
+
+prompt_test::assert_plain_expectations() {
+  local case_name="$1"
+  local raw_file="$2"
+  local actual_file="$3"
+
+  if grep -q '[◆◇●○◻◼›↑↓]' "$actual_file"; then
+    prompt_test::fail "plain mode should not render Unicode prompt markers"
+  fi
+
+  perl -ne 'if (/\e\[(?:[0-9]+;)*(?:3|4)(?:;[0-9]+)*m/) { exit 1 } END { exit 0 }' "$raw_file" \
+    || prompt_test::fail "plain mode should not emit italic or underline ANSI sequences"
+
+  case "$case_name" in
+    select_basic|select_with_disabled_and_status|multiselect_basic|multiselect_with_scroll_indicators|multiselect_with_disabled_rows)
+      grep -Fq "Up/Down" "$actual_file" \
+        || prompt_test::fail "plain mode should render ASCII navigation hints"
+      ;;
+  esac
+}
+
+prompt_test::assert_rich_expectations() {
+  local case_name="$1"
+  local actual_file="$2"
+
+  case "$case_name" in
+    select_basic)
+      perl -0ne 'exit(!/Cross-platform prompt using the Starship binary\.\n\n   ● starship/s)' "$actual_file" \
+        || prompt_test::fail "rich select_basic should keep spaced layout"
+      ;;
+    select_with_disabled_and_status)
+      grep -Eq 'starship[[:space:]]{2,}\[current\]' "$actual_file" \
+        || prompt_test::fail "rich select_with_disabled_and_status should keep aligned badges"
+      ;;
+  esac
+}
+
+prompt_test::assert_mode_expectations() {
+  local mode="$1"
+  local case_name="$2"
+  local raw_file="$3"
+  local actual_file="$4"
+
+  case "$mode" in
+    compact) prompt_test::assert_compact_expectations "$case_name" "$actual_file" ;;
+    plain) prompt_test::assert_plain_expectations "$case_name" "$raw_file" "$actual_file" ;;
+    rich) prompt_test::assert_rich_expectations "$case_name" "$actual_file" ;;
+  esac
+}
+
+prompt_test::compare_case() {
+  local mode="$1"
+  local case_name="$2"
+  local work_dir="$3"
+  local raw_file="$work_dir/${mode}_${case_name}.raw"
+  local actual_file="$work_dir/${mode}_${case_name}.txt"
+  local expected_file="$SNAPSHOT_DIR/$mode/${case_name}.txt"
+
+  prompt_test::run_case_to_file "$case_name" "$mode" "$raw_file"
   prompt_test::normalize_file "$raw_file" >"$actual_file"
+  prompt_test::assert_mode_expectations "$mode" "$case_name" "$raw_file" "$actual_file"
 
   if [[ "${UPDATE:-0}" == "1" ]]; then
-    mkdir -p "$SNAPSHOT_DIR"
+    mkdir -p "$SNAPSHOT_DIR/$mode"
     cp "$actual_file" "$expected_file"
-    printf 'updated %s\n' "$case_name"
+    printf 'updated %s/%s\n' "$mode" "$case_name"
     return 0
   fi
 
@@ -84,7 +161,7 @@ prompt_test::compare_case() {
     return 1
   fi
 
-  printf 'ok %s\n' "$case_name"
+  printf 'ok %s/%s\n' "$mode" "$case_name"
 }
 
 prompt_test::record() {
@@ -234,7 +311,7 @@ prompt_test::case_select_with_disabled_and_status() {
   local result=""
   local records=()
 
-  PROMPT_TEST_COLUMNS=20
+  PROMPT_TEST_COLUMNS=36
   records[0]="$(prompt_test::record "starship" "starship" "Currently active shell theme." "1" "0" "current")"
   records[1]="$(prompt_test::record "powerlevel10k" "powerlevel10k" "Installed already, but unavailable until oh-my-zsh is enabled." "0" "1" "installed")"
   records[2]="$(prompt_test::record "default" "default" "Use the default shell prompt styling." "0" "0")"
@@ -298,10 +375,12 @@ prompt_test::case_multiselect_with_disabled_rows() {
 
 prompt_test::run_case() {
   local case_name="$1"
+  local mode="$2"
 
   export DOTFILES_ROOT
   export DOTFILES_FORCE_COLOR=1
   export DOTFILES_COLOR_SCHEME=light
+  export DOTFILES_INSTALL_UI_MODE="$mode"
   PROMPT_TEST__KEY_FILE="$(mktemp "${TMPDIR:-/tmp}/prompt-rendering-keys.XXXXXX")"
   trap 'rm -f "$PROMPT_TEST__KEY_FILE"' EXIT
 
@@ -345,30 +424,33 @@ prompt_test::run_case() {
 
 prompt_test::main() {
   local work_dir=""
+  local mode=""
   local case_name=""
   local failures=0
 
   if [[ "${1:-}" == "--case" ]]; then
-    [[ $# -eq 2 ]] || prompt_test::fail "usage: $0 --case <name>"
-    prompt_test::run_case "$2"
+    [[ $# -eq 4 && "${3:-}" == "--mode" ]] || prompt_test::fail "usage: $0 --case <name> --mode <mode>"
+    prompt_test::run_case "$2" "$4"
     return 0
   fi
 
   work_dir="$(mktemp -d "${TMPDIR:-/tmp}/prompt-rendering.XXXXXX")"
   trap '[[ -n "${work_dir:-}" ]] && rm -rf "$work_dir"' EXIT
 
-  while IFS= read -r case_name; do
-    if ! prompt_test::compare_case "$case_name" "$work_dir"; then
-      failures=$((failures + 1))
-    fi
-  done < <(prompt_test::case_names)
+  while IFS= read -r mode; do
+    while IFS= read -r case_name; do
+      if ! prompt_test::compare_case "$mode" "$case_name" "$work_dir"; then
+        failures=$((failures + 1))
+      fi
+    done < <(prompt_test::case_names)
+  done < <(prompt_test::mode_names)
 
   if [[ "$failures" -gt 0 ]]; then
     prompt_test::fail "$failures case(s) failed"
   fi
 
   if [[ "${UPDATE:-0}" == "1" ]]; then
-    printf 'updated %s snapshot(s)\n' "$(prompt_test::case_names | wc -l | tr -d ' ')"
+    printf 'updated %s snapshot(s)\n' "$(( $(prompt_test::case_names | wc -l | tr -d ' ') * $(prompt_test::mode_names | wc -l | tr -d ' ') ))"
   else
     printf 'all prompt rendering snapshots passed\n'
   fi

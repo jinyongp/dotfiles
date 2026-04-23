@@ -4,6 +4,22 @@ prompt::line() {
   printf '   %s' "$1"
 }
 
+prompt::question_marker() {
+  if prompt::is_plain_mode; then
+    printf '>'
+  else
+    printf '◆'
+  fi
+}
+
+prompt::completed_marker() {
+  if prompt::is_plain_mode; then
+    printf '='
+  else
+    printf '◇'
+  fi
+}
+
 prompt::intro_line() {
   local title="$1"
   local meta="${2:-}"
@@ -32,11 +48,11 @@ prompt::blank_line() {
 }
 
 prompt::question_header() {
-  printf '%s  %s' "$(prompt::accent "◆")" "$(prompt::title "$1")"
+  printf '%s  %s' "$(prompt::accent "$(prompt::question_marker)")" "$(prompt::title "$1")"
 }
 
 prompt::completed_header() {
-  printf '%s  %s' "$(prompt::success "◇")" "$(prompt::title "$1")"
+  printf '%s  %s' "$(prompt::success "$(prompt::completed_marker)")" "$(prompt::title "$1")"
 }
 
 prompt::hint_line() {
@@ -103,7 +119,7 @@ prompt::shortcut_text() {
     if [[ -n "$best_prefix" ]]; then
       output="${output}$(prompt::hint "$best_prefix")"
     fi
-    output="${output}$(prompt::keycap "$best_token")"
+    output="${output}$(prompt::keycap "$(prompt::display_hint_token "$best_token")")"
     remaining="${remaining#*"$best_token"}"
   done
 
@@ -163,6 +179,11 @@ prompt::render_option_line() {
   fi
 
   rendered_status="$(prompt::badge "$status_text")"
+  if prompt::uses_inline_status; then
+    printf '%s %s' "$left_text" "$rendered_status"
+    return 0
+  fi
+
   visible_status="$(prompt::badge_text "$status_text")"
   columns="$(prompt::terminal_columns)"
   padding_width=$((columns - ${#visible_left} - ${#visible_status}))
@@ -181,15 +202,28 @@ prompt::select_option_line() {
   local status_text="${4:-}"
   local option_prefix option_label
 
-  if [[ "$is_disabled" == "1" ]]; then
-    option_prefix="$(prompt::disabled "○")"
-    option_label="$(prompt::disabled "$label")"
-  elif [[ "$is_current" == "1" ]]; then
-    option_prefix="$(prompt::accent "●")"
-    option_label="$(prompt::active_label "$label")"
+  if prompt::is_plain_mode; then
+    if [[ "$is_disabled" == "1" ]]; then
+      option_prefix="$(prompt::disabled "o")"
+      option_label="$(prompt::disabled "$label")"
+    elif [[ "$is_current" == "1" ]]; then
+      option_prefix="$(prompt::accent "*")"
+      option_label="$(prompt::active_label "$label")"
+    else
+      option_prefix="$(prompt::subtle "o")"
+      option_label="$(prompt::body "$label")"
+    fi
   else
-    option_prefix="$(prompt::subtle "○")"
-    option_label="$(prompt::body "$label")"
+    if [[ "$is_disabled" == "1" ]]; then
+      option_prefix="$(prompt::disabled "○")"
+      option_label="$(prompt::disabled "$label")"
+    elif [[ "$is_current" == "1" ]]; then
+      option_prefix="$(prompt::accent "●")"
+      option_label="$(prompt::active_label "$label")"
+    else
+      option_prefix="$(prompt::subtle "○")"
+      option_label="$(prompt::body "$label")"
+    fi
   fi
 
   prompt::render_option_line "$(prompt::line "$option_prefix $option_label")" "$status_text"
@@ -203,29 +237,56 @@ prompt::multiselect_option_line() {
   local status_text="${5:-}"
   local prefix marker option_label
 
-  if [[ "$is_disabled" == "1" ]]; then
-    marker="$(prompt::disabled "◻")"
-    option_label="$(prompt::disabled "$label")"
-  elif [[ "$is_selected" == "1" ]]; then
-    marker="$(prompt::success "◼")"
-    if [[ "$is_current" == "1" ]]; then
-      option_label="$(prompt::selected_active_label "$label")"
+  if prompt::is_plain_mode; then
+    if [[ "$is_disabled" == "1" ]]; then
+      marker="$(prompt::disabled "[ ]")"
+      option_label="$(prompt::disabled "$label")"
+    elif [[ "$is_selected" == "1" ]]; then
+      marker="$(prompt::success "[x]")"
+      if [[ "$is_current" == "1" ]]; then
+        option_label="$(prompt::selected_active_label "$label")"
+      else
+        option_label="$(prompt::selected_label "$label")"
+      fi
     else
-      option_label="$(prompt::selected_label "$label")"
+      marker="$(prompt::subtle "[ ]")"
+      if [[ "$is_current" == "1" ]]; then
+        option_label="$(prompt::active_label "$label")"
+      else
+        option_label="$(prompt::body "$label")"
+      fi
     fi
-  else
-    marker="$(prompt::subtle "◻")"
-    if [[ "$is_current" == "1" ]]; then
-      option_label="$(prompt::active_label "$label")"
-    else
-      option_label="$(prompt::body "$label")"
-    fi
-  fi
 
-  if [[ "$is_current" == "1" ]]; then
-    prefix="$(prompt::accent "›")"
+    if [[ "$is_current" == "1" ]]; then
+      prefix="$(prompt::accent ">")"
+    else
+      prefix="$(prompt::frame " ")"
+    fi
   else
-    prefix="$(prompt::frame " ")"
+    if [[ "$is_disabled" == "1" ]]; then
+      marker="$(prompt::disabled "◻")"
+      option_label="$(prompt::disabled "$label")"
+    elif [[ "$is_selected" == "1" ]]; then
+      marker="$(prompt::success "◼")"
+      if [[ "$is_current" == "1" ]]; then
+        option_label="$(prompt::selected_active_label "$label")"
+      else
+        option_label="$(prompt::selected_label "$label")"
+      fi
+    else
+      marker="$(prompt::subtle "◻")"
+      if [[ "$is_current" == "1" ]]; then
+        option_label="$(prompt::active_label "$label")"
+      else
+        option_label="$(prompt::body "$label")"
+      fi
+    fi
+
+    if [[ "$is_current" == "1" ]]; then
+      prefix="$(prompt::accent "›")"
+    else
+      prefix="$(prompt::frame " ")"
+    fi
   fi
 
   prompt::render_option_line "$(prompt::line "$prefix $marker $option_label")" "$status_text"
@@ -234,8 +295,16 @@ prompt::multiselect_option_line() {
 prompt::scroll_indicator_line() {
   local direction="$1"
   local count="$2"
+  local indicator="$direction"
 
-  prompt::line "$(prompt::muted "$direction $count more")"
+  if prompt::is_plain_mode; then
+    case "$direction" in
+      "↑") indicator="^" ;;
+      "↓") indicator="v" ;;
+    esac
+  fi
+
+  prompt::line "$(prompt::muted "$indicator $count more")"
 }
 
 prompt::print_completed() {

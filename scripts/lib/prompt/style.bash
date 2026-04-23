@@ -28,6 +28,15 @@ prompt::title() {
 }
 
 prompt::intro_meta() {
+  if prompt::is_plain_mode; then
+    if declare -F dotfiles_muted >/dev/null 2>&1; then
+      dotfiles_muted "$1"
+    else
+      prompt::style "$1" dim default
+    fi
+    return 0
+  fi
+
   if declare -F dotfiles_subtle >/dev/null 2>&1; then
     dotfiles_subtle "$1"
   else
@@ -100,6 +109,15 @@ prompt::subtle() {
 }
 
 prompt::hint() {
+  if prompt::is_plain_mode; then
+    if declare -F dotfiles_muted >/dev/null 2>&1; then
+      dotfiles_muted "$1"
+    else
+      prompt::style "$1" dim default
+    fi
+    return 0
+  fi
+
   if declare -F dotfiles_hint >/dev/null 2>&1; then
     dotfiles_hint "$1"
   else
@@ -124,6 +142,15 @@ prompt::disabled() {
 }
 
 prompt::active_label() {
+  if prompt::is_plain_mode; then
+    if declare -F dotfiles_style >/dev/null 2>&1; then
+      dotfiles_style "$1" bold default
+    else
+      prompt::style "$1" bold bright-white
+    fi
+    return 0
+  fi
+
   if declare -F dotfiles_active >/dev/null 2>&1; then
     dotfiles_active "$1"
   else
@@ -140,6 +167,15 @@ prompt::selected_label() {
 }
 
 prompt::selected_active_label() {
+  if prompt::is_plain_mode; then
+    if declare -F dotfiles_selected >/dev/null 2>&1; then
+      dotfiles_selected "$1"
+    else
+      prompt::style "$1" bold green
+    fi
+    return 0
+  fi
+
   if declare -F dotfiles_selected_active >/dev/null 2>&1; then
     dotfiles_selected_active "$1"
   else

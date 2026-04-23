@@ -19,6 +19,42 @@ PROMPT__RENDERED_LINES=0
 PROMPT__STTY_STATE=""
 PROMPT__CANCELLED=0
 
+prompt::ui_mode() {
+  case "${DOTFILES_INSTALL_UI_MODE:-compact}" in
+    plain|compact|rich)
+      printf '%s' "${DOTFILES_INSTALL_UI_MODE:-compact}"
+      ;;
+    *)
+      printf 'compact'
+      ;;
+  esac
+}
+
+prompt::is_plain_mode() {
+  [[ "$(prompt::ui_mode)" == "plain" ]]
+}
+
+prompt::is_rich_mode() {
+  [[ "$(prompt::ui_mode)" == "rich" ]]
+}
+
+prompt::uses_inline_status() {
+  [[ "$(prompt::ui_mode)" != "rich" ]]
+}
+
+prompt::display_hint_token() {
+  local token="$1"
+
+  case "$(prompt::ui_mode):$token" in
+    plain:↑/↓)
+      printf 'Up/Down'
+      ;;
+    *)
+      printf '%s' "$token"
+      ;;
+  esac
+}
+
 prompt::strip_ansi() {
   local text="$1"
   local prefix suffix
@@ -419,7 +455,9 @@ prompt::select() {
     current_description="${descriptions[$current_index]}"
     [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
 
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if prompt::is_rich_mode; then
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    fi
 
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
@@ -434,7 +472,9 @@ prompt::select() {
       index=$((index + 1))
     done
 
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if prompt::is_rich_mode; then
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    fi
     rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
 
     prompt::render_block "${rendered_lines[@]}"
@@ -522,7 +562,9 @@ prompt::multiselect() {
     current_description="${descriptions[$current_index]}"
     [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
 
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if prompt::is_rich_mode; then
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    fi
 
     total_lines="$(prompt::terminal_lines)"
     reserved_lines=7
@@ -571,7 +613,9 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↓" "$remaining_below")"
     fi
 
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if prompt::is_rich_mode; then
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    fi
     rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
 
     prompt::render_block "${rendered_lines[@]}"

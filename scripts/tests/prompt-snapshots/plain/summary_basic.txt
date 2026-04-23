@@ -1,0 +1,6 @@
+=  Installation plan
+   Platform: macOS
+   Modules: Dotfiles, Neovim
+   Auto: oh-my-zsh included for theme support
+   Reuse: ~/.oh-my-zsh
+   Skip: Fonts

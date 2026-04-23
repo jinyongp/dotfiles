@@ -1,0 +1,14 @@
+[[ render 1 ]]
+>  Choose a machine name.
+   Used for local bootstrap labels.
+   >
+[[ render 2 ]]
+>  Choose a machine name.
+   Used for local bootstrap labels.
+   Use lowercase letters, numbers, and hyphens only.
+   >
+=  Choose a machine name.
+   valid-slug
+
+[[ value ]]
+valid-slug

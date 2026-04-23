@@ -52,6 +52,11 @@ Git edits reopen the machine-local Git identity flow without restarting the inst
 
 The `Custom` module picker starts with no selected modules, so pressing `Enter` there exits without installing anything.
 
+Set `DOTFILES_INSTALL_UI_MODE=plain|compact|rich` to choose the interactive installer presentation.
+`compact` is the default.
+`plain` keeps the same keyboard flow with ASCII-only markers and inline status text.
+`rich` keeps the more spaced layout with right-aligned status badges.
+
 ## Direct Install Targets
 
 You can skip the interactive flow and run a single target directly.

@@ -1,0 +1,13 @@
+[[ render 1 ]]
+◆  Select a shell theme.
+   Cross-platform prompt using the Starship binary.
+   ● starship
+   ○ powerlevel10k
+   ○ default
+   Use ↑/↓ to choose, Enter to confirm.
+
+◇  Select a shell theme.
+   starship
+
+[[ value ]]
+starship

@@ -1,0 +1,21 @@
+[[ render 1 ]]
+>  Select a shell theme.
+   Currently active shell theme.
+   * starship [current]
+   o powerlevel10k [installed]
+   o default
+   Use Up/Down to choose, Enter to confirm.
+
+[[ render 2 ]]
+>  Select a shell theme.
+   Use the default shell prompt styling.
+   o starship [current]
+   o powerlevel10k [installed]
+   * default
+   Use Up/Down to choose, Enter to confirm.
+
+=  Select a shell theme.
+   default
+
+[[ value ]]
+default
