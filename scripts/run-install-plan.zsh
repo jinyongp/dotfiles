@@ -14,6 +14,7 @@ source "$PLAN_FILE"
 source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"
 source "$DOTFILES_ROOT/scripts/lib/style.sh"
 source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+source "$DOTFILES_ROOT/scripts/lib/execution-progress.zsh"
 source "$DOTFILES_ROOT/scripts/lib/install-env.zsh"
 source "$DOTFILES_ROOT/scripts/lib/platform.zsh"
 source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
@@ -69,27 +70,25 @@ runner::run_module() {
     else
       items=()
     fi
-    "$install_items_function" "${items[@]}"
-    dotfiles::record_completed_work "Completed ${module_label} setup"
-    return 0
+    dotfiles::execution_run_step "$module" "$module_label" "$install_items_function" "${items[@]}"
+    return $?
   fi
 
   if typeset -f "$install_function" >/dev/null 2>&1; then
-    "$install_function"
-    dotfiles::record_completed_work "Completed ${module_label} setup"
+    dotfiles::execution_run_step "$module" "$module_label" "$install_function"
   fi
 }
 
 runner::install_theme() {
-  module_theme_install
-  dotfiles::record_completed_work "Completed theme dependency setup for $(catalog::theme_label "$DOTFILES_THEME")"
+  dotfiles::execution_run_step "theme" "Theme dependencies" module_theme_install
 }
 
 main() {
   local module
 
+  dotfiles::execution_init_output
   dotfiles::record_bootstrap_results
-  dotfiles::write_install_env
+  dotfiles::write_install_env >/dev/null
 
   if [[ "${DOTFILES_RUN_THEME_INSTALL:-1}" == "1" ]]; then
     runner::install_theme

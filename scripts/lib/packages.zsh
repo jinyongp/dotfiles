@@ -76,6 +76,7 @@ package_manager::ensure_brew() {
     return 0
   fi
 
+  dotfiles::execution_record_event installing "Homebrew package manager"
   dotfiles::log_step "Installing Homebrew"
 
   installer_url="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
@@ -100,6 +101,7 @@ package_manager::ensure_apt() {
     return 1
   fi
 
+  dotfiles::execution_record_event installing "apt package index"
   dotfiles::log_step "Refreshing apt package index"
   dotfiles::run_as_root apt-get update
   DOTFILES_APT_READY=1
@@ -156,9 +158,10 @@ package_manager::install_npm_global() {
     return 0
   fi
 
-  dotfiles::record_installed "$package_name via npm"
+  dotfiles::execution_record_event installing "$package_name via npm"
   dotfiles::log_info "Installing $package_name with npm..."
   NPM_CONFIG_PREFIX="$prefix" npm install --global "$install_spec"
+  dotfiles::record_installed "$package_name via npm"
 }
 
 package_manager::recipe_key() {
@@ -222,7 +225,8 @@ package_manager::install_native_logical() {
       return 1
     fi
 
-    dotfiles::log_warn "Skipping $logical_name because it is not mapped for $DOTFILES_PACKAGE_MANAGER."
+    dotfiles::record_skipped "$logical_name on $DOTFILES_PACKAGE_MANAGER (no package mapping)"
+    dotfiles::log_info "Skipping $logical_name because it is not mapped for $DOTFILES_PACKAGE_MANAGER."
     return 0
   fi
 
@@ -234,9 +238,10 @@ package_manager::install_native_logical() {
         dotfiles::record_reused "$logical_name via Homebrew"
         dotfiles::log_info "Already installed: $logical_name"
       else
-        dotfiles::record_installed "$logical_name via Homebrew"
+        dotfiles::execution_record_event installing "$logical_name via Homebrew"
         dotfiles::log_info "Installing $logical_name with Homebrew..."
         brew install "$native_name"
+        dotfiles::record_installed "$logical_name via Homebrew"
       fi
       ;;
     apt)
@@ -254,13 +259,15 @@ package_manager::install_native_logical() {
           return 1
         fi
 
-        dotfiles::log_warn "Skipping $logical_name because apt cannot find $native_name."
+        dotfiles::record_skipped "$logical_name on apt (package unavailable)"
+        dotfiles::log_info "Skipping $logical_name because apt cannot find $native_name."
         return 0
       fi
 
-      dotfiles::record_installed "$logical_name via apt"
+      dotfiles::execution_record_event installing "$logical_name via apt"
       dotfiles::log_info "Installing $logical_name with apt..."
       dotfiles::run_as_root apt-get install -y "$native_name"
+      dotfiles::record_installed "$logical_name via apt"
       ;;
   esac
 }
@@ -298,9 +305,10 @@ package_manager::install_brew_cask() {
     return 0
   fi
 
-  dotfiles::record_installed "$cask_name cask"
+  dotfiles::execution_record_event installing "$cask_name cask"
   dotfiles::log_info "Installing $cask_name..."
   brew install --cask "$cask_name"
+  dotfiles::record_installed "$cask_name cask"
 }
 
 package_manager::load_recipes() {

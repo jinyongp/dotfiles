@@ -10,7 +10,8 @@ package_recipe::typescript_install() {
       return 1
     fi
 
-    dotfiles::log_warn "Skipping $logical_name because node/npm is not available."
+    dotfiles::record_skipped "$logical_name (node/npm unavailable)"
+    dotfiles::log_info "Skipping $logical_name because node/npm is not available."
     return 0
   fi
 
@@ -27,7 +28,8 @@ package_recipe::typescript_language_server_install() {
       return 1
     fi
 
-    dotfiles::log_warn "Skipping $logical_name because node/npm is not available."
+    dotfiles::record_skipped "$logical_name (node/npm unavailable)"
+    dotfiles::log_info "Skipping $logical_name because node/npm is not available."
     return 0
   fi
 

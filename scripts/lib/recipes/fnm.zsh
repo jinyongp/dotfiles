@@ -42,6 +42,7 @@ package_recipe::fnm_install() {
   installer_path="$(mktemp)"
 
   dotfiles::download_script "$installer_url" "$installer_path"
+  dotfiles::execution_record_event installing "$logical_name via install script"
   dotfiles::log_info "Installing fnm with the official install script..."
 
   if /bin/bash "$installer_path" --install-dir "$install_dir" --skip-shell; then

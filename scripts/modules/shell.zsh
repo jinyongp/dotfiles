@@ -15,9 +15,10 @@ shell::ensure_oh_my_zsh() {
     return 0
   fi
 
-  dotfiles::record_installed "oh-my-zsh framework"
+  dotfiles::execution_record_event installing "oh-my-zsh framework"
   dotfiles::log_info "Cloning oh-my-zsh..."
   git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git "$target_dir"
+  dotfiles::record_installed "oh-my-zsh framework"
 }
 
 shell::install_oh_my_zsh_plugins() {
@@ -49,9 +50,10 @@ shell::install_oh_my_zsh_plugins() {
       continue
     fi
 
-    dotfiles::record_installed "oh-my-zsh plugin: $plugin_id"
+    dotfiles::execution_record_event installing "oh-my-zsh plugin: $plugin_id"
     dotfiles::log_info "Cloning $plugin_id..."
     git clone --depth=1 "https://github.com/$repo_name.git" "$target_dir"
+    dotfiles::record_installed "oh-my-zsh plugin: $plugin_id"
   done
 }
 

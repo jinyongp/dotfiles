@@ -66,6 +66,9 @@ install_report_test::main() {
     "Managed link already in place: ~/.gitconfig"
     "Machine-local Git identity"
   )
+  DOTFILES_RESULT_SKIPPED_ITEMS=(
+    "TypeScript editor tooling"
+  )
   DOTFILES_RESULT_CREATED_FILES=()
   DOTFILES_RESULT_UPDATED_FILES=(
     "~/.config/dotfiles/install.env"
@@ -87,6 +90,8 @@ install_report_test::main() {
   install_report_test::assert_contains "$output" "Post-install Report" "missing report title"
   install_report_test::assert_contains "$output" "Reused" "missing reused section"
   install_report_test::assert_contains "$output" "Managed links already in place: ~/.vimrc, ~/.zprofile, ~/.gitconfig" "expected managed link aggregation"
+  install_report_test::assert_contains "$output" "Skipped" "missing skipped section"
+  install_report_test::assert_contains "$output" "TypeScript editor tooling" "expected skipped item in report"
   install_report_test::assert_contains "$output" "File changes" "missing file changes section"
   install_report_test::assert_contains "$output" "Updated: ~/.config/dotfiles/install.env, ~/.config/dotfiles/git/root.local.ini" "expected updated files aggregation"
   install_report_test::assert_contains "$output" "Git personal config" "missing git config section"

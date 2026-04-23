@@ -6,6 +6,12 @@ fi
 
 source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
 
+if ! typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+  dotfiles::execution_record_event() {
+    return 0
+  }
+fi
+
 typeset -g DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 typeset -g DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
 typeset -g DOTFILES_ENV_ZSH="$DOTFILES_CONFIG_DIR/env.zsh"
@@ -13,6 +19,7 @@ typeset -g DOTFILES_PROFILE_ZSH="$DOTFILES_CONFIG_DIR/profile.zsh"
 typeset -g DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
 typeset -gaU DOTFILES_RESULT_INSTALLED_ITEMS=()
 typeset -gaU DOTFILES_RESULT_REUSED_ITEMS=()
+typeset -gaU DOTFILES_RESULT_SKIPPED_ITEMS=()
 typeset -gaU DOTFILES_RESULT_CREATED_FILES=()
 typeset -gaU DOTFILES_RESULT_UPDATED_FILES=()
 typeset -gaU DOTFILES_RESULT_LINKED_FILES=()
@@ -63,17 +70,34 @@ dotfiles::array_contains() {
 dotfiles::record_installed() {
   [[ -n "${1:-}" ]] || return 0
   DOTFILES_RESULT_INSTALLED_ITEMS+=("$1")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event installed "$1"
+  fi
 }
 
 dotfiles::record_reused() {
   [[ -n "${1:-}" ]] || return 0
   DOTFILES_RESULT_REUSED_ITEMS+=("$1")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event reused "$1"
+  fi
+}
+
+dotfiles::record_skipped() {
+  [[ -n "${1:-}" ]] || return 0
+  DOTFILES_RESULT_SKIPPED_ITEMS+=("$1")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event skipped "$1"
+  fi
 }
 
 dotfiles::record_file_created() {
   local path_display
   path_display="$(dotfiles::display_path "$1")"
   DOTFILES_RESULT_CREATED_FILES+=("$path_display")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event file_change "Created $path_display"
+  fi
 }
 
 dotfiles::record_file_updated() {
@@ -85,6 +109,9 @@ dotfiles::record_file_updated() {
   fi
 
   DOTFILES_RESULT_UPDATED_FILES+=("$path_display")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event file_change "Updated $path_display"
+  fi
 }
 
 dotfiles::record_file_linked() {
@@ -92,6 +119,9 @@ dotfiles::record_file_linked() {
   target_display="$(dotfiles::display_path "$1")"
   source_display="$(dotfiles::display_path "$2")"
   DOTFILES_RESULT_LINKED_FILES+=("$target_display -> $source_display")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event file_change "Linked $target_display -> $source_display"
+  fi
 }
 
 dotfiles::record_file_backed_up() {
@@ -99,11 +129,17 @@ dotfiles::record_file_backed_up() {
   source_display="$(dotfiles::display_path "$1")"
   backup_display="$(dotfiles::display_path "$2")"
   DOTFILES_RESULT_BACKED_UP_FILES+=("$source_display -> $backup_display")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event file_change "Backed up $source_display -> $backup_display"
+  fi
 }
 
 dotfiles::record_completed_work() {
   [[ -n "${1:-}" ]] || return 0
   DOTFILES_RESULT_COMPLETED_WORK+=("$1")
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event completed_work "$1"
+  fi
 }
 
 dotfiles::record_note() {
@@ -276,11 +312,13 @@ dotfiles::report_completed_items() {
 dotfiles::print_install_report() {
   local personal_file_display next_action_message next_action_detail
   local -a reused_items=()
+  local -a skipped_items=()
   local -a file_change_items=()
   local -a completed_items=()
   personal_file_display="$(dotfiles::display_path "$DOTFILES_CONFIG_DIR/git/personal.local.ini")"
 
   reused_items=("${(@f)$(dotfiles::report_reused_items)}")
+  skipped_items=("${DOTFILES_RESULT_SKIPPED_ITEMS[@]}")
   file_change_items=("${(@f)$(dotfiles::report_file_change_items)}")
   completed_items=("${(@f)$(dotfiles::report_completed_items)}")
 
@@ -289,6 +327,7 @@ dotfiles::print_install_report() {
 
   dotfiles::print_report_section "Installed" "${DOTFILES_RESULT_INSTALLED_ITEMS[@]}"
   dotfiles::print_report_section "Reused" "${reused_items[@]}"
+  dotfiles::print_report_section "Skipped" "${skipped_items[@]}"
   dotfiles::print_report_section "File changes" "${file_change_items[@]}"
   dotfiles::print_report_section "Completed work" "${completed_items[@]}"
 
@@ -325,6 +364,9 @@ dotfiles::log_info() {
 
 dotfiles::log_warn() {
   dotfiles::record_warning "$1"
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event warning "$1"
+  fi
   echo "$(dotfiles_warning "$1")"
 }
 
@@ -333,6 +375,9 @@ dotfiles::log_success() {
 }
 
 dotfiles::log_error() {
+  if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
+    dotfiles::execution_record_event error "$1"
+  fi
   echo "$(dotfiles_error "$1")" >&2
 }
 

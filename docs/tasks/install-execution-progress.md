@@ -1,13 +1,14 @@
 # Install Execution Progress
 
-Status: `planned`
+Status: `completed`
 
 Suggested priority: `P9`
 
 ## Summary
 
 Refine the execution-time installer output so it is as structured and readable as the planning flow.
-The goal is to make install, reuse, skip, and failure states obvious while preserving the current execution order.
+This work is implemented.
+The execution layer now makes install, reuse, skip, warning, and failure states explicit while preserving the current runner order.
 
 ## Why this matters
 

@@ -10,8 +10,9 @@ theme::install_starship_fallback() {
   package_manager::ensure_command curl curl 1
   dotfiles::ensure_dir "$bin_dir"
   dotfiles::download_script "$installer_url" "$installer_path"
-  dotfiles::record_installed "starship prompt binary (fallback installer)"
+  dotfiles::execution_record_event installing "starship prompt binary (fallback installer)"
   sh "$installer_path" -y -b "$bin_dir"
+  dotfiles::record_installed "starship prompt binary (fallback installer)"
   rm -f "$installer_path"
 }
 
@@ -42,14 +43,15 @@ module_theme_install() {
         dotfiles::log_info "powerlevel10k is already installed."
       else
         package_manager::ensure_command git git 1
-        dotfiles::record_installed "powerlevel10k theme"
+        dotfiles::execution_record_event installing "powerlevel10k theme"
         git clone --depth=1 \
           https://github.com/romkatv/powerlevel10k.git \
           "$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+        dotfiles::record_installed "powerlevel10k theme"
       fi
       ;;
     default|none)
-      dotfiles::record_note "No extra theme dependencies were required for '$DOTFILES_THEME'."
+      dotfiles::record_skipped "Theme dependencies for '$(catalog::theme_label "$DOTFILES_THEME")'"
       dotfiles::log_info "No extra dependencies are required for theme '$DOTFILES_THEME'."
       ;;
     *)

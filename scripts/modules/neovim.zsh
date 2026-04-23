@@ -23,7 +23,8 @@ neovim::install_core_dependencies() {
 
 neovim::install_typescript_tooling() {
   if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
-    dotfiles::log_warn "Skipping TypeScript editor tooling because node/npm is not available."
+    dotfiles::record_skipped "TypeScript editor tooling"
+    dotfiles::log_info "Skipping TypeScript editor tooling because node/npm is not available."
     return 0
   fi
 
