@@ -1,10 +1,10 @@
 # Interactive prompt flow for module, leaf item, theme, package manager, and Git identity choices.
 
-maybe_select_theme() {
-  if plan_needs_theme_prompt; then
+install::maybe_select_theme() {
+  if install::plan_needs_theme_prompt; then
     DOTFILES_THEME_NEEDED="1"
     DOTFILES_RUN_THEME_INSTALL="1"
-    select_theme
+    install::select_theme
     return 0
   fi
 
@@ -12,17 +12,17 @@ maybe_select_theme() {
   DOTFILES_RUN_THEME_INSTALL="0"
 }
 
-maybe_select_package_manager() {
-  if plan_needs_package_manager; then
+install::maybe_select_package_manager() {
+  if install::plan_needs_package_manager; then
     DOTFILES_PACKAGE_MANAGER_NEEDED="1"
-    select_package_manager
+    install::select_package_manager
     return 0
   fi
 
   DOTFILES_PACKAGE_MANAGER_NEEDED="0"
 }
 
-select_package_manager() {
+install::select_package_manager() {
   local selected_package_manager=""
   local options=()
 
@@ -34,7 +34,7 @@ select_package_manager() {
     wsl)
       options[0]=$'apt\tapt\tUse Ubuntu/Debian packages through apt-get.\t1\t0'
       options[1]=$'brew\tHomebrew\tUse Homebrew on Linux for the main install flow.\t0\t0'
-      prompt::select selected_package_manager "Select a package manager." "$(select_prompt_hint)" "${options[@]}"
+      prompt::select selected_package_manager "Select a package manager." "$(install::select_prompt_hint)" "${options[@]}"
       DOTFILES_PACKAGE_MANAGER="$selected_package_manager"
       ;;
     linux)
@@ -48,31 +48,31 @@ select_package_manager() {
   esac
 }
 
-select_theme() {
+install::select_theme() {
   local theme_options=()
 
-  read_records_into_array theme_options catalog::theme_records
-  annotate_theme_records theme_options
-  prompt::select DOTFILES_THEME "Select a shell theme." "$(select_prompt_hint)" "${theme_options[@]}"
+  install::read_records_into_array theme_options catalog::theme_records
+  install::annotate_theme_records theme_options
+  prompt::select DOTFILES_THEME "Select a shell theme." "$(install::select_prompt_hint)" "${theme_options[@]}"
 }
 
-select_prompt_hint() {
+install::select_prompt_hint() {
   echo "Use ↑/↓ to choose, Enter to confirm."
 }
 
-multiselect_prompt_hint() {
+install::multiselect_prompt_hint() {
   echo "Use ↑/↓ to move, Space to toggle, Enter to confirm."
 }
 
-select_modules() {
+install::select_modules() {
   local module_options=()
 
-  read_records_into_array module_options catalog::module_records "$DOTFILES_PLATFORM"
-  prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "$(multiselect_prompt_hint)" "${module_options[@]}"
+  install::read_records_into_array module_options catalog::module_records "$DOTFILES_PLATFORM"
+  prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "$(install::multiselect_prompt_hint)" "${module_options[@]}"
   DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
 }
 
-leaf_prompt_title() {
+install::leaf_prompt_title() {
   case "$1" in
     packages) echo "Select base CLI packages." ;;
     oh_my_zsh) echo "Select oh-my-zsh plugins." ;;
@@ -81,7 +81,7 @@ leaf_prompt_title() {
   esac
 }
 
-leaf_prompt_hint() {
+install::leaf_prompt_hint() {
   case "$1" in
     packages) echo "Use ↑/↓ to move, Space to toggle packages, Enter to confirm." ;;
     oh_my_zsh) echo "Use ↑/↓ to move, Space to toggle plugins, Enter to confirm." ;;
@@ -90,36 +90,36 @@ leaf_prompt_hint() {
   esac
 }
 
-load_leaf_records() {
+install::load_leaf_records() {
   local module_id="$1"
   local array_name="$2"
 
   case "$module_id" in
     packages)
-      read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER"
-      annotate_package_records "$array_name"
+      install::read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER"
+      install::annotate_package_records "$array_name"
       ;;
     oh_my_zsh)
-      read_records_into_array "$array_name" catalog::omz_plugin_records
-      annotate_omz_plugin_records "$array_name"
+      install::read_records_into_array "$array_name" catalog::omz_plugin_records
+      install::annotate_omz_plugin_records "$array_name"
       ;;
     fonts)
-      read_records_into_array "$array_name" catalog::font_records
-      annotate_font_records "$array_name"
+      install::read_records_into_array "$array_name" catalog::font_records
+      install::annotate_font_records "$array_name"
       ;;
     desktop_apps)
-      read_records_into_array "$array_name" catalog::desktop_app_records
-      annotate_desktop_app_records "$array_name"
+      install::read_records_into_array "$array_name" catalog::desktop_app_records
+      install::annotate_desktop_app_records "$array_name"
       ;;
   esac
 }
 
-prompt_for_leaf_items() {
+install::prompt_for_leaf_items() {
   local module_id leaf_ids leaf_labels selectable_count
   local leaf_options=()
 
   for module_id in "${MODULE_ORDER[@]}"; do
-    if ! module_is_selected "$module_id"; then
+    if ! install::module_is_selected "$module_id"; then
       continue
     fi
 
@@ -127,16 +127,16 @@ prompt_for_leaf_items() {
       continue
     fi
 
-    load_leaf_records "$module_id" leaf_options
-    selectable_count="$(count_selectable_records "${leaf_options[@]}")"
-    prompt::multiselect leaf_ids "$(leaf_prompt_title "$module_id")" "$(leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
-    leaf_labels="$(selected_labels_for_items "$module_id" "$leaf_ids" "${leaf_options[@]}")"
-    set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
+    install::load_leaf_records "$module_id" leaf_options
+    selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
+    prompt::multiselect leaf_ids "$(install::leaf_prompt_title "$module_id")" "$(install::leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
+    leaf_labels="$(install::selected_labels_for_items "$module_id" "$leaf_ids" "${leaf_options[@]}")"
+    install::set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
 
     case "$module_id" in
       packages|fonts|desktop_apps)
         if [[ -z "$leaf_ids" ]]; then
-          DOTFILES_SELECTED_MODULES="$(remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
+          DOTFILES_SELECTED_MODULES="$(install::remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
           if [[ "$selectable_count" == "0" ]]; then
             SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because all available items are already installed."
           else
@@ -147,9 +147,9 @@ prompt_for_leaf_items() {
       oh_my_zsh)
         if [[ -z "$leaf_labels" ]]; then
           if [[ "$selectable_count" == "0" ]]; then
-            set_module_items "$module_id" "$leaf_ids" "All visible plugins are already installed"
+            install::set_module_items "$module_id" "$leaf_ids" "All visible plugins are already installed"
           else
-            set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
+            install::set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
           fi
         fi
         ;;
@@ -157,25 +157,25 @@ prompt_for_leaf_items() {
   done
 }
 
-git_personal_config_path() {
+install::git_personal_config_path() {
   printf '%s/git/personal.local.ini' "$DOTFILES_CONFIG_DIR"
 }
 
-git_personal_config_display_path() {
-  display_path "$(git_personal_config_path)"
+install::git_personal_config_display_path() {
+  install::display_path "$(install::git_personal_config_path)"
 }
 
-git_email_is_valid() {
+install::git_email_is_valid() {
   local value="$1"
   [[ -n "$value" && "$value" == *"@"* && "$value" != *[[:space:]]* ]]
 }
 
-collect_git_identity_values() {
+install::collect_git_identity_values() {
   local confirm_values=""
   local personal_file_display
   local signing_key_summary=""
 
-  personal_file_display="$(git_personal_config_display_path)"
+  personal_file_display="$(install::git_personal_config_display_path)"
   prompt::summary "Machine-local Git config file." \
     "Path: $personal_file_display" \
     "The installer may create this file from the bundled example." \
@@ -183,10 +183,10 @@ collect_git_identity_values() {
 
   while true; do
     prompt::text DOTFILES_GIT_NAME "Git user.name" "" "no" "Used for commits created on this machine."
-    prompt::text DOTFILES_GIT_EMAIL "Git user.email" "" "no" git_email_is_valid \
+    prompt::text DOTFILES_GIT_EMAIL "Git user.email" "" "no" install::git_email_is_valid \
       "Enter an email address containing @ and no spaces." \
       "Used for commits created on this machine."
-    prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "$(select_prompt_hint)" \
+    prompt::select DOTFILES_GIT_SIGNING_MODE "Configure Git signing for this machine?" "$(install::select_prompt_hint)" \
       $'none\tNo signing\tDo not enable commit or tag signing.\t1\t0' \
       $'gpg\tGPG signing\tUse an OpenPGP key ID or fingerprint.\t0\t0' \
       $'ssh\tSSH signing\tUse SSH signing with gpg.format=ssh.\t0\t0'
@@ -225,17 +225,17 @@ collect_git_identity_values() {
   done
 }
 
-prompt_for_git_identity() {
+install::prompt_for_git_identity() {
   local personal_file configure_now=""
   local personal_file_display
 
-  if ! module_is_selected "dotfiles"; then
+  if ! install::module_is_selected "dotfiles"; then
     DOTFILES_GIT_SUMMARY="Dotfiles module not selected."
     return 0
   fi
 
-  personal_file="$(git_personal_config_path)"
-  personal_file_display="$(git_personal_config_display_path)"
+  personal_file="$(install::git_personal_config_path)"
+  personal_file_display="$(install::git_personal_config_display_path)"
 
   if ! dotfiles_git_personal_config_is_template "$personal_file"; then
     DOTFILES_GIT_SUMMARY="Reuse existing machine-local Git identity at $personal_file_display. You can edit it directly later."
@@ -251,5 +251,5 @@ prompt_for_git_identity() {
   fi
 
   DOTFILES_GIT_CONFIGURE_PERSONAL="yes"
-  collect_git_identity_values
+  install::collect_git_identity_values
 }

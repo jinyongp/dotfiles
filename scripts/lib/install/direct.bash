@@ -1,6 +1,6 @@
 # Direct install target parsing and execution.
 
-normalize_direct_target() {
+install::normalize_direct_target() {
   case "$1" in
     vim|nvim) printf 'neovim' ;;
     omz|oh-my-zsh) printf 'oh_my_zsh' ;;
@@ -10,7 +10,7 @@ normalize_direct_target() {
   esac
 }
 
-direct_target_exists() {
+install::direct_target_exists() {
   local target="$1"
   local module_id
 
@@ -25,30 +25,30 @@ direct_target_exists() {
   return 1
 }
 
-module_supports_direct_items() {
-  contains_word "$LEAF_MODULES" "$1"
+install::module_supports_direct_items() {
+  install::contains_word "$LEAF_MODULES" "$1"
 }
 
-load_direct_item_records() {
+install::load_direct_item_records() {
   local module_id="$1"
   local array_name="$2"
 
   case "$module_id" in
-    packages) read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER" ;;
-    oh_my_zsh) read_records_into_array "$array_name" catalog::omz_plugin_records ;;
-    fonts) read_records_into_array "$array_name" catalog::font_records ;;
-    desktop_apps) read_records_into_array "$array_name" catalog::desktop_app_records ;;
+    packages) install::read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER" ;;
+    oh_my_zsh) install::read_records_into_array "$array_name" catalog::omz_plugin_records ;;
+    fonts) install::read_records_into_array "$array_name" catalog::font_records ;;
+    desktop_apps) install::read_records_into_array "$array_name" catalog::desktop_app_records ;;
     *) eval "$array_name=()" ;;
   esac
 }
 
-direct_item_ids_for_module() {
+install::direct_item_ids_for_module() {
   local module_id="$1"
   local records=()
   local record item_id
   local ids=()
 
-  load_direct_item_records "$module_id" records
+  install::load_direct_item_records "$module_id" records
 
   for record in "${records[@]}"; do
     item_id="$(prompt::record_field "$record" 1)"
@@ -58,7 +58,7 @@ direct_item_ids_for_module() {
   prompt::join_by ", " "${ids[@]}"
 }
 
-set_direct_items() {
+install::set_direct_items() {
   local module_id="$1"
   shift || true
 
@@ -66,16 +66,16 @@ set_direct_items() {
   local records=()
   local selected_item_labels=""
 
-  load_direct_item_records "$module_id" records
+  install::load_direct_item_records "$module_id" records
 
   if [[ -n "$selected_ids" ]]; then
-    selected_item_labels="$(selected_labels_for_items "$module_id" "$selected_ids" "${records[@]}")"
+    selected_item_labels="$(install::selected_labels_for_items "$module_id" "$selected_ids" "${records[@]}")"
   fi
 
-  set_module_items "$module_id" "$selected_ids" "$selected_item_labels"
+  install::set_module_items "$module_id" "$selected_ids" "$selected_item_labels"
 }
 
-validate_direct_items() {
+install::validate_direct_items() {
   local module_id="$1"
   shift || true
 
@@ -83,9 +83,9 @@ validate_direct_items() {
   local records=()
   local found=0
 
-  if ! module_supports_direct_items "$module_id"; then
+  if ! install::module_supports_direct_items "$module_id"; then
     if (( $# > 0 )); then
-      color_red "Module '$module_id' does not accept item arguments."
+      install::color_red "Module '$module_id' does not accept item arguments."
       return 1
     fi
 
@@ -96,7 +96,7 @@ validate_direct_items() {
     return 0
   fi
 
-  load_direct_item_records "$module_id" records
+  install::load_direct_item_records "$module_id" records
 
   for item_id in "$@"; do
     found=0
@@ -110,14 +110,14 @@ validate_direct_items() {
     done
 
     if [[ "$found" -eq 0 ]]; then
-      color_red "Unknown item '$item_id' for module '$module_id'."
-      color_yellow "Available items: $(direct_item_ids_for_module "$module_id")"
+      install::color_red "Unknown item '$item_id' for module '$module_id'."
+      install::color_yellow "Available items: $(install::direct_item_ids_for_module "$module_id")"
       return 1
     fi
   done
 }
 
-direct_target_label() {
+install::direct_target_label() {
   local target="$1"
 
   if [[ "$target" == "theme" ]]; then
@@ -128,7 +128,7 @@ direct_target_label() {
   catalog::module_label "$target"
 }
 
-print_direct_usage() {
+install::print_direct_usage() {
   cat <<EOF
 Usage:
   $DOTFILES_ROOT/install
@@ -159,7 +159,7 @@ Examples:
 EOF
 }
 
-print_direct_target_list() {
+install::print_direct_target_list() {
   local module_id module_description
 
   echo "Available direct install targets:"
@@ -169,26 +169,26 @@ print_direct_target_list() {
   echo "  - theme: Install dependencies for the current shell theme (${DOTFILES_THEME:-starship})."
 }
 
-configure_direct_install() {
+install::configure_direct_install() {
   local target="$1"
   shift || true
 
-  target="$(normalize_direct_target "$target")"
+  target="$(install::normalize_direct_target "$target")"
 
   DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"
   DOTFILES_RUN_THEME_INSTALL="0"
-  load_saved_runtime_defaults
-  select_default_package_manager
+  install::load_saved_runtime_defaults
+  install::select_default_package_manager
 
-  if ! direct_target_exists "$target"; then
-    color_red "Unknown install target: $target"
-    print_direct_target_list >&2
+  if ! install::direct_target_exists "$target"; then
+    install::color_red "Unknown install target: $target"
+    install::print_direct_target_list >&2
     return 1
   fi
 
   if [[ "$target" == "theme" ]]; then
     if (( $# > 0 )); then
-      color_red "The theme target does not accept extra item arguments."
+      install::color_red "The theme target does not accept extra item arguments."
       return 1
     fi
 
@@ -202,7 +202,7 @@ configure_direct_install() {
     return 0
   fi
 
-  validate_direct_items "$target" "$@"
+  install::validate_direct_items "$target" "$@" || return 1
 
   DOTFILES_SELECTED_MODULES="$target"
 
@@ -214,43 +214,43 @@ configure_direct_install() {
     DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
   fi
 
-  if module_supports_direct_items "$target" && (( $# > 0 )); then
-    set_direct_items "$target" "$@"
+  if install::module_supports_direct_items "$target" && (( $# > 0 )); then
+    install::set_direct_items "$target" "$@"
   fi
 }
 
-run_direct_install() {
+install::run_direct_install() {
   local target="$1"
   shift || true
   local zsh_bin=""
   local target_label=""
   local item_labels=""
 
-  configure_direct_install "$target" "$@"
-  target="$(normalize_direct_target "$target")"
-  target_label="$(direct_target_label "$target")"
+  install::configure_direct_install "$target" "$@"
+  target="$(install::normalize_direct_target "$target")"
+  target_label="$(install::direct_target_label "$target")"
 
-  log_step "Running direct install"
-  color_yellow "Target: $target_label"
-  color_yellow "Package manager: $DOTFILES_PACKAGE_MANAGER"
-  color_yellow "Theme: $DOTFILES_THEME"
+  install::log_step "Running direct install"
+  install::color_yellow "Target: $target_label"
+  install::color_yellow "Package manager: $DOTFILES_PACKAGE_MANAGER"
+  install::color_yellow "Theme: $DOTFILES_THEME"
 
   if [[ "$target" != "theme" ]]; then
-    item_labels="$(get_module_item_labels "$target")"
+    item_labels="$(install::get_module_item_labels "$target")"
     if [[ -n "$item_labels" ]]; then
-      color_yellow "Items: $item_labels"
+      install::color_yellow "Items: $item_labels"
     fi
   fi
 
-  run_install_plan_or_exit "Direct install failed."
-  color_green "Direct install complete."
+  install::run_install_plan_or_exit "Direct install failed."
+  install::color_green "Direct install complete."
 
-  if should_auto_launch_zsh; then
-    zsh_bin="$(find_zsh)"
-    color_yellow "Starting a login zsh shell with the installed dotfiles config."
+  if install::should_auto_launch_zsh; then
+    zsh_bin="$(install::find_zsh)"
+    install::color_yellow "Starting a login zsh shell with the installed dotfiles config."
     if ! exec "$zsh_bin" -l; then
-      color_red "Failed to start a login zsh shell automatically."
-      color_yellow "Run this manually: exec zsh -l"
+      install::color_red "Failed to start a login zsh shell automatically."
+      install::color_yellow "Run this manually: exec zsh -l"
       exit 1
     fi
   fi

@@ -12,31 +12,45 @@ MODULE_ORDER=(
 
 LEAF_MODULES="packages oh_my_zsh fonts desktop_apps"
 
-DOTFILES_PLATFORM=""
-DOTFILES_PLATFORM_LABEL=""
-DOTFILES_PACKAGE_MANAGER=""
-DOTFILES_THEME=""
-DOTFILES_ENABLE_OH_MY_ZSH="0"
-DOTFILES_SELECTED_MODULES=""
-DOTFILES_GIT_CONFIGURE_PERSONAL="no"
-DOTFILES_GIT_NAME=""
-DOTFILES_GIT_EMAIL=""
-DOTFILES_GIT_SIGNING_MODE="none"
-DOTFILES_GIT_SIGNING_KEY=""
-DOTFILES_GIT_SUMMARY=""
-DOTFILES_BOOTSTRAP_ZSH_STATUS="none"
-DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER=""
-DOTFILES_RUN_THEME_INSTALL="1"
-DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
-DOTFILES_REQUESTED_MODULES=""
-DOTFILES_AUTO_SELECTED_MODULES=""
-DOTFILES_SAVED_THEME=""
-DOTFILES_SAVED_ENABLE_OH_MY_ZSH=""
-DOTFILES_THEME_NEEDED="0"
-DOTFILES_PACKAGE_MANAGER_NEEDED="0"
+# Mutable installer state is initialized explicitly so tests and entrypoints can
+# reset plan state without re-sourcing libraries.
+install::init_state() {
+  local module_id
 
+  DOTFILES_PLATFORM=""
+  DOTFILES_PLATFORM_LABEL=""
+  DOTFILES_PACKAGE_MANAGER=""
+  DOTFILES_THEME=""
+  DOTFILES_ENABLE_OH_MY_ZSH="0"
+  DOTFILES_SELECTED_MODULES=""
+  DOTFILES_GIT_CONFIGURE_PERSONAL="no"
+  DOTFILES_GIT_NAME=""
+  DOTFILES_GIT_EMAIL=""
+  DOTFILES_GIT_SIGNING_MODE="none"
+  DOTFILES_GIT_SIGNING_KEY=""
+  DOTFILES_GIT_SUMMARY=""
+  DOTFILES_BOOTSTRAP_ZSH_STATUS="none"
+  DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER=""
+  DOTFILES_RUN_THEME_INSTALL="1"
+  DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
+  DOTFILES_REQUESTED_MODULES=""
+  DOTFILES_AUTO_SELECTED_MODULES=""
+  DOTFILES_SAVED_THEME=""
+  DOTFILES_SAVED_ENABLE_OH_MY_ZSH=""
+  DOTFILES_THEME_NEEDED="0"
+  DOTFILES_PACKAGE_MANAGER_NEEDED="0"
 
-contains_word() {
+  AUTO_NOTES=()
+  REUSE_NOTES=()
+  SKIP_NOTES=()
+
+  for module_id in "${MODULE_ORDER[@]}"; do
+    unset "MODULE_ITEMS_${module_id}"
+    unset "MODULE_ITEM_LABELS_${module_id}"
+  done
+}
+
+install::contains_word() {
   local list="$1"
   local word="$2"
 
@@ -46,11 +60,11 @@ contains_word() {
   esac
 }
 
-add_word() {
+install::add_word() {
   local list="$1"
   local word="$2"
 
-  if contains_word "$list" "$word"; then
+  if install::contains_word "$list" "$word"; then
     printf '%s' "$list"
     return 0
   fi
@@ -62,7 +76,7 @@ add_word() {
   fi
 }
 
-remove_word() {
+install::remove_word() {
   local list="$1"
   local word="$2"
   local rebuilt=""
@@ -83,19 +97,19 @@ remove_word() {
   printf '%s' "$rebuilt"
 }
 
-set_named_value() {
+install::set_named_value() {
   local variable_name="$1"
   local named_value="$2"
 
   printf -v "$variable_name" '%s' "$named_value"
 }
 
-get_named_value() {
+install::get_named_value() {
   local variable_name="$1"
   eval "printf '%s' \"\${$variable_name-}\""
 }
 
-read_records_into_array() {
+install::read_records_into_array() {
   local array_name="$1"
   shift
 
@@ -114,40 +128,40 @@ read_records_into_array() {
   done < <("$@")
 }
 
-module_is_selected() {
-  contains_word "$DOTFILES_SELECTED_MODULES" "$1"
+install::module_is_selected() {
+  install::contains_word "$DOTFILES_SELECTED_MODULES" "$1"
 }
 
-module_item_var_name() {
+install::module_item_var_name() {
   printf 'MODULE_ITEMS_%s' "$1"
 }
 
-module_item_labels_var_name() {
+install::module_item_labels_var_name() {
   printf 'MODULE_ITEM_LABELS_%s' "$1"
 }
 
-set_module_items() {
+install::set_module_items() {
   local module_id="$1"
   local selected_ids="$2"
   local selected_labels="$3"
 
-  set_named_value "$(module_item_var_name "$module_id")" "$selected_ids"
-  set_named_value "$(module_item_labels_var_name "$module_id")" "$selected_labels"
+  install::set_named_value "$(install::module_item_var_name "$module_id")" "$selected_ids"
+  install::set_named_value "$(install::module_item_labels_var_name "$module_id")" "$selected_labels"
 }
 
-get_module_items() {
-  get_named_value "$(module_item_var_name "$1")"
+install::get_module_items() {
+  install::get_named_value "$(install::module_item_var_name "$1")"
 }
 
-get_module_item_labels() {
-  get_named_value "$(module_item_labels_var_name "$1")"
+install::get_module_item_labels() {
+  install::get_named_value "$(install::module_item_labels_var_name "$1")"
 }
 
-item_label_for() {
+install::item_label_for() {
   catalog::item_label "$1" "$2"
 }
 
-selected_labels_for_items() {
+install::selected_labels_for_items() {
   local module_id="$1"
   local selected_ids="$2"
   shift 2 || true
@@ -155,18 +169,18 @@ selected_labels_for_items() {
   prompt::selected_labels_from_records "$selected_ids" "$@"
 }
 
-array_record_count() {
+install::array_record_count() {
   local array_name="$1"
   eval "printf '%s' \"\${#${array_name}[@]}\""
 }
 
-array_record_get() {
+install::array_record_get() {
   local array_name="$1"
   local index="$2"
   eval "printf '%s' \"\${${array_name}[$index]}\""
 }
 
-array_record_set() {
+install::array_record_set() {
   local array_name="$1"
   local index="$2"
   local record="$3"
@@ -177,7 +191,7 @@ array_record_set() {
   eval "${array_name}[$index]=$quoted_record"
 }
 
-compose_prompt_record() {
+install::compose_prompt_record() {
   local id="$1"
   local label="$2"
   local description="$3"
@@ -188,7 +202,7 @@ compose_prompt_record() {
   printf '%s\t%s\t%s\t%s\t%s\t%s' "$id" "$label" "$description" "$is_selected" "$is_disabled" "$status"
 }
 
-count_selectable_records() {
+install::count_selectable_records() {
   local record
   local selectable=0
 
@@ -201,7 +215,7 @@ count_selectable_records() {
   printf '%s' "$selectable"
 }
 
-module_labels_for_selection() {
+install::module_labels_for_selection() {
   local selection="$1"
   local labels=()
   local module_id
@@ -217,11 +231,11 @@ module_labels_for_selection() {
   prompt::join_by ", " "${labels[@]}"
 }
 
-module_labels_or_none() {
+install::module_labels_or_none() {
   local selection="$1"
   local selection_labels=""
 
-  selection_labels="$(module_labels_for_selection "$selection")"
+  selection_labels="$(install::module_labels_for_selection "$selection")"
   if [[ -n "$selection_labels" ]]; then
     printf '%s' "$selection_labels"
   else

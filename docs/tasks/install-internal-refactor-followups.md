@@ -1,6 +1,6 @@
 # Install Internal Refactor Follow-ups
 
-Status: `planned`
+Status: `completed`
 
 Suggested priority: `P8`
 
@@ -32,3 +32,4 @@ Future changes will be safer if the new file boundaries are backed by clearer st
 - Do not combine this with user-facing installer UX changes.
 - Keep Bash 3.2 compatibility unless the project explicitly raises the baseline.
 - Preserve the current public CLI while tightening internal boundaries.
+- The second pass added installer namespace boundaries, centralized bootstrap sourcing, explicit state initialization, and focused plan/direct tests.
