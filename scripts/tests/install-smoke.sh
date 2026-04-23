@@ -2,6 +2,10 @@
 
 set -euo pipefail
 
+# End-to-end temp-home smoke coverage for the real ./install entrypoint on the
+# current host platform. Non-host platform branches are covered separately by
+# sourceable module tests so this harness can stay hermetic and deterministic.
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
 REAL_ZSH_BIN="${REAL_ZSH_BIN:-/bin/zsh}"
@@ -129,6 +133,16 @@ install_smoke_test::assert_git_status_unchanged() {
   fi
 }
 
+install_smoke_test::reset_case_config() {
+  SMOKE_PLATFORM_OSTYPE="darwin23"
+  SMOKE_WSL_DISTRO_NAME=""
+  SMOKE_INSTALL_PACKAGE_MANAGER="brew"
+  SMOKE_INSTALL_THEME="starship"
+  SMOKE_INSTALL_ENABLE_OH_MY_ZSH="0"
+  SMOKE_CHSH_SHOULD_FAIL="0"
+  SMOKE_GETENT_SHELL="/bin/bash"
+}
+
 install_smoke_test::setup_case() {
   local case_name="$1"
 
@@ -146,6 +160,9 @@ install_smoke_test::setup_case() {
   ZSH_LOG_FILE="$STATE_DIR/zsh-invocations.log"
   BREW_LOG_FILE="$STATE_DIR/brew.log"
   NPM_LOG_FILE="$STATE_DIR/npm.log"
+  APT_LOG_FILE="$STATE_DIR/apt-get.log"
+  GIT_LOG_FILE="$STATE_DIR/git.log"
+  CHSH_LOG_FILE="$STATE_DIR/chsh.log"
 
   mkdir -p \
     "$HOME_DIR" \
@@ -156,10 +173,18 @@ install_smoke_test::setup_case() {
     "$STATE_DIR" \
     "$FAKE_BREW_PREFIX/bin"
 
-  cat >"$DOTFILES_CONFIG_DIR/install.env" <<'EOF'
-export DOTFILES_PACKAGE_MANAGER=brew
-export DOTFILES_THEME=starship
-export DOTFILES_ENABLE_OH_MY_ZSH=0
+  : "${SMOKE_PLATFORM_OSTYPE:=darwin23}"
+  : "${SMOKE_WSL_DISTRO_NAME:=}"
+  : "${SMOKE_INSTALL_PACKAGE_MANAGER:=brew}"
+  : "${SMOKE_INSTALL_THEME:=starship}"
+  : "${SMOKE_INSTALL_ENABLE_OH_MY_ZSH:=0}"
+  : "${SMOKE_CHSH_SHOULD_FAIL:=0}"
+  : "${SMOKE_GETENT_SHELL:=/bin/bash}"
+
+  cat >"$DOTFILES_CONFIG_DIR/install.env" <<EOF
+export DOTFILES_PACKAGE_MANAGER=${SMOKE_INSTALL_PACKAGE_MANAGER}
+export DOTFILES_THEME=${SMOKE_INSTALL_THEME}
+export DOTFILES_ENABLE_OH_MY_ZSH=${SMOKE_INSTALL_ENABLE_OH_MY_ZSH}
 EOF
 
   install_smoke_test::write_fake_commands
@@ -238,6 +263,25 @@ install_smoke_test::write_fake_commands() {
     'esac' \
     'exit 1'
 
+  install_smoke_test::write_executable "$INITIAL_BIN/git" \
+    '#!/bin/sh' \
+    'log_file="${SMOKE_STATE_DIR}/git.log"' \
+    'printf "%s\n" "$*" >> "$log_file"' \
+    'if [ "${1:-}" = "clone" ]; then' \
+    '  target=""' \
+    '  for arg in "$@"; do' \
+    '    target="$arg"' \
+    '  done' \
+    '  mkdir -p "$target"' \
+    '  case "$target" in' \
+    '    */.oh-my-zsh)' \
+    '      mkdir -p "$target/custom/plugins" "$target/custom/themes"' \
+    '      ;;' \
+    '  esac' \
+    '  exit 0' \
+    'fi' \
+    'exec /usr/bin/git "$@"'
+
   install_smoke_test::write_executable "$INITIAL_BIN/node" '#!/bin/sh' 'exit 0'
 
   install_smoke_test::write_executable "$INITIAL_BIN/npm" \
@@ -286,6 +330,93 @@ install_smoke_test::write_fake_commands() {
     '  chmod +x "$destination"' \
     'fi' \
     'exit 0'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/unzip" '#!/bin/sh' 'exit 0'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/sudo" \
+    '#!/bin/sh' \
+    'exec "$@"'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/apt-cache" \
+    '#!/bin/sh' \
+    'package_name="${2:-}"' \
+    'case "$package_name" in' \
+    '  jq|eza|git|curl|unzip|zsh|neovim|ripgrep|fd-find|tealdeer|gnupg|starship|gh)' \
+    '    exit 0' \
+    '    ;;' \
+    'esac' \
+    'exit 1'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/dpkg" \
+    '#!/bin/sh' \
+    'installed_dir="${SMOKE_STATE_DIR}/apt-installed"' \
+    'if [ "${1:-}" = "-s" ] && [ -f "$installed_dir/${2:-}" ]; then' \
+    '  exit 0' \
+    'fi' \
+    'exit 1'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/apt-get" \
+    '#!/bin/sh' \
+    'log_file="${SMOKE_STATE_DIR}/apt-get.log"' \
+    'installed_dir="${SMOKE_STATE_DIR}/apt-installed"' \
+    'mkdir -p "$installed_dir"' \
+    'printf "%s\n" "$*" >> "$log_file"' \
+    'make_cmd() {' \
+    '  command_name="$1"' \
+    '  target="${SMOKE_INITIAL_BIN}/$command_name"' \
+    '  [ -n "$command_name" ] || return 0' \
+    '  if [ ! -x "$target" ]; then' \
+    '    printf "#!/bin/sh\nexit 0\n" > "$target"' \
+    '    chmod +x "$target"' \
+    '  fi' \
+    '}' \
+    'install_pkg() {' \
+    '  package_name="$1"' \
+    '  : > "$installed_dir/$package_name"' \
+    '  case "$package_name" in' \
+    '    jq) make_cmd jq ;;' \
+    '    eza) make_cmd eza ;;' \
+    '    gh) make_cmd gh ;;' \
+    '    neovim) make_cmd nvim ;;' \
+    '    ripgrep) make_cmd rg ;;' \
+    '    fd-find) make_cmd fdfind ;;' \
+    '    tealdeer) make_cmd tldr ;;' \
+    '    gnupg) make_cmd gpg ;;' \
+    '    starship) make_cmd starship ;;' \
+    '  esac' \
+    '}' \
+    'case "${1:-}" in' \
+    '  update)' \
+    '    exit 0' \
+    '    ;;' \
+    '  install)' \
+    '    shift' \
+    '    if [ "${1:-}" = "-y" ]; then' \
+    '      shift' \
+    '    fi' \
+    '    for package_name in "$@"; do' \
+    '      install_pkg "$package_name"' \
+    '    done' \
+    '    exit 0' \
+    '    ;;' \
+    'esac' \
+    'exit 1'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/getent" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "passwd" ]; then' \
+    '  printf "%s:x:1000:1000::%s:%s\n" "${2:-dotfiles}" "$HOME" "${SMOKE_GETENT_SHELL:-/bin/bash}"' \
+    '  exit 0' \
+    'fi' \
+    'exit 1'
+
+  install_smoke_test::write_executable "$INITIAL_BIN/chsh" \
+    '#!/bin/sh' \
+    'printf "%s\n" "$*" >> "${SMOKE_STATE_DIR}/chsh.log"' \
+    'if [ "${SMOKE_CHSH_SHOULD_FAIL:-0}" = "1" ]; then' \
+    '  exit 1' \
+    'fi' \
+    'exit 0'
 }
 
 install_smoke_test::with_env() {
@@ -298,9 +429,13 @@ install_smoke_test::with_env() {
     PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     TMPDIR="$TMP_DIR/" \
-    OSTYPE="darwin23" \
+    OSTYPE="$SMOKE_PLATFORM_OSTYPE" \
+    WSL_DISTRO_NAME="$SMOKE_WSL_DISTRO_NAME" \
     FAKE_BREW_PREFIX="$FAKE_BREW_PREFIX" \
     SMOKE_STATE_DIR="$STATE_DIR" \
+    SMOKE_INITIAL_BIN="$INITIAL_BIN" \
+    SMOKE_CHSH_SHOULD_FAIL="$SMOKE_CHSH_SHOULD_FAIL" \
+    SMOKE_GETENT_SHELL="$SMOKE_GETENT_SHELL" \
     REAL_ZSH_BIN="$REAL_ZSH_BIN" \
     "$@"
 }
@@ -340,6 +475,7 @@ install_smoke_test::assert_direct_dotfiles() {
   local normalized_output
   local backup_dir
 
+  install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-dotfiles"
 
   printf '%s\n' 'export LEGACY_ZSHENV=1' >"$HOME_DIR/.zshenv"
@@ -385,6 +521,7 @@ install_smoke_test::assert_direct_dotfiles() {
 install_smoke_test::assert_direct_neovim() {
   local normalized_output
 
+  install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-neovim"
   install_smoke_test::run_direct_install neovim
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
@@ -410,6 +547,7 @@ install_smoke_test::assert_direct_neovim() {
 install_smoke_test::assert_direct_packages() {
   local normalized_output
 
+  install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-packages"
   install_smoke_test::run_direct_install packages fnm eza
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
@@ -428,9 +566,83 @@ install_smoke_test::assert_direct_packages() {
   printf 'ok direct_packages\n'
 }
 
+install_smoke_test::assert_direct_theme() {
+  local normalized_output
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "direct-theme"
+
+  ln -s "$DOTFILES_ROOT/zsh/.zshrc" "$HOME_DIR/.zshrc"
+
+  install_smoke_test::run_direct_install theme
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
+  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "theme direct install should complete"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install starship" "theme direct install should install starship"
+  install_smoke_test::assert_login_zsh_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok direct_theme\n'
+}
+
+install_smoke_test::assert_direct_fonts() {
+  local normalized_output
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "direct-fonts"
+
+  install_smoke_test::run_direct_install fonts bundled-monocraft font-fira-code-nerd-font
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
+  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "fonts direct install should complete"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask font-fira-code-nerd-font" "expected font cask install"
+  install_smoke_test::assert_file_exists "$HOME_DIR/Library/Fonts/Monocraft.otf"
+  install_smoke_test::assert_file_exists "$HOME_DIR/Library/Fonts/MonocraftNF.otf"
+  install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok direct_fonts\n'
+}
+
+install_smoke_test::assert_direct_desktop_apps() {
+  local normalized_output
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "direct-desktop-apps"
+
+  install_smoke_test::run_direct_install desktop_apps iterm2 raycast
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
+  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "desktop apps direct install should complete"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask iterm2" "expected iterm2 cask install"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask raycast" "expected raycast cask install"
+  install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok direct_desktop_apps\n'
+}
+
+install_smoke_test::assert_direct_macos_defaults() {
+  local normalized_output
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "direct-macos-defaults"
+
+  install_smoke_test::run_direct_install macos_defaults
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
+  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "macos defaults direct install should complete"
+  install_smoke_test::assert_file_contains "$HOME_DIR/Library/KeyBindings/DefaultKeyBinding.dict" '"₩" = ("insertText:", "\`");' "expected keybinding file contents"
+  install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok direct_macos_defaults\n'
+}
+
 install_smoke_test::assert_interactive_minimal() {
   local normalized_transcript
 
+  install_smoke_test::reset_case_config
   install_smoke_test::setup_case "interactive-minimal"
   install_smoke_test::run_interactive_install $'\033[A\r\r\r\r'
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
@@ -448,12 +660,42 @@ install_smoke_test::assert_interactive_minimal() {
   printf 'ok interactive_minimal\n'
 }
 
+install_smoke_test::assert_interactive_recommended() {
+  local normalized_transcript
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "interactive-recommended"
+  install_smoke_test::run_interactive_install $'\r\r\r\r\r'
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_transcript="$(install_smoke_test::normalize_file "$TRANSCRIPT_FILE")"
+  install_smoke_test::assert_contains "$normalized_transcript" "Review selected items?" "recommended interactive flow should offer review gate"
+  install_smoke_test::assert_contains "$normalized_transcript" "Machine-local Git identity." "recommended interactive flow should open the Git identity gate"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install gh" "recommended interactive flow should install gh"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fd" "recommended interactive flow should install fd"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install eza" "recommended interactive flow should install eza"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fnm" "recommended interactive flow should install fnm"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install neovim" "recommended interactive flow should install neovim"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install ripgrep" "recommended interactive flow should install ripgrep"
+  install_smoke_test::assert_not_contains "$(cat "$BREW_LOG_FILE")" "install tealdeer" "recommended interactive flow should not install tldr by default"
+  install_smoke_test::assert_not_contains "$(cat "$BREW_LOG_FILE")" "install gnupg" "recommended interactive flow should not install gnupg by default"
+  install_smoke_test::assert_not_contains "$(cat "$BREW_LOG_FILE")" "install diff-so-fancy" "recommended interactive flow should not install diff-so-fancy by default"
+  install_smoke_test::assert_login_zsh_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok interactive_recommended\n'
+}
+
 install_smoke_test::main() {
   [[ -x "$REAL_ZSH_BIN" ]] || install_smoke_test::fail "zsh not found: $REAL_ZSH_BIN"
   install_smoke_test::assert_direct_dotfiles
+  install_smoke_test::assert_direct_theme
   install_smoke_test::assert_direct_neovim
   install_smoke_test::assert_direct_packages
+  install_smoke_test::assert_direct_fonts
+  install_smoke_test::assert_direct_desktop_apps
+  install_smoke_test::assert_direct_macos_defaults
   install_smoke_test::assert_interactive_minimal
+  install_smoke_test::assert_interactive_recommended
   printf 'all install smoke tests passed\n'
 }
 
