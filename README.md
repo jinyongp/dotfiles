@@ -22,8 +22,8 @@ Run a single target directly when you only want one part of the setup.
 ~/.dotfiles/install theme
 ```
 
-The installer lets you choose modules first, review the final plan, and then run only the selected setup.
-For the full installer flow, direct install targets, platform notes, and machine-local config paths, see [`docs/installer.md`](docs/installer.md).
+The interactive installer is plan-first: it starts with a profile (`Minimal`, `Recommended`, `Full`, or `Custom`), then lets you review, revise, or cancel the final plan before anything runs.
+For the full interactive flow, direct install targets, platform notes, and machine-local config paths, see [`docs/installer.md`](docs/installer.md).
 
 ## Editor
 

@@ -1,6 +1,6 @@
 # Interactive Installer README Update
 
-Status: `planned`
+Status: `completed`
 Suggested priority: `P13`
 
 ## Summary
