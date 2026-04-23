@@ -1,5 +1,47 @@
 #!/usr/bin/env bash
 
+if [[ -z "${DOTFILES_CATALOG_LIB_DIR:-}" ]]; then
+  if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    DOTFILES_CATALOG_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  elif [[ -n "${ZSH_VERSION:-}" ]]; then
+    DOTFILES_CATALOG_LIB_DIR="$(eval 'cd -- "$(dirname -- "${(%):-%x}")" && pwd')"
+  fi
+fi
+
+catalog::__lib_dir() {
+  [[ -n "${DOTFILES_CATALOG_LIB_DIR:-}" ]] || return 1
+  printf '%s' "$DOTFILES_CATALOG_LIB_DIR"
+}
+
+catalog::__source_data() {
+  local data_path=""
+  local lib_dir=""
+
+  if typeset -f catalog_data::package_rows >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/catalog-data.sh" ]]; then
+    data_path="$DOTFILES_ROOT/scripts/lib/catalog-data.sh"
+  else
+    lib_dir="$(catalog::__lib_dir)" || return 1
+    data_path="$lib_dir/catalog-data.sh"
+  fi
+
+  # shellcheck disable=SC1090
+  source "$data_path"
+}
+
+catalog::__source_data || return 1
+
+catalog::__row_field_by_id() {
+  local row_function="$1"
+  local row_id="$2"
+  local field_index="$3"
+
+  "$row_function" | awk -F '\t' -v row_id="$row_id" -v field_index="$field_index" '$1 == row_id { print $field_index; exit }'
+}
+
 catalog::profile_records() {
   cat <<'EOF'
 minimal	Minimal	Only link the core dotfiles and prepare machine-local config.	0	0
@@ -135,103 +177,42 @@ catalog::theme_label() {
 }
 
 catalog::package_ids() {
-  cat <<'EOF'
-jq
-gh
-fd
-eza
-tldr
-gnupg
-diff-so-fancy
-fnm
-EOF
+  catalog_data::package_rows | awk -F '\t' '$3 == "1" { print $1 }'
 }
 
 catalog::package_native_name() {
   local package_manager="$1"
   local package_id="$2"
 
-  case "$package_manager:$package_id" in
-    brew:jq) echo "jq" ;;
-    brew:gh) echo "gh" ;;
-    brew:fnm) echo "fnm" ;;
-    brew:fd) echo "fd" ;;
-    brew:eza) echo "eza" ;;
-    brew:tldr) echo "tlrc" ;;
-    brew:gnupg) echo "gnupg" ;;
-    brew:diff-so-fancy) echo "diff-so-fancy" ;;
-    apt:jq) echo "jq" ;;
-    apt:gh) echo "gh" ;;
-    apt:fd) echo "fd-find" ;;
-    apt:eza) echo "eza" ;;
-    apt:tldr) echo "tealdeer" ;;
-    apt:gnupg) echo "gnupg" ;;
-    apt:diff-so-fancy) echo "diff-so-fancy" ;;
+  case "$package_manager" in
+    brew) catalog::__row_field_by_id catalog_data::package_rows "$package_id" 6 ;;
+    apt) catalog::__row_field_by_id catalog_data::package_rows "$package_id" 7 ;;
+  esac
+}
+
+catalog::package_command_name() {
+  local package_manager="$1"
+  local package_id="$2"
+
+  case "$package_manager" in
+    brew) catalog::__row_field_by_id catalog_data::package_rows "$package_id" 4 ;;
+    apt) catalog::__row_field_by_id catalog_data::package_rows "$package_id" 5 ;;
   esac
 }
 
 catalog::package_records() {
   local package_manager="$1"
-  local package_id native_name label description
 
-  while IFS= read -r package_id; do
-    [[ -n "$package_id" ]] || continue
-    native_name="$(catalog::package_native_name "$package_manager" "$package_id")"
-
-    case "$package_id" in
-      jq)
-        label="jq"
-        description="Command-line JSON processor."
-        ;;
-      gh)
-        label="GitHub CLI"
-        description="GitHub command-line client."
-        ;;
-      fd)
-        label="fd"
-        description="Fast file finder. Uses $native_name on $package_manager."
-        ;;
-      eza)
-        label="eza"
-        description="Modern replacement for ls."
-        ;;
-      tldr)
-        label="tldr"
-        description="Community-maintained command examples. Uses $native_name on $package_manager."
-        ;;
-      gnupg)
-        label="GnuPG"
-        description="GPG tooling for signing and encryption."
-        ;;
-      diff-so-fancy)
-        label="diff-so-fancy"
-        description="Nicer Git diff presentation."
-        ;;
-      fnm)
-        label="fnm"
-        if [[ "$package_manager" == "brew" ]]; then
-          description="Fast Node.js version manager via Homebrew."
-        else
-          description="Fast Node.js version manager via the official install script."
-        fi
-        ;;
-    esac
-
-    printf '%s\t%s\t%s\t0\t0\n' "$package_id" "$label" "$description"
-  done < <(catalog::package_ids)
+  catalog_data::package_rows | awk -F '\t' -v package_manager="$package_manager" '
+    $3 == "1" {
+      description = (package_manager == "apt" ? $9 : $8)
+      printf "%s\t%s\t%s\t0\t0\n", $1, $2, description
+    }
+  '
 }
 
 catalog::package_label() {
-  case "$1" in
-    jq) echo "jq" ;;
-    gh) echo "GitHub CLI" ;;
-    fnm) echo "fnm" ;;
-    fd) echo "fd" ;;
-    eza) echo "eza" ;;
-    tldr) echo "tldr" ;;
-    gnupg) echo "GnuPG" ;;
-    diff-so-fancy) echo "diff-so-fancy" ;;
-  esac
+  catalog::__row_field_by_id catalog_data::package_rows "$1" 2
 }
 
 catalog::omz_plugin_ids() {
@@ -279,82 +260,49 @@ catalog::omz_plugin_label() {
 }
 
 catalog::font_ids() {
-  cat <<'EOF'
-font-fira-code-nerd-font
-font-victor-mono-nerd-font
-bundled-firacodeiscript
-bundled-monocraft
-EOF
+  catalog_data::font_rows | awk -F '\t' '{ print $1 }'
 }
 
 catalog::font_kind() {
-  case "$1" in
-    font-fira-code-nerd-font|font-victor-mono-nerd-font) echo "cask" ;;
-    bundled-firacodeiscript|bundled-monocraft) echo "bundled" ;;
-  esac
+  catalog::__row_field_by_id catalog_data::font_rows "$1" 3
 }
 
 catalog::font_source() {
-  case "$1" in
-    font-fira-code-nerd-font) echo "font-fira-code-nerd-font" ;;
-    font-victor-mono-nerd-font) echo "font-victor-mono-nerd-font" ;;
-    bundled-firacodeiscript) echo "FiraCodeiScript" ;;
-    bundled-monocraft) echo "Monocraft" ;;
-  esac
+  catalog::__row_field_by_id catalog_data::font_rows "$1" 4
 }
 
 catalog::font_records() {
-  cat <<'EOF'
-font-fira-code-nerd-font	Fira Code Nerd Font	Homebrew cask font for terminal glyph coverage.	1	0
-font-victor-mono-nerd-font	Victor Mono Nerd Font	Homebrew cask font for terminal glyph coverage.	1	0
-bundled-firacodeiscript	FiraCodeiScript (bundled)	Copy the bundled FiraCodeiScript font family into ~/Library/Fonts.	0	0
-bundled-monocraft	Monocraft (bundled)	Copy the bundled Monocraft font family into ~/Library/Fonts.	0	0
-EOF
+  local font_id label kind source description
+
+  while IFS=$'\t' read -r font_id label kind source description; do
+    [[ -n "$font_id" ]] || continue
+    printf '%s\t%s\t%s\t0\t0\n' "$font_id" "$label" "$description"
+  done < <(catalog_data::font_rows)
 }
 
 catalog::font_label() {
-  case "$1" in
-    font-fira-code-nerd-font) echo "Fira Code Nerd Font" ;;
-    font-victor-mono-nerd-font) echo "Victor Mono Nerd Font" ;;
-    bundled-firacodeiscript) echo "FiraCodeiScript (bundled)" ;;
-    bundled-monocraft) echo "Monocraft (bundled)" ;;
-  esac
+  catalog::__row_field_by_id catalog_data::font_rows "$1" 2
 }
 
 catalog::desktop_app_ids() {
-  cat <<'EOF'
-arc
-iterm2
-raycast
-keka
-kekaexternalhelper
-karabiner-elements
-visual-studio-code
-EOF
+  catalog_data::desktop_app_rows | awk -F '\t' '{ print $1 }'
+}
+
+catalog::desktop_app_source() {
+  catalog::__row_field_by_id catalog_data::desktop_app_rows "$1" 3
 }
 
 catalog::desktop_app_records() {
-  cat <<'EOF'
-arc	Arc	Arc browser via Homebrew cask.	0	0
-iterm2	iTerm2	iTerm2 terminal emulator via Homebrew cask.	0	0
-raycast	Raycast	Raycast launcher via Homebrew cask.	0	0
-keka	Keka	Keka archive utility via Homebrew cask.	0	0
-kekaexternalhelper	KekaExternalHelper	Keka helper app via Homebrew cask.	0	0
-karabiner-elements	Karabiner-Elements	Keyboard remapping utility via Homebrew cask.	0	0
-visual-studio-code	Visual Studio Code	VS Code editor via Homebrew cask.	0	0
-EOF
+  local app_id label source description
+
+  while IFS=$'\t' read -r app_id label source description; do
+    [[ -n "$app_id" ]] || continue
+    printf '%s\t%s\t%s\t0\t0\n' "$app_id" "$label" "$description"
+  done < <(catalog_data::desktop_app_rows)
 }
 
 catalog::desktop_app_label() {
-  case "$1" in
-    arc) echo "Arc" ;;
-    iterm2) echo "iTerm2" ;;
-    raycast) echo "Raycast" ;;
-    keka) echo "Keka" ;;
-    kekaexternalhelper) echo "KekaExternalHelper" ;;
-    karabiner-elements) echo "Karabiner-Elements" ;;
-    visual-studio-code) echo "Visual Studio Code" ;;
-  esac
+  catalog::__row_field_by_id catalog_data::desktop_app_rows "$1" 2
 }
 
 catalog::item_label() {

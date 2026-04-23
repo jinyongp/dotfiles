@@ -1,54 +1,5 @@
 #!/bin/zsh
 
-typeset -gA DOTFILES_BREW_FORMULAE=(
-  [curl]="curl"
-  [diff-so-fancy]="diff-so-fancy"
-  [eza]="eza"
-  [fd]="fd"
-  [fnm]="fnm"
-  [gh]="gh"
-  [git]="git"
-  [gnupg]="gnupg"
-  [jq]="jq"
-  [neovim]="neovim"
-  [ripgrep]="ripgrep"
-  [starship]="starship"
-  [tldr]="tlrc"
-  [unzip]="unzip"
-  [vim]="vim"
-  [zsh]="zsh"
-)
-
-typeset -gA DOTFILES_APT_PACKAGES=(
-  [curl]="curl"
-  [diff-so-fancy]="diff-so-fancy"
-  [eza]="eza"
-  [fd]="fd-find"
-  [gh]="gh"
-  [git]="git"
-  [gnupg]="gnupg"
-  [jq]="jq"
-  [neovim]="neovim"
-  [ripgrep]="ripgrep"
-  [starship]="starship"
-  [tldr]="tealdeer"
-  [unzip]="unzip"
-  [vim]="vim"
-  [zsh]="zsh"
-)
-
-typeset -gA DOTFILES_BREW_CASKS=(
-  [arc]="arc"
-  [font-fira-code-nerd-font]="font-fira-code-nerd-font"
-  [font-victor-mono-nerd-font]="font-victor-mono-nerd-font"
-  [iterm2]="iterm2"
-  [karabiner-elements]="karabiner-elements"
-  [keka]="keka"
-  [kekaexternalhelper]="kekaexternalhelper"
-  [raycast]="raycast"
-  [visual-studio-code]="visual-studio-code"
-)
-
 typeset -gi DOTFILES_APT_READY=0
 typeset -gi DOTFILES_BREW_READY=0
 
@@ -189,8 +140,7 @@ package_manager::logical_to_native() {
   local logical_name="$1"
 
   case "$DOTFILES_PACKAGE_MANAGER" in
-    brew) echo "${DOTFILES_BREW_FORMULAE[$logical_name]:-}" ;;
-    apt) echo "${DOTFILES_APT_PACKAGES[$logical_name]:-}" ;;
+    brew|apt) catalog::package_native_name "$DOTFILES_PACKAGE_MANAGER" "$logical_name" ;;
     *)
       dotfiles::log_error "Unsupported package manager: $DOTFILES_PACKAGE_MANAGER"
       return 1
@@ -285,11 +235,10 @@ package_manager::install_logical() {
 }
 
 package_manager::install_brew_cask() {
-  local cask_key="$1"
-  local cask_name="${DOTFILES_BREW_CASKS[$cask_key]:-}"
+  local cask_name="$1"
 
   if [[ -z "$cask_name" ]]; then
-    dotfiles::log_error "No cask mapping exists for $cask_key."
+    dotfiles::log_error "Missing Homebrew cask name."
     return 1
   fi
 

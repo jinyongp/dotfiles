@@ -1,13 +1,7 @@
 # Installed/current status detection for interactive prompt records.
 
 install::package_command_name() {
-  local package_id="$1"
-
-  case "$DOTFILES_PACKAGE_MANAGER:$package_id" in
-    apt:fd) printf 'fdfind' ;;
-    *:gnupg) printf 'gpg' ;;
-    *) printf '%s' "$package_id" ;;
-  esac
+  catalog::package_command_name "$DOTFILES_PACKAGE_MANAGER" "$1"
 }
 
 install::package_is_installed() {
@@ -61,7 +55,7 @@ install::font_is_installed() {
 }
 
 install::desktop_app_is_installed() {
-  install::brew_cask_is_installed "$1"
+  install::brew_cask_is_installed "$(catalog::desktop_app_source "$1")"
 }
 
 install::theme_status_for() {

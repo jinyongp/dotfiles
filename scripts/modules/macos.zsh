@@ -89,19 +89,19 @@ module_desktop_apps_details() {
 }
 
 module_desktop_apps_install_items() {
-  local -a cask_ids
-  local cask_id
+  local -a app_ids
+  local app_id
 
   if (( $# > 0 )); then
-    cask_ids=("$@")
+    app_ids=("$@")
   else
-    cask_ids=("${(@f)$(catalog::desktop_app_ids)}")
+    app_ids=("${(@f)$(catalog::desktop_app_ids)}")
   fi
 
   dotfiles::log_step "Installing selected desktop applications"
 
-  for cask_id in "${cask_ids[@]}"; do
-    package_manager::install_brew_cask "$cask_id"
+  for app_id in "${app_ids[@]}"; do
+    package_manager::install_brew_cask "$(catalog::desktop_app_source "$app_id")"
   done
 }
 
