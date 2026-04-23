@@ -1,7 +1,7 @@
 # Terminal Palette Detection
 
 Status: `completed`
-Suggested priority: `P4`
+Suggested priority: `P5`
 
 ## Summary
 

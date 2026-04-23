@@ -2,7 +2,7 @@
 
 Status: `completed`
 
-Suggested priority: `P8`
+Suggested priority: `P6`
 
 ## Summary
 

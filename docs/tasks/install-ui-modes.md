@@ -1,7 +1,7 @@
 # Install UI Modes
 
 Status: `planned`  
-Suggested priority: `P5`
+Suggested priority: `P8`
 
 ## Summary
 
