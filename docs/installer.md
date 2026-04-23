@@ -13,18 +13,27 @@ Run the top-level installer from the repo root or from `~/.dotfiles`.
 The interactive flow is plan-based:
 
 1. detect the current environment
-2. choose the modules you want
-3. answer only the follow-up prompts needed for that plan
-4. review the final plan summary
-5. confirm before any installation work starts
+2. choose an installation profile: `Minimal`, `Recommended`, `Full`, or `Custom`
+3. adjust modules or item selections only when the selected profile needs it
+4. answer only the follow-up prompts needed for that plan
+5. review the final plan summary
+6. confirm before any installation work starts
+
+Profiles are shortcuts for the first plan draft:
+
+- `Minimal` selects only the core dotfiles links
+- `Recommended` selects dotfiles, base CLI packages, and Neovim with editable package defaults
+- `Full` selects every visible module for the current platform
+- `Custom` keeps the fully manual module picker
 
 The summary can include:
 
+- selected installation profile
 - auto-added dependencies
 - reused existing setup
 - leaf modules removed because no items were selected
 
-Nothing is preselected in the first module picker, so pressing `Enter` immediately exits without installing anything.
+The `Custom` module picker starts with no selected modules, so pressing `Enter` there exits without installing anything.
 
 ## Direct Install Targets
 

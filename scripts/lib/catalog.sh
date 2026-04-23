@@ -1,5 +1,83 @@
 #!/usr/bin/env bash
 
+catalog::profile_records() {
+  cat <<'EOF'
+minimal	Minimal	Only link the core dotfiles and prepare machine-local config.	0	0
+recommended	Recommended	Install the usual shell, CLI, and editor baseline with editable defaults.	1	0
+full	Full	Select every visible module for this platform and review all item defaults.	0	0
+custom	Custom	Choose modules and item selections manually.	0	0
+EOF
+}
+
+catalog::profile_label() {
+  case "$1" in
+    minimal) echo "Minimal" ;;
+    recommended) echo "Recommended" ;;
+    full) echo "Full" ;;
+    custom) echo "Custom" ;;
+  esac
+}
+
+catalog::profile_default_modules() {
+  local profile="$1"
+  local platform="$2"
+
+  case "$profile" in
+    minimal)
+      echo "dotfiles"
+      ;;
+    recommended)
+      echo "dotfiles packages neovim"
+      ;;
+    full)
+      if [[ "$platform" == "macos" ]]; then
+        echo "dotfiles packages oh_my_zsh neovim fonts desktop_apps macos_defaults"
+      else
+        echo "dotfiles packages oh_my_zsh neovim"
+      fi
+      ;;
+    custom)
+      echo ""
+      ;;
+  esac
+}
+
+catalog::ids_as_words() {
+  local id
+  local output=""
+
+  while IFS= read -r id; do
+    [[ -n "$id" ]] || continue
+    if [[ -n "$output" ]]; then
+      output="$output $id"
+    else
+      output="$id"
+    fi
+  done < <("$@")
+
+  printf '%s' "$output"
+}
+
+catalog::profile_default_item_ids() {
+  local profile="$1"
+  local module_id="$2"
+
+  case "$profile:$module_id" in
+    recommended:packages|full:packages)
+      catalog::ids_as_words catalog::package_ids
+      ;;
+    full:oh_my_zsh)
+      catalog::ids_as_words catalog::omz_plugin_ids
+      ;;
+    full:fonts)
+      catalog::ids_as_words catalog::font_ids
+      ;;
+    full:desktop_apps)
+      catalog::ids_as_words catalog::desktop_app_ids
+      ;;
+  esac
+}
+
 catalog::module_records() {
   local platform="$1"
 

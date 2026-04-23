@@ -1,5 +1,25 @@
 # Interactive prompt flow for module, leaf item, theme, package manager, and Git identity choices.
 
+install::select_profile() {
+  local profile_options=()
+
+  install::read_records_into_array profile_options catalog::profile_records
+  prompt::select DOTFILES_INSTALL_PROFILE "Select installation profile." "$(install::select_prompt_hint)" "${profile_options[@]}"
+  DOTFILES_INSTALL_PROFILE_LABEL="$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")"
+  install::apply_profile_defaults
+}
+
+install::apply_profile_defaults() {
+  if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    DOTFILES_SELECTED_MODULES=""
+    DOTFILES_REQUESTED_MODULES=""
+    return 0
+  fi
+
+  DOTFILES_SELECTED_MODULES="$(catalog::profile_default_modules "$DOTFILES_INSTALL_PROFILE" "$DOTFILES_PLATFORM")"
+  DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
+}
+
 install::maybe_select_theme() {
   if install::plan_needs_theme_prompt; then
     DOTFILES_THEME_NEEDED="1"
@@ -114,6 +134,37 @@ install::load_leaf_records() {
   esac
 }
 
+install::apply_profile_leaf_defaults() {
+  local module_id="$1"
+  local array_name="$2"
+  local default_item_ids=""
+  local count index=0
+  local record id label description selected disabled status
+
+  default_item_ids="$(catalog::profile_default_item_ids "$DOTFILES_INSTALL_PROFILE" "$module_id")"
+  [[ -n "$default_item_ids" ]] || return 0
+
+  count="$(install::array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(install::array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    selected="$(prompt::record_field "$record" 4)"
+    disabled="$(prompt::record_field "$record" 5)"
+    status="$(prompt::record_field "$record" 6)"
+
+    if [[ "$disabled" == "1" ]]; then
+      selected=0
+    elif install::contains_word "$default_item_ids" "$id"; then
+      selected=1
+    fi
+
+    install::array_record_set "$array_name" "$index" "$(install::compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
 install::prompt_for_leaf_items() {
   local module_id leaf_ids leaf_labels selectable_count
   local leaf_options=()
@@ -128,6 +179,7 @@ install::prompt_for_leaf_items() {
     fi
 
     install::load_leaf_records "$module_id" leaf_options
+    install::apply_profile_leaf_defaults "$module_id" leaf_options
     selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
     prompt::multiselect leaf_ids "$(install::leaf_prompt_title "$module_id")" "$(install::leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
     leaf_labels="$(install::selected_labels_for_items "$module_id" "$leaf_ids" "${leaf_options[@]}")"

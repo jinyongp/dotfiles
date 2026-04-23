@@ -244,6 +244,9 @@ install::print_plan_summary() {
   local note
 
   summary_lines[${#summary_lines[@]}]="Platform: $DOTFILES_PLATFORM_LABEL"
+  if [[ -n "${DOTFILES_INSTALL_PROFILE:-}" ]]; then
+    summary_lines[${#summary_lines[@]}]="Installation profile: ${DOTFILES_INSTALL_PROFILE_LABEL:-$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")}"
+  fi
   if [[ "${DOTFILES_PACKAGE_MANAGER_NEEDED:-0}" == "1" ]]; then
     summary_lines[${#summary_lines[@]}]="Package manager: $DOTFILES_PACKAGE_MANAGER"
   else

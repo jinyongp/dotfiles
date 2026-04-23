@@ -47,7 +47,10 @@ install::main() {
 
   prompt::intro "Dotfiles Installer"
   prompt::summary "Detected environment." "$DOTFILES_PLATFORM_LABEL"
-  install::select_modules
+  install::select_profile
+  if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    install::select_modules
+  fi
   if [[ -z "$DOTFILES_SELECTED_MODULES" ]]; then
     prompt::cancel "No installation modules were selected."
     exit 0
