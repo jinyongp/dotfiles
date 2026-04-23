@@ -4,7 +4,7 @@ catalog::module_records() {
   local platform="$1"
 
   cat <<'EOF'
-dotfiles	Dotfiles	Create symlinks for ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, and prepare local Git config files.	0	0
+dotfiles	Dotfiles	Link ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config files.	0	0
 packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, tldr, gnupg, diff-so-fancy, and fnm.	0	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	0	0
 neovim	Neovim	Install Neovim with search tooling and optional TypeScript editor extras.	0	0

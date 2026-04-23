@@ -69,11 +69,45 @@ For multi-item prompts such as CLI packages, fonts, and desktop apps:
 
 Machine-local overrides and generated config live outside the repository.
 
-- shell overrides: `~/.config/dotfiles/local.zsh`
+- universal shell overrides: `~/.config/dotfiles/env.zsh`
+- login-shell overrides: `~/.config/dotfiles/profile.zsh`
+- interactive shell overrides: `~/.config/dotfiles/local.zsh`
+- backups for replaced linked files: `~/.config/dotfiles/backups/<timestamp>`
 - Git path overrides: `~/.config/dotfiles/git/root.local.ini`
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
 
+The installer creates the shell override files with header comments when they do not already exist.
+Existing override files are preserved.
+
 The personal Git file may be created from the bundled example during install and can be edited directly later without rerunning the installer.
+
+Some tools append setup lines to `~/.zshenv` or `~/.zprofile` during installation.
+Because those files are repo-managed here, move those machine-local lines into the matching override file instead.
+
+Examples:
+
+- Cargo/Rust: `. "$HOME/.cargo/env"` belongs in `~/.config/dotfiles/env.zsh`
+- OrbStack: `source ~/.orbstack/shell/init.zsh 2>/dev/null || :` belongs in `~/.config/dotfiles/profile.zsh`
+- Homebrew: `eval "$(/opt/homebrew/bin/brew shellenv)"` is already handled by the repo bootstrap and does not need a local override
+
+## Zsh Startup Files
+
+The dotfiles module manages `~/.zshenv`, `~/.zprofile`, and `~/.zshrc` together.
+If any of those files already exist, the installer moves them into `~/.config/dotfiles/backups/<timestamp>` before linking the repo-managed versions.
+
+Startup responsibilities are split by shell phase:
+
+- `~/.zshenv` loads the minimal non-interactive-safe environment, including Homebrew, fnm, npm global bin, and pnpm paths
+- `~/.zprofile` loads login-shell-only local overrides
+- `~/.zshrc` loads interactive behavior such as aliases, completions, themes, plugins, and oh-my-zsh
+
+## Managed File Headers
+
+Repo-managed files that are linked into `$HOME` include a short header at the top.
+The header documents where the file is loaded, where machine-local overrides should go, and what should not be edited directly.
+
+For linked directories such as `~/.config/nvim`, the entrypoint file carries the header.
+Generated lock files and data files are not given prose headers when their file format does not allow comments.
 
 ## Shell Handoff
 

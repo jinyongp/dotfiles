@@ -3,6 +3,8 @@
 source "$DOTFILES_ROOT/scripts/lib/git-config.sh"
 
 typeset -gA DOTFILES_LINK_TARGETS=(
+  ["$DOTFILES_ROOT/zsh/.zshenv"]="$HOME/.zshenv"
+  ["$DOTFILES_ROOT/zsh/.zprofile"]="$HOME/.zprofile"
   ["$DOTFILES_ROOT/zsh/.zshrc"]="$HOME/.zshrc"
   ["$DOTFILES_ROOT/vim/.vimrc"]="$HOME/.vimrc"
   ["$DOTFILES_ROOT/nvim"]="$HOME/.config/nvim"
@@ -14,14 +16,18 @@ module_dotfiles_supported() {
 }
 
 module_dotfiles_summary() {
-  echo "Symlink ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config"
+  echo "Link ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config"
 }
 
 module_dotfiles_details() {
-  echo "Creates symlinks for ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig."
-  echo "If those files already exist, moves them into $DOTFILES_ROOT/.backup/<timestamp> first."
+  echo "Creates symlinks for ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig."
+  echo "If those files already exist, moves them into $DOTFILES_CONFIG_DIR/backups/<timestamp> first."
   echo "This changes which config files your shell, Vim, Neovim, and Git load by default."
   echo "Also writes machine-local Git path settings and applies any Git identity values passed from the bash installer."
+}
+
+dotfiles::backup_root() {
+  print -r -- "${DOTFILES_BACKUP_DIR:-$DOTFILES_CONFIG_DIR/backups}"
 }
 
 dotfiles::link_target() {
@@ -53,7 +59,7 @@ dotfiles::link_repo_managed_targets() {
   local source_path target_path backup_dir timestamp
 
   timestamp="$(date +%Y-%m-%d__%H-%M-%S)"
-  backup_dir="$DOTFILES_ROOT/.backup/$timestamp"
+  backup_dir="$(dotfiles::backup_root)/$timestamp"
 
   for source_path target_path in "${(@kv)DOTFILES_LINK_TARGETS}"; do
     dotfiles::link_target "$source_path" "$target_path" "$backup_dir"
@@ -66,17 +72,82 @@ dotfiles::link_neovim_config() {
   local backup_dir timestamp
 
   timestamp="$(date +%Y-%m-%d__%H-%M-%S)"
-  backup_dir="$DOTFILES_ROOT/.backup/$timestamp"
+  backup_dir="$(dotfiles::backup_root)/$timestamp"
 
   dotfiles::link_target "$source_path" "$target_path" "$backup_dir"
 }
 
-dotfiles::git_local_config_tmpfile() {
+dotfiles::write_local_zsh_override_template() {
+  local config_file="$1"
+  local title="$2"
+  local loaded_as="$3"
+  local examples="$4"
+  local tmp_file config_exists=0
+
+  [[ -e "$config_file" ]] && config_exists=1
+  [[ "$config_exists" == "0" ]] || return 0
+
+  tmp_file="$(dotfiles::local_config_tmpfile "$config_file")"
+
+  {
+    print -r -- "# $title"
+    print -r -- "#"
+    print -r -- "# Managed By"
+    print -r -- "#   This machine-local file is created by the dotfiles installer."
+    print -r -- "#   It is intentionally not stored in the repository."
+    print -r -- "#"
+    print -r -- "# Loaded As"
+    print -r -- "#   $loaded_as"
+    print -r -- "#"
+    print -r -- "# Usage"
+    print -r -- "#   Add machine-specific shell setup here. Keep secrets out unless this"
+    print -r -- "#   file is protected appropriately on this machine."
+    if [[ -n "$examples" ]]; then
+      print -r -- "#"
+      print -r -- "# Examples"
+      print -r -- "$examples"
+    fi
+    print -r -- ""
+  } >"$tmp_file"
+
+  chmod 600 "$tmp_file"
+  mv "$tmp_file" "$config_file"
+  dotfiles::record_file_created "$config_file"
+  dotfiles::log_success "Created machine-local shell override file at $config_file"
+}
+
+dotfiles::ensure_local_shell_override_files() {
+  dotfiles::ensure_dir "$DOTFILES_CONFIG_DIR"
+
+  dotfiles::write_local_zsh_override_template \
+    "$DOTFILES_ENV_ZSH" \
+    "Universal zsh environment overrides" \
+    "Loaded by ~/.zshenv for every zsh process, including non-interactive commands." \
+    "#   . \"\$HOME/.cargo/env\""
+
+  dotfiles::write_local_zsh_override_template \
+    "$DOTFILES_PROFILE_ZSH" \
+    "Login zsh profile overrides" \
+    "Loaded by ~/.zprofile for login zsh shells." \
+    "#   source ~/.orbstack/shell/init.zsh 2>/dev/null || :"
+
+  dotfiles::write_local_zsh_override_template \
+    "$DOTFILES_LOCAL_ZSH" \
+    "Interactive zsh overrides" \
+    "Loaded by ~/.zshrc for interactive terminal sessions." \
+    "#   alias ll='ls -la'"
+}
+
+dotfiles::local_config_tmpfile() {
   local config_file="$1"
   local config_dir="${config_file:h}"
 
   dotfiles::ensure_dir "$config_dir"
   mktemp "$config_dir/${config_file:t}.tmp.XXXXXX"
+}
+
+dotfiles::git_local_config_tmpfile() {
+  dotfiles::local_config_tmpfile "$1"
 }
 
 dotfiles::write_root_git_config() {
@@ -86,7 +157,7 @@ dotfiles::write_root_git_config() {
 
   [[ -e "$config_file" ]] && config_exists=1
 
-  tmp_file="$(dotfiles::git_local_config_tmpfile "$config_file")"
+  tmp_file="$(dotfiles::local_config_tmpfile "$config_file")"
 
   git config --file "$tmp_file" init.templateDir "$DOTFILES_ROOT/git"
   git config --file "$tmp_file" core.hooksPath "$DOTFILES_ROOT/git/hooks"
@@ -189,6 +260,7 @@ module_dotfiles_install() {
   dotfiles::log_step "Installing dotfile symlinks"
   dotfiles::link_repo_managed_targets
 
+  dotfiles::ensure_local_shell_override_files
   dotfiles::ensure_local_git_config_files
   dotfiles::apply_personal_git_config_from_plan "$personal_file"
 }

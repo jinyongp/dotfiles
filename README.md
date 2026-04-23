@@ -35,5 +35,5 @@ For the keymap reference, see [`docs/neovim-keymaps.md`](docs/neovim-keymaps.md)
 
 ## Notes
 
-- Local shell overrides belong in `~/.config/dotfiles/local.zsh`. Secrets should not be committed into the repository.
+- Local shell override paths are documented in [`docs/installer.md`](docs/installer.md). Secrets should not be committed into the repository.
 - Installer-written machine-local Git files are documented in [`docs/installer.md`](docs/installer.md).

@@ -8,6 +8,8 @@ source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
 
 typeset -g DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 typeset -g DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
+typeset -g DOTFILES_ENV_ZSH="$DOTFILES_CONFIG_DIR/env.zsh"
+typeset -g DOTFILES_PROFILE_ZSH="$DOTFILES_CONFIG_DIR/profile.zsh"
 typeset -g DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
 typeset -gaU DOTFILES_RESULT_INSTALLED_ITEMS=()
 typeset -gaU DOTFILES_RESULT_REUSED_ITEMS=()
@@ -213,7 +215,7 @@ dotfiles::print_install_report() {
     echo
     echo "$(dotfiles_accent 'Git Personal Config')"
     echo "  $(dotfiles_muted •) $(dotfiles_muted File:) $(dotfiles::style_path "$personal_file_display")"
-    echo "  $(dotfiles_muted •) $(dotfiles_muted You can edit this file directly later.)"
+    echo "  $(dotfiles_muted •) $(dotfiles_muted 'You can edit this file directly later.')"
   fi
 
   if dotfiles::should_auto_launch_zsh; then

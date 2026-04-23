@@ -1,3 +1,16 @@
+-- Managed By
+--   This file is managed by ~/.dotfiles and linked through ~/.config/nvim.
+--
+-- Loaded As
+--   Neovim entrypoint.
+--
+-- Local Overrides
+--   Keep machine-local editor changes outside this repo-managed config unless
+--   they should be shared across all machines using these dotfiles.
+--
+-- Notes
+--   See docs/neovim-keymaps.md for the keymap reference.
+
 local util = require("core.util")
 
 local function running_in_automation()

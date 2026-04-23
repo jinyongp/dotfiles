@@ -1,5 +1,15 @@
-" Minimal Vim compatibility layer.
-" Use Neovim for the full editor experience from this dotfiles repo.
+" Managed By
+"   This file is managed by ~/.dotfiles and linked to ~/.vimrc.
+"
+" Loaded As
+"   Minimal Vim compatibility layer.
+"
+" Local Overrides
+"   Prefer Neovim config under ~/.config/nvim for the full editor setup.
+"   Keep machine-local Vim-only changes outside this repo-managed file.
+"
+" Notes
+"   Use Neovim for the full editor experience from this dotfiles repo.
 
 set nocompatible
 set encoding=utf-8

@@ -1,3 +1,19 @@
+# Managed By
+#   This file is managed by ~/.dotfiles and linked to ~/.gitconfig.
+#
+# Loaded As
+#   Global Git config.
+#
+# Local Overrides
+#   Machine-local path settings are included from:
+#     ~/.config/dotfiles/git/root.local.ini
+#   Machine-local identity and signing settings are included from:
+#     ~/.config/dotfiles/git/personal.local.ini
+#
+# Notes
+#   Do not commit personal identity, signing keys, or machine-specific paths
+#   into this repo-managed file.
+
 [init]
 	defaultBranch = main
 	templateDir = ~/.dotfiles/git
