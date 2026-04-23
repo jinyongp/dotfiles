@@ -134,6 +134,14 @@ install::load_leaf_records() {
   esac
 }
 
+install::prepare_leaf_options() {
+  local module_id="$1"
+  local array_name="$2"
+
+  install::load_leaf_records "$module_id" "$array_name"
+  install::apply_profile_leaf_defaults "$module_id" "$array_name"
+}
+
 install::apply_profile_leaf_defaults() {
   local module_id="$1"
   local array_name="$2"
@@ -165,8 +173,42 @@ install::apply_profile_leaf_defaults() {
   done
 }
 
+install::apply_leaf_selection() {
+  local module_id="$1"
+  local leaf_ids="$2"
+  local selectable_count="$3"
+  shift 3 || true
+
+  local leaf_labels=""
+
+  leaf_labels="$(install::selected_labels_for_items "$module_id" "$leaf_ids" "$@")"
+  install::set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
+
+  case "$module_id" in
+    packages|fonts|desktop_apps)
+      if [[ -z "$leaf_ids" ]]; then
+        DOTFILES_SELECTED_MODULES="$(install::remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
+        if [[ "$selectable_count" == "0" ]]; then
+          SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because all available items are already installed."
+        else
+          SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because no items were selected."
+        fi
+      fi
+      ;;
+    oh_my_zsh)
+      if [[ -z "$leaf_labels" ]]; then
+        if [[ "$selectable_count" == "0" ]]; then
+          install::set_module_items "$module_id" "$leaf_ids" "All visible plugins are already installed"
+        else
+          install::set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
+        fi
+      fi
+      ;;
+  esac
+}
+
 install::prompt_for_leaf_items() {
-  local module_id leaf_ids leaf_labels selectable_count
+  local module_id leaf_ids selectable_count
   local leaf_options=()
 
   for module_id in "${MODULE_ORDER[@]}"; do
@@ -178,35 +220,77 @@ install::prompt_for_leaf_items() {
       continue
     fi
 
-    install::load_leaf_records "$module_id" leaf_options
-    install::apply_profile_leaf_defaults "$module_id" leaf_options
+    install::prepare_leaf_options "$module_id" leaf_options
     selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
     prompt::multiselect leaf_ids "$(install::leaf_prompt_title "$module_id")" "$(install::leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
-    leaf_labels="$(install::selected_labels_for_items "$module_id" "$leaf_ids" "${leaf_options[@]}")"
-    install::set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
-
-    case "$module_id" in
-      packages|fonts|desktop_apps)
-        if [[ -z "$leaf_ids" ]]; then
-          DOTFILES_SELECTED_MODULES="$(install::remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
-          if [[ "$selectable_count" == "0" ]]; then
-            SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because all available items are already installed."
-          else
-            SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because no items were selected."
-          fi
-        fi
-        ;;
-      oh_my_zsh)
-        if [[ -z "$leaf_labels" ]]; then
-          if [[ "$selectable_count" == "0" ]]; then
-            install::set_module_items "$module_id" "$leaf_ids" "All visible plugins are already installed"
-          else
-            install::set_module_items "$module_id" "$leaf_ids" "No extra plugins selected"
-          fi
-        fi
-        ;;
-    esac
+    install::apply_leaf_selection "$module_id" "$leaf_ids" "$selectable_count" "${leaf_options[@]}"
   done
+}
+
+install::apply_default_leaf_items() {
+  local module_id leaf_ids selectable_count
+  local leaf_options=()
+
+  for module_id in "${MODULE_ORDER[@]}"; do
+    if ! install::module_is_selected "$module_id"; then
+      continue
+    fi
+
+    if ! catalog::module_is_leaf "$module_id"; then
+      continue
+    fi
+
+    install::prepare_leaf_options "$module_id" leaf_options
+    selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
+    leaf_ids="$(install::selected_ids_from_records "${leaf_options[@]}")"
+    install::apply_leaf_selection "$module_id" "$leaf_ids" "$selectable_count" "${leaf_options[@]}"
+  done
+}
+
+install::plan_has_reviewable_leaf_modules() {
+  local module_id selectable_count
+  local leaf_options=()
+
+  for module_id in "${MODULE_ORDER[@]}"; do
+    if ! install::module_is_selected "$module_id"; then
+      continue
+    fi
+
+    if ! catalog::module_is_leaf "$module_id"; then
+      continue
+    fi
+
+    install::prepare_leaf_options "$module_id" leaf_options
+    selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
+    if [[ "$selectable_count" -gt 0 ]]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+install::maybe_review_leaf_items() {
+  DOTFILES_REVIEW_SELECTED_ITEMS="no"
+
+  if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    DOTFILES_REVIEW_SELECTED_ITEMS="yes"
+    install::prompt_for_leaf_items
+    return 0
+  fi
+
+  if ! install::plan_has_reviewable_leaf_modules; then
+    install::apply_default_leaf_items
+    return 0
+  fi
+
+  prompt::confirm DOTFILES_REVIEW_SELECTED_ITEMS "Review selected items?" "no" "Enter to keep the current profile defaults."
+
+  if [[ "$DOTFILES_REVIEW_SELECTED_ITEMS" == "yes" ]]; then
+    install::prompt_for_leaf_items
+  else
+    install::apply_default_leaf_items
+  fi
 }
 
 install::git_personal_config_path() {
@@ -222,16 +306,30 @@ install::git_email_is_valid() {
   [[ -n "$value" && "$value" == *"@"* && "$value" != *[[:space:]]* ]]
 }
 
-install::collect_git_identity_values() {
-  local confirm_values=""
+install::print_git_identity_file_summary() {
   local personal_file_display
-  local signing_key_summary=""
 
   personal_file_display="$(install::git_personal_config_display_path)"
   prompt::summary "Machine-local Git config file." \
     "Path: $personal_file_display" \
     "The installer may create this file from the bundled example." \
     "You can edit this file directly later."
+}
+
+install::prompt_for_git_identity_mode() {
+  install::print_git_identity_file_summary
+  prompt::select DOTFILES_GIT_IDENTITY_MODE "Machine-local Git identity." "$(install::select_prompt_hint)" \
+    $'reuse_existing\tReuse existing\tKeep the current machine-local Git file state unchanged.\t0\t0' \
+    $'skip_for_now\tSkip for now\tDo not write Git identity during this install run.\t1\t0' \
+    $'configure_now\tConfigure now\tEnter Git name, email, and signing values now.\t0\t0'
+}
+
+install::collect_git_identity_values() {
+  local confirm_values=""
+  local personal_file_display=""
+  local signing_key_summary=""
+
+  personal_file_display="$(install::git_personal_config_display_path)"
 
   while true; do
     prompt::text DOTFILES_GIT_NAME "Git user.name" "" "no" "Used for commits created on this machine."
@@ -246,17 +344,17 @@ install::collect_git_identity_values() {
     case "$DOTFILES_GIT_SIGNING_MODE" in
       gpg)
         prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "" "no" "Enter the GPG key ID or full fingerprint."
-        DOTFILES_GIT_SUMMARY="Write Git identity with GPG signing to $personal_file_display."
+        DOTFILES_GIT_SUMMARY="Machine-local Git identity with GPG signing at $personal_file_display."
         signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
         ;;
       ssh)
         prompt::text DOTFILES_GIT_SIGNING_KEY "Git user.signingKey" "$HOME/.ssh/id_ed25519.pub" "no" "Enter the SSH public key path for Git signing."
-        DOTFILES_GIT_SUMMARY="Write Git identity with SSH signing to $personal_file_display."
+        DOTFILES_GIT_SUMMARY="Machine-local Git identity with SSH signing at $personal_file_display."
         signing_key_summary="user.signingKey: $DOTFILES_GIT_SIGNING_KEY"
         ;;
       none)
         DOTFILES_GIT_SIGNING_KEY=""
-        DOTFILES_GIT_SUMMARY="Write Git identity without signing to $personal_file_display."
+        DOTFILES_GIT_SUMMARY="Machine-local Git identity without signing at $personal_file_display."
         signing_key_summary="user.signingKey: not set"
         ;;
     esac
@@ -278,11 +376,13 @@ install::collect_git_identity_values() {
 }
 
 install::prompt_for_git_identity() {
-  local personal_file configure_now=""
+  local personal_file=""
   local personal_file_display
 
+  DOTFILES_GIT_IDENTITY_MODE="not_needed"
+
   if ! install::module_is_selected "dotfiles"; then
-    DOTFILES_GIT_SUMMARY="Dotfiles module not selected."
+    DOTFILES_GIT_SUMMARY=""
     return 0
   fi
 
@@ -290,18 +390,25 @@ install::prompt_for_git_identity() {
   personal_file_display="$(install::git_personal_config_display_path)"
 
   if ! dotfiles_git_personal_config_is_template "$personal_file"; then
-    DOTFILES_GIT_SUMMARY="Reuse existing machine-local Git identity at $personal_file_display. You can edit it directly later."
+    DOTFILES_GIT_IDENTITY_MODE="reuse_existing"
+    DOTFILES_GIT_SUMMARY="Existing machine-local Git identity at $personal_file_display. You can edit it directly later."
     return 0
   fi
 
-  prompt::confirm configure_now "Configure machine-local Git identity now?" "yes" "Enter to confirm."
+  install::prompt_for_git_identity_mode
 
-  if [[ "$configure_now" != "yes" ]]; then
-    DOTFILES_GIT_CONFIGURE_PERSONAL="no"
-    DOTFILES_GIT_SUMMARY="Skip Git identity setup for now. Edit $personal_file_display directly later if needed."
-    return 0
-  fi
-
-  DOTFILES_GIT_CONFIGURE_PERSONAL="yes"
-  install::collect_git_identity_values
+  case "$DOTFILES_GIT_IDENTITY_MODE" in
+    reuse_existing)
+      DOTFILES_GIT_CONFIGURE_PERSONAL="no"
+      DOTFILES_GIT_SUMMARY="Current machine-local Git file state at $personal_file_display will be kept as-is. You can edit it directly later."
+      ;;
+    skip_for_now)
+      DOTFILES_GIT_CONFIGURE_PERSONAL="no"
+      DOTFILES_GIT_SUMMARY="Git identity setup skipped for now. Edit $personal_file_display directly later if needed."
+      ;;
+    configure_now)
+      DOTFILES_GIT_CONFIGURE_PERSONAL="yes"
+      install::collect_git_identity_values
+      ;;
+  esac
 }

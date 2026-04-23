@@ -27,6 +27,14 @@ prompt::title() {
   fi
 }
 
+prompt::intro_meta() {
+  if declare -F dotfiles_subtle >/dev/null 2>&1; then
+    dotfiles_subtle "$1"
+  else
+    prompt::style "$1" italic blue
+  fi
+}
+
 prompt::body() {
   if declare -F dotfiles_body >/dev/null 2>&1; then
     dotfiles_body "$1"

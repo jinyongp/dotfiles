@@ -23,8 +23,12 @@ Profiles are shortcuts for the first plan draft:
 
 - `Minimal` selects only the core dotfiles links
 - `Recommended` selects dotfiles, base CLI packages, and Neovim with editable package defaults
-- `Full` selects every visible module for the current platform
+- `Full` selects every visible module for the current platform with editable defaults for leaf-item modules
 - `Custom` keeps the fully manual module picker
+
+For `Recommended` and `Full`, the installer now keeps the profile defaults unless you explicitly choose `Review selected items?`.
+That single gate opens the existing package, plugin, font, or app pickers only when you want to adjust the preselected plan.
+`Minimal` skips leaf-item review entirely, and `Custom` still opens the detailed pickers directly.
 
 The summary can include:
 
@@ -61,6 +65,7 @@ Examples:
 - theme selection appears only when shell-related choices need it
 - package manager selection appears only when the chosen plan needs package-backed installs
 - Git identity is requested only when the selected plan needs dotfiles Git setup
+- Git identity uses `Reuse existing`, `Skip for now`, or `Configure now` so existing machine-local values can stay untouched
 
 For multi-item prompts such as CLI packages, fonts, and desktop apps:
 

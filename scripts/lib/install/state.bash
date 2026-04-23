@@ -21,11 +21,13 @@ install::init_state() {
   DOTFILES_PLATFORM_LABEL=""
   DOTFILES_INSTALL_PROFILE=""
   DOTFILES_INSTALL_PROFILE_LABEL=""
+  DOTFILES_REVIEW_SELECTED_ITEMS=""
   DOTFILES_PACKAGE_MANAGER=""
   DOTFILES_THEME=""
   DOTFILES_ENABLE_OH_MY_ZSH="0"
   DOTFILES_SELECTED_MODULES=""
   DOTFILES_GIT_CONFIGURE_PERSONAL="no"
+  DOTFILES_GIT_IDENTITY_MODE=""
   DOTFILES_GIT_NAME=""
   DOTFILES_GIT_EMAIL=""
   DOTFILES_GIT_SIGNING_MODE="none"
@@ -169,6 +171,22 @@ install::selected_labels_for_items() {
   shift 2 || true
 
   prompt::selected_labels_from_records "$selected_ids" "$@"
+}
+
+install::selected_ids_from_records() {
+  local record id selected
+  local selected_ids=""
+
+  for record in "$@"; do
+    id="$(prompt::record_field "$record" 1)"
+    selected="$(prompt::record_field "$record" 4)"
+
+    if [[ "$selected" == "1" ]]; then
+      selected_ids="$(install::add_word "$selected_ids" "$id")"
+    fi
+  done
+
+  printf '%s' "$selected_ids"
 }
 
 install::array_record_count() {

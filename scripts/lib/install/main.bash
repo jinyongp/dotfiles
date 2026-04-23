@@ -45,8 +45,7 @@ install::main() {
   install::select_default_package_manager
   install::remember_saved_runtime_defaults
 
-  prompt::intro "Dotfiles Installer"
-  prompt::summary "Detected environment." "$DOTFILES_PLATFORM_LABEL"
+  prompt::intro "Dotfiles Installer" "$DOTFILES_PLATFORM_LABEL"
   install::select_profile
   if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
     install::select_modules
@@ -58,7 +57,7 @@ install::main() {
   install::maybe_select_theme
   install::maybe_select_package_manager
   install::resolve_install_plan
-  install::prompt_for_leaf_items
+  install::maybe_review_leaf_items
   install::resolve_install_plan
   if ! install::plan_has_execution_targets; then
     prompt::cancel "No installation work remains after item selection."

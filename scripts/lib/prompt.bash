@@ -35,6 +35,7 @@ prompt::strip_ansi() {
 
 prompt::intro() {
   local title="$1"
+  local meta="${2:-}"
 
   if [[ "$PROMPT__SESSION_OPEN" -eq 1 ]]; then
     return 0
@@ -44,13 +45,13 @@ prompt::intro() {
   trap 'prompt::cleanup_terminal' EXIT
   trap 'prompt::handle_interrupt' INT TERM
 
-  printf '%s  %s\n' "$(prompt::frame "┌")" "$(prompt::title "$title")"
+  printf '%s\n' "$(prompt::intro_line "$title" "$meta")"
   printf '%s\n' "$(prompt::blank_line)"
 }
 
 prompt::outro() {
   prompt::cleanup_terminal
-  printf '%s  %s\n' "$(prompt::frame "└")" "$(prompt::success "$1")"
+  printf '%s\n' "$(prompt::success "$1")"
 }
 
 prompt::cancel() {
@@ -60,7 +61,7 @@ prompt::cancel() {
 
   if [[ "$PROMPT__CANCELLED" -eq 0 ]]; then
     PROMPT__CANCELLED=1
-    printf '%s  %s\n' "$(prompt::frame "└")" "$(prompt::danger "$message")" >&2
+    printf '%s\n' "$(prompt::danger "$message")" >&2
   fi
 }
 

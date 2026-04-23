@@ -243,29 +243,27 @@ install::print_plan_summary() {
   local module_id item_labels
   local note
 
-  summary_lines[${#summary_lines[@]}]="Platform: $DOTFILES_PLATFORM_LABEL"
   if [[ -n "${DOTFILES_INSTALL_PROFILE:-}" ]]; then
-    summary_lines[${#summary_lines[@]}]="Installation profile: ${DOTFILES_INSTALL_PROFILE_LABEL:-$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")}"
+    summary_lines[${#summary_lines[@]}]="Profile: ${DOTFILES_INSTALL_PROFILE_LABEL:-$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")}"
+  fi
+  summary_lines[${#summary_lines[@]}]="Will install: Modules: $(install::module_labels_or_none "$DOTFILES_SELECTED_MODULES")"
+  if [[ -n "$DOTFILES_REQUESTED_MODULES" && "$DOTFILES_REQUESTED_MODULES" != "$DOTFILES_SELECTED_MODULES" ]]; then
+    summary_lines[${#summary_lines[@]}]="Needs attention: Requested modules were adjusted from $(install::module_labels_or_none "$DOTFILES_REQUESTED_MODULES") to $(install::module_labels_or_none "$DOTFILES_SELECTED_MODULES")."
   fi
   if [[ "${DOTFILES_PACKAGE_MANAGER_NEEDED:-0}" == "1" ]]; then
-    summary_lines[${#summary_lines[@]}]="Package manager: $DOTFILES_PACKAGE_MANAGER"
-  else
-    summary_lines[${#summary_lines[@]}]="Package manager: not needed for selected plan"
+    summary_lines[${#summary_lines[@]}]="Will install: Package manager: $DOTFILES_PACKAGE_MANAGER"
   fi
   if [[ "${DOTFILES_THEME_NEEDED:-0}" == "1" ]]; then
-    summary_lines[${#summary_lines[@]}]="Theme: $(catalog::theme_label "$DOTFILES_THEME")"
-  else
-    summary_lines[${#summary_lines[@]}]="Theme: not needed for selected plan"
-  fi
-  summary_lines[${#summary_lines[@]}]="Selected modules: $(install::module_labels_or_none "$DOTFILES_REQUESTED_MODULES")"
-  summary_lines[${#summary_lines[@]}]="Final install modules: $(install::module_labels_or_none "$DOTFILES_SELECTED_MODULES")"
-  if [[ -n "$DOTFILES_AUTO_SELECTED_MODULES" ]]; then
-    summary_lines[${#summary_lines[@]}]="Auto-added modules: $(install::module_labels_for_selection "$DOTFILES_AUTO_SELECTED_MODULES")"
+    summary_lines[${#summary_lines[@]}]="Will install: Theme: $(catalog::theme_label "$DOTFILES_THEME")"
   fi
   if install::module_is_selected "dotfiles"; then
-    summary_lines[${#summary_lines[@]}]="Dotfiles links: ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, ~/.gitconfig"
+    summary_lines[${#summary_lines[@]}]="Will install: Dotfiles links: ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, ~/.gitconfig"
   fi
-  summary_lines[${#summary_lines[@]}]="oh-my-zsh runtime: $(install::planned_oh_my_zsh_runtime_label)"
+  if [[ "${DOTFILES_RUN_THEME_INSTALL:-0}" == "1" ]] \
+    || install::module_is_selected "dotfiles" \
+    || install::module_is_selected "oh_my_zsh"; then
+    summary_lines[${#summary_lines[@]}]="Will install: oh-my-zsh runtime: $(install::planned_oh_my_zsh_runtime_label)"
+  fi
 
   for module_id in "${MODULE_ORDER[@]}"; do
     if ! install::module_is_selected "$module_id"; then
@@ -275,28 +273,41 @@ install::print_plan_summary() {
     if catalog::module_is_leaf "$module_id"; then
       item_labels="$(install::get_module_item_labels "$module_id")"
       if [[ -n "$item_labels" ]]; then
-        summary_lines[${#summary_lines[@]}]="$(catalog::module_label "$module_id"): $item_labels"
+        summary_lines[${#summary_lines[@]}]="Will install: $(catalog::module_label "$module_id"): $item_labels"
       fi
     fi
   done
 
   for note in "${AUTO_NOTES[@]:-}"; do
     [[ -n "$note" ]] || continue
-    summary_lines[${#summary_lines[@]}]="Auto: $note"
+    summary_lines[${#summary_lines[@]}]="Needs attention: $note"
   done
 
   for note in "${REUSE_NOTES[@]:-}"; do
     [[ -n "$note" ]] || continue
-    summary_lines[${#summary_lines[@]}]="Reuse: $note"
+    summary_lines[${#summary_lines[@]}]="Will reuse: $note"
   done
 
   for note in "${SKIP_NOTES[@]:-}"; do
     [[ -n "$note" ]] || continue
-    summary_lines[${#summary_lines[@]}]="Skip: $note"
+    summary_lines[${#summary_lines[@]}]="Skipped: $note"
   done
 
   if [[ -n "$DOTFILES_GIT_SUMMARY" ]]; then
-    summary_lines[${#summary_lines[@]}]="Git identity: $DOTFILES_GIT_SUMMARY"
+    case "${DOTFILES_GIT_IDENTITY_MODE:-}" in
+      reuse_existing)
+        summary_lines[${#summary_lines[@]}]="Will reuse: Git: $DOTFILES_GIT_SUMMARY"
+        ;;
+      skip_for_now)
+        summary_lines[${#summary_lines[@]}]="Needs attention: Git: $DOTFILES_GIT_SUMMARY"
+        ;;
+      configure_now)
+        summary_lines[${#summary_lines[@]}]="Will install: Git: $DOTFILES_GIT_SUMMARY"
+        ;;
+      *)
+        summary_lines[${#summary_lines[@]}]="Needs attention: Git: $DOTFILES_GIT_SUMMARY"
+        ;;
+    esac
   fi
 
   prompt::summary "Planned configuration." "${summary_lines[@]}"

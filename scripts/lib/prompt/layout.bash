@@ -1,19 +1,34 @@
 # Prompt line layout and visible block composition helpers.
 
 prompt::line() {
-  printf '%s  %s' "$(prompt::frame "│")" "$1"
+  printf '   %s' "$1"
+}
+
+prompt::intro_line() {
+  local title="$1"
+  local meta="${2:-}"
+  local left_text=""
+
+  left_text="$(prompt::title "$title")"
+
+  if [[ -z "$meta" ]]; then
+    printf '%s' "$left_text"
+    return 0
+  fi
+
+  printf '%s  %s' "$left_text" "$(prompt::intro_meta "$meta")"
 }
 
 prompt::branch() {
-  printf '%s' "$(prompt::frame "╰")"
+  printf ''
 }
 
 prompt::branch_line() {
-  printf '%s  %s' "$(prompt::branch)" "$1"
+  printf '   %s' "$1"
 }
 
 prompt::blank_line() {
-  printf '%s' "$(prompt::frame "│")"
+  printf ''
 }
 
 prompt::question_header() {
@@ -41,7 +56,7 @@ prompt::error_line() {
 }
 
 prompt::input_prompt() {
-  printf '%s  %s ' "$(prompt::branch)" "$(prompt::accent ">")"
+  printf '   %s' "$(prompt::accent ">")"
 }
 
 prompt::shortcut_text() {

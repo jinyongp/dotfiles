@@ -1,51 +1,50 @@
 [[ render 1 ]]
 ◆  Select base CLI packages.
-│  Required for cloning and repo workflows.
-│
-│  › ◻ git
-│    ◻ fnm
-│    ◻ eza
-│  ↓ 5 more
-│
-╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+   Required for cloning and repo workflows.
+
+   › ◻ git
+     ◻ fnm
+     ◻ eza
+   ↓ 5 more
+
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
 
 [[ render 2 ]]
 ◆  Select base CLI packages.
-│  Fast Node.js version manager.
-│
-│    ◻ git
-│  › ◻ fnm
-│    ◻ eza
-│  ↓ 5 more
-│
-╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+   Fast Node.js version manager.
+
+     ◻ git
+   › ◻ fnm
+     ◻ eza
+   ↓ 5 more
+
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
 
 [[ render 3 ]]
 ◆  Select base CLI packages.
-│  Modern replacement for ls.
-│
-│  ↑ 1 more
-│    ◻ fnm
-│  › ◻ eza
-│    ◻ fd
-│  ↓ 4 more
-│
-╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+   Modern replacement for ls.
+
+   ↑ 1 more
+     ◻ fnm
+   › ◻ eza
+     ◻ fd
+   ↓ 4 more
+
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
 
 [[ render 4 ]]
 ◆  Select base CLI packages.
-│  Simple and fast alternative to find.
-│
-│  ↑ 2 more
-│    ◻ eza
-│  › ◻ fd
-│    ◻ ripgrep
-│  ↓ 3 more
-│
-╰  Use ↑/↓ to move, Space to toggle, Enter to confirm.
+   Simple and fast alternative to find.
+
+   ↑ 2 more
+     ◻ eza
+   › ◻ fd
+     ◻ ripgrep
+   ↓ 3 more
+
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
 
 ◇  Select base CLI packages.
-│  No selections
-│
-[[ value ]]
+   No selections
 
+[[ value ]]

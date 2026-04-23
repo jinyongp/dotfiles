@@ -18,11 +18,13 @@ prompt_test::normalize_file() {
     s/\e\][^\a]*(?:\a|\e\\\\)//g;
     s/\e\[[0-?]*[ -\/]*[@-~]//g;
     s/\r//g;
+    s/\n+\z/\n/;
   ' "$input_file"
 }
 
 prompt_test::case_names() {
   printf '%s\n' \
+    "intro_with_meta" \
     "summary_basic" \
     "text_basic" \
     "text_validation_retry" \
@@ -175,6 +177,13 @@ prompt_test::case_summary_basic() {
     "Skip: Fonts"
 }
 
+prompt_test::case_intro_with_meta() {
+  PROMPT_TEST_COLUMNS=40
+
+  prompt::intro "Dotfiles Installer" "macOS"
+  prompt::outro "Done."
+}
+
 prompt_test::case_text_basic() {
   local answer=""
 
@@ -301,6 +310,9 @@ prompt_test::run_case() {
   prompt_test::install_overrides
 
   case "$case_name" in
+    intro_with_meta)
+      prompt_test::case_intro_with_meta
+      ;;
     summary_basic)
       prompt_test::case_summary_basic
       ;;
