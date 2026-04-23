@@ -138,7 +138,7 @@ prompt::footer_line() {
 
 prompt::format_completed_line() {
   local line="$1"
-  local label value
+  local label value nested_label nested_value
 
   case "$line" in
     Auto:\ *)
@@ -158,7 +158,15 @@ prompt::format_completed_line() {
   if [[ "$line" == *": "* ]]; then
     label="${line%%:*}:"
     value="${line#*: }"
-    printf '%s %s' "$(prompt::muted "$label")" "$(prompt::value "$value")"
+
+    if [[ "$value" == *": "* ]]; then
+      nested_label="${value%%:*}:"
+      nested_value="${value#*: }"
+      printf '%s %s %s' "$(prompt::muted "$label")" "$(prompt::subtle "$nested_label")" "$(prompt::body "$nested_value")"
+      return 0
+    fi
+
+    printf '%s %s' "$(prompt::muted "$label")" "$(prompt::body "$value")"
     return 0
   fi
 
@@ -168,6 +176,7 @@ prompt::format_completed_line() {
 prompt::render_option_line() {
   local left_text="$1"
   local status_text="${2:-}"
+  local align_width="${3:-0}"
   local columns padding_width padding=""
   local visible_left visible_status rendered_status=""
 
@@ -180,7 +189,16 @@ prompt::render_option_line() {
 
   rendered_status="$(prompt::badge "$status_text")"
   if prompt::uses_inline_status; then
-    printf '%s %s' "$left_text" "$rendered_status"
+    if [[ "$align_width" -gt 0 ]]; then
+      padding_width=$((align_width - ${#visible_left} + 1))
+      if [[ "$padding_width" -lt 1 ]]; then
+        padding_width=1
+      fi
+      printf -v padding '%*s' "$padding_width" ''
+      printf '%s%s%s' "$left_text" "$padding" "$rendered_status"
+    else
+      printf '%s %s' "$left_text" "$rendered_status"
+    fi
     return 0
   fi
 
@@ -195,11 +213,10 @@ prompt::render_option_line() {
   printf '%s%s%s' "$left_text" "$padding" "$rendered_status"
 }
 
-prompt::select_option_line() {
+prompt::select_option_left_text() {
   local label="$1"
   local is_current="$2"
   local is_disabled="$3"
-  local status_text="${4:-}"
   local option_prefix option_label
 
   if prompt::is_plain_mode; then
@@ -226,15 +243,24 @@ prompt::select_option_line() {
     fi
   fi
 
-  prompt::render_option_line "$(prompt::line "$option_prefix $option_label")" "$status_text"
+  printf '%s' "$(prompt::line "$option_prefix $option_label")"
 }
 
-prompt::multiselect_option_line() {
+prompt::select_option_line() {
+  local label="$1"
+  local is_current="$2"
+  local is_disabled="$3"
+  local status_text="${4:-}"
+  local align_width="${5:-0}"
+
+  prompt::render_option_line "$(prompt::select_option_left_text "$label" "$is_current" "$is_disabled")" "$status_text" "$align_width"
+}
+
+prompt::multiselect_option_left_text() {
   local label="$1"
   local is_current="$2"
   local is_selected="$3"
   local is_disabled="$4"
-  local status_text="${5:-}"
   local prefix marker option_label
 
   if prompt::is_plain_mode; then
@@ -289,7 +315,18 @@ prompt::multiselect_option_line() {
     fi
   fi
 
-  prompt::render_option_line "$(prompt::line "$prefix $marker $option_label")" "$status_text"
+  printf '%s' "$(prompt::line "$prefix $marker $option_label")"
+}
+
+prompt::multiselect_option_line() {
+  local label="$1"
+  local is_current="$2"
+  local is_selected="$3"
+  local is_disabled="$4"
+  local status_text="${5:-}"
+  local align_width="${6:-0}"
+
+  prompt::render_option_line "$(prompt::multiselect_option_left_text "$label" "$is_current" "$is_selected" "$is_disabled")" "$status_text" "$align_width"
 }
 
 prompt::scroll_indicator_line() {

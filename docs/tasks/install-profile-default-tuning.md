@@ -1,6 +1,6 @@
 # Install Profile Default Tuning
 
-Status: `planned`
+Status: `completed`
 
 Suggested priority: `P12`
 

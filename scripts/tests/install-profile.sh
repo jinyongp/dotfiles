@@ -156,11 +156,42 @@ install_profile_test::assert_recommended_profile() {
   install::apply_profile_leaf_defaults packages package_options
   selected_ids="$(install_profile_test::selected_record_ids "${package_options[@]}")"
 
-  install_profile_test::assert_contains_word "$selected_ids" "jq" "recommended should preselect jq"
-  install_profile_test::assert_contains_word "$selected_ids" "fnm" "recommended should preselect fnm"
-  install_profile_test::assert_contains_word "$selected_ids" "diff-so-fancy" "recommended should preselect diff-so-fancy"
+  install_profile_test::assert_equal "$selected_ids" "jq gh fd eza fnm" "recommended should preselect the lean package set"
+  install_profile_test::assert_not_contains_word "$selected_ids" "tldr" "recommended should not preselect tldr"
+  install_profile_test::assert_not_contains_word "$selected_ids" "gnupg" "recommended should not preselect gnupg"
+  install_profile_test::assert_not_contains_word "$selected_ids" "diff-so-fancy" "recommended should not preselect diff-so-fancy"
 
   printf 'ok recommended_profile\n'
+}
+
+install_profile_test::assert_profile_record_cues() {
+  local macos_records=()
+  local linux_records=()
+  local recommended_status=""
+  local full_status=""
+  local custom_status=""
+  local minimal_description=""
+  local recommended_description=""
+
+  install::read_records_into_array macos_records catalog::profile_records macos
+  install::read_records_into_array linux_records catalog::profile_records linux
+
+  recommended_status="$(install_profile_test::record_field_for_id recommended 6 "${macos_records[@]}")"
+  full_status="$(install_profile_test::record_field_for_id full 6 "${macos_records[@]}")"
+  custom_status="$(install_profile_test::record_field_for_id custom 6 "${macos_records[@]}")"
+  minimal_description="$(install_profile_test::record_field_for_id minimal 3 "${macos_records[@]}")"
+  recommended_description="$(install_profile_test::record_field_for_id recommended 3 "${macos_records[@]}")"
+
+  install_profile_test::assert_equal "$recommended_status" "3 modules · 5 packages" "expected recommended cue"
+  install_profile_test::assert_equal "$full_status" "7 modules · 8 packages · 6 plugins · 4 fonts · 7 apps" "expected macOS full cue"
+  install_profile_test::assert_equal "$custom_status" "manual" "expected custom cue"
+  install_profile_test::assert_equal "$minimal_description" "Dotfiles only." "expected minimal description"
+  install_profile_test::assert_equal "$recommended_description" "Dotfiles + base CLI + Neovim baseline." "expected recommended description"
+
+  full_status="$(install_profile_test::record_field_for_id full 6 "${linux_records[@]}")"
+  install_profile_test::assert_equal "$full_status" "4 modules · 8 packages · 6 plugins" "expected linux full cue"
+
+  printf 'ok profile_record_cues\n'
 }
 
 install_profile_test::assert_full_profile_by_platform() {
@@ -234,8 +265,13 @@ install_profile_test::assert_select_profile_prompt() (
   prompt::select() {
     local result_var="$1"
     local question="$2"
+    shift 3 || true
+    local records=("$@")
+    local recommended_status=""
 
     install_profile_test::assert_equal "$question" "Select installation profile." "expected profile prompt title"
+    recommended_status="$(install_profile_test::record_field_for_id recommended 6 "${records[@]}")"
+    install_profile_test::assert_equal "$recommended_status" "3 modules · 5 packages" "expected recommended status cue in prompt"
     printf -v "$result_var" '%s' "minimal"
   }
 
@@ -276,6 +312,7 @@ install_profile_test::assert_disabled_items_stay_unselected() (
 install_profile_test::main() {
   install_profile_test::assert_minimal_profile
   install_profile_test::assert_recommended_profile
+  install_profile_test::assert_profile_record_cues
   install_profile_test::assert_full_profile_by_platform
   install_profile_test::assert_full_leaf_defaults
   install_profile_test::assert_custom_profile

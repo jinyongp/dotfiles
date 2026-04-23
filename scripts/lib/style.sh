@@ -190,15 +190,15 @@ dotfiles_disabled() {
 }
 
 dotfiles_active() {
-  dotfiles_style "$1" bold underline default
+  dotfiles_style "$1" default
 }
 
 dotfiles_selected() {
-  dotfiles_style "$1" bold "$(dotfiles__palette_success_token)"
+  dotfiles_style "$1" "$(dotfiles__palette_success_token)"
 }
 
 dotfiles_selected_active() {
-  dotfiles_style "$1" bold underline "$(dotfiles__palette_success_token)"
+  dotfiles_style "$1" "$(dotfiles__palette_success_token)"
 }
 
 while read -r color_name style_tokens; do

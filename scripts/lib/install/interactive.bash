@@ -55,7 +55,7 @@ install::apply_multi_selection_to_records() {
 install::select_profile() {
   local profile_options=()
 
-  install::read_records_into_array profile_options catalog::profile_records
+  install::read_records_into_array profile_options catalog::profile_records "$DOTFILES_PLATFORM"
   install::apply_single_selection_to_records profile_options "${DOTFILES_INSTALL_PROFILE:-recommended}"
   prompt::select DOTFILES_INSTALL_PROFILE "Select installation profile." "$(install::select_prompt_hint)" "${profile_options[@]}"
   DOTFILES_INSTALL_PROFILE_LABEL="$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")"

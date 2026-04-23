@@ -75,9 +75,9 @@ prompt_test::assert_compact_expectations() {
         || prompt_test::fail "compact select_basic should keep dense spacing"
       ;;
     select_with_disabled_and_status)
-      grep -Fq "starship [current]" "$actual_file" \
+      grep -Eq 'starship[[:space:]]+\[current\]' "$actual_file" \
         || prompt_test::fail "compact select_with_disabled_and_status should render inline current status"
-      grep -Fq "powerlevel10k [installed]" "$actual_file" \
+      grep -Eq 'powerlevel10k[[:space:]]+\[installed\]' "$actual_file" \
         || prompt_test::fail "compact select_with_disabled_and_status should render inline installed status"
       ;;
   esac

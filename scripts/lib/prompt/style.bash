@@ -202,8 +202,8 @@ prompt::badge() {
   badge_text="$(prompt::badge_text "$text")"
 
   case "$text" in
-    current) prompt::accent "$badge_text" ;;
+    current) prompt::subtle "$badge_text" ;;
     installed) prompt::disabled "$badge_text" ;;
-    *) prompt::warning "$badge_text" ;;
+    *) prompt::muted "$badge_text" ;;
   esac
 }

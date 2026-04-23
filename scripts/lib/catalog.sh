@@ -42,15 +42,6 @@ catalog::__row_field_by_id() {
   "$row_function" | awk -F '\t' -v row_id="$row_id" -v field_index="$field_index" '$1 == row_id { print $field_index; exit }'
 }
 
-catalog::profile_records() {
-  cat <<'EOF'
-minimal	Minimal	Only link the core dotfiles and prepare machine-local config.	0	0
-recommended	Recommended	Install the usual shell, CLI, and editor baseline with editable defaults.	1	0
-full	Full	Select every visible module for this platform and review all item defaults.	0	0
-custom	Custom	Choose modules and item selections manually.	0	0
-EOF
-}
-
 catalog::profile_label() {
   case "$1" in
     minimal) echo "Minimal" ;;
@@ -105,7 +96,10 @@ catalog::profile_default_item_ids() {
   local module_id="$2"
 
   case "$profile:$module_id" in
-    recommended:packages|full:packages)
+    recommended:packages)
+      printf '%s' "jq gh fd eza fnm"
+      ;;
+    full:packages)
       catalog::ids_as_words catalog::package_ids
       ;;
     full:oh_my_zsh)
@@ -118,6 +112,133 @@ catalog::profile_default_item_ids() {
       catalog::ids_as_words catalog::desktop_app_ids
       ;;
   esac
+}
+
+catalog::__count_words() {
+  local words="$1"
+  local count=0
+  local word
+
+  for word in $words; do
+    count=$((count + 1))
+  done
+
+  printf '%s' "$count"
+}
+
+catalog::__count_label() {
+  local count="$1"
+  local singular="$2"
+  local plural="${3:-${singular}s}"
+
+  if [[ "$count" == "1" ]]; then
+    printf '%s %s' "$count" "$singular"
+  else
+    printf '%s %s' "$count" "$plural"
+  fi
+}
+
+catalog::profile_module_count() {
+  local profile="$1"
+  local platform="$2"
+
+  catalog::__count_words "$(catalog::profile_default_modules "$profile" "$platform")"
+}
+
+catalog::profile_default_item_count() {
+  local profile="$1"
+  local module_id="$2"
+  local platform="${3:-}"
+
+  if [[ -n "$platform" ]] && [[ " $(catalog::profile_default_modules "$profile" "$platform") " != *" $module_id "* ]]; then
+    printf '%s' "0"
+    return 0
+  fi
+
+  catalog::__count_words "$(catalog::profile_default_item_ids "$profile" "$module_id")"
+}
+
+catalog::profile_status() {
+  local profile="$1"
+  local platform="$2"
+  local module_count=""
+  local package_count=""
+  local plugin_count=""
+  local font_count=""
+  local app_count=""
+  local status=""
+
+  if [[ "$profile" == "custom" ]]; then
+    printf '%s' "manual"
+    return 0
+  fi
+
+  module_count="$(catalog::profile_module_count "$profile" "$platform")"
+  status="$(catalog::__count_label "$module_count" "module")"
+
+  package_count="$(catalog::profile_default_item_count "$profile" "packages" "$platform")"
+  if [[ "$package_count" != "0" ]]; then
+    status="$status · $(catalog::__count_label "$package_count" "package")"
+  fi
+
+  plugin_count="$(catalog::profile_default_item_count "$profile" "oh_my_zsh" "$platform")"
+  if [[ "$plugin_count" != "0" ]]; then
+    status="$status · $(catalog::__count_label "$plugin_count" "plugin")"
+  fi
+
+  font_count="$(catalog::profile_default_item_count "$profile" "fonts" "$platform")"
+  if [[ "$font_count" != "0" ]]; then
+    status="$status · $(catalog::__count_label "$font_count" "font")"
+  fi
+
+  app_count="$(catalog::profile_default_item_count "$profile" "desktop_apps" "$platform")"
+  if [[ "$app_count" != "0" ]]; then
+    status="$status · $(catalog::__count_label "$app_count" "app")"
+  fi
+
+  printf '%s' "$status"
+}
+
+catalog::profile_description() {
+  local profile="$1"
+  local platform="$2"
+
+  case "$profile" in
+    minimal)
+      printf '%s' "Dotfiles only."
+      ;;
+    recommended)
+      printf '%s' "Dotfiles + base CLI + Neovim baseline."
+      ;;
+    full)
+      if [[ "$platform" == "macos" ]]; then
+        printf '%s' "All visible modules for macOS, with all visible leaf items preselected."
+      else
+        printf '%s' "All visible modules for this platform, with all visible leaf items preselected."
+      fi
+      ;;
+    custom)
+      printf '%s' "Manual module and item selection."
+      ;;
+  esac
+}
+
+catalog::profile_records() {
+  local platform="$1"
+  local profile_id label description status selected
+
+  for profile_id in minimal recommended full custom; do
+    label="$(catalog::profile_label "$profile_id")"
+    description="$(catalog::profile_description "$profile_id" "$platform")"
+    status="$(catalog::profile_status "$profile_id" "$platform")"
+    selected=0
+
+    if [[ "$profile_id" == "recommended" ]]; then
+      selected=1
+    fi
+
+    printf '%s\t%s\t%s\t%s\t0\t%s\n' "$profile_id" "$label" "$description" "$selected" "$status"
+  done
 }
 
 catalog::module_records() {

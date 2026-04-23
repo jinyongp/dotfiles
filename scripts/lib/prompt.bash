@@ -421,6 +421,7 @@ prompt::select() {
   local index=0
   local record id label description is_selected is_disabled status
   local key rendered_lines current_description rendered_option is_current
+  local status_align_width=0
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -459,6 +460,21 @@ prompt::select() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
     fi
 
+    status_align_width=0
+    if prompt::uses_inline_status; then
+      index=0
+      while [[ "$index" -lt "${#labels[@]}" ]]; do
+        if [[ -n "${statuses[$index]}" ]]; then
+          rendered_option="$(prompt::select_option_left_text "${labels[$index]}" 0 "${disabled[$index]}")"
+          rendered_option="$(prompt::strip_ansi "$rendered_option")"
+          if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
+            status_align_width="${#rendered_option}"
+          fi
+        fi
+        index=$((index + 1))
+      done
+    fi
+
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
       if [[ "$index" -eq "$current_index" ]]; then
@@ -467,7 +483,7 @@ prompt::select() {
         is_current=0
       fi
 
-      rendered_option="$(prompt::select_option_line "${labels[$index]}" "$is_current" "${disabled[$index]}" "${statuses[$index]}")"
+      rendered_option="$(prompt::select_option_line "${labels[$index]}" "$is_current" "${disabled[$index]}" "${statuses[$index]}" "$status_align_width")"
       rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
@@ -527,6 +543,7 @@ prompt::multiselect() {
   local selected_ids="" selected_labels=""
   local total_lines reserved_lines visible_count
   local window_start window_end remaining_above remaining_below
+  local status_align_width=0
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -596,6 +613,21 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↑" "$remaining_above")"
     fi
 
+    status_align_width=0
+    if prompt::uses_inline_status; then
+      index="$window_start"
+      while [[ "$index" -le "$window_end" ]]; do
+        if [[ -n "${statuses[$index]}" ]]; then
+          rendered_option="$(prompt::multiselect_option_left_text "${labels[$index]}" 0 "${selected[$index]}" "${disabled[$index]}")"
+          rendered_option="$(prompt::strip_ansi "$rendered_option")"
+          if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
+            status_align_width="${#rendered_option}"
+          fi
+        fi
+        index=$((index + 1))
+      done
+    fi
+
     index="$window_start"
     while [[ "$index" -le "$window_end" ]]; do
       if [[ "$index" -eq "$current_index" ]]; then
@@ -604,7 +636,7 @@ prompt::multiselect() {
         is_current=0
       fi
 
-      rendered_option="$(prompt::multiselect_option_line "${labels[$index]}" "$is_current" "${selected[$index]}" "${disabled[$index]}" "${statuses[$index]}")"
+      rendered_option="$(prompt::multiselect_option_line "${labels[$index]}" "$is_current" "${selected[$index]}" "${disabled[$index]}" "${statuses[$index]}" "$status_align_width")"
       rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
