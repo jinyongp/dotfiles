@@ -1,6 +1,6 @@
 # Task Backlog
 
-This directory tracks follow-up backlog items for the interactive installer and terminal UX.
+This directory tracks follow-up backlog items for the interactive installer and related script infrastructure.
 These documents are intentionally short: they are meant to capture why the work matters, the current direction, and the expected outcome without turning each task into a full implementation spec.
 
 Each task carries its own current status.
@@ -15,6 +15,8 @@ Each task carries its own current status.
 | P6 | completed | [Install Internal Refactor Follow-ups](./install-internal-refactor-followups.md) | Track the second phase after the first installer responsibility split. | [install-internal-refactor-followups.md](./install-internal-refactor-followups.md) |
 | P7 | completed | [Install Summary Actions](./install-summary-actions.md) | Let the final plan summary branch back into module, item, and Git edits without restarting the installer. | [install-summary-actions.md](./install-summary-actions.md) |
 | P8 | completed | [Install UI Modes](./install-ui-modes.md) | Evaluate plain, compact, and rich installer UI modes for different terminal environments. | [install-ui-modes.md](./install-ui-modes.md) |
-| P9 | planned | [Install Execution Progress](./install-execution-progress.md) | Make execution-time install output as structured and readable as the planning flow. | [install-execution-progress.md](./install-execution-progress.md) |
-| P10 | planned | [Install Profile Default Tuning](./install-profile-default-tuning.md) | Revisit profile defaults and make what each profile includes easier to understand at a glance. | [install-profile-default-tuning.md](./install-profile-default-tuning.md) |
-| P11 | planned | [Interactive Installer README Update](./interactive-installer-readme-update.md) | Sync the README with the current interactive installer flow and keyboard interactions. | [interactive-installer-readme-update.md](./interactive-installer-readme-update.md) |
+| P9 | planned | [Install Execution Progress](./install-execution-progress.md) | Make execution-time install output the next structured layer after the current planning UI. | [install-execution-progress.md](./install-execution-progress.md) |
+| P10 | planned | [Catalog Package Metadata Source of Truth](./catalog-package-metadata-source-of-truth.md) | Remove duplicated package, cask, font, and desktop-app metadata across catalog and installer libraries. | [catalog-package-metadata-source-of-truth.md](./catalog-package-metadata-source-of-truth.md) |
+| P11 | planned | [Toolchain Runtime Path Parity](./toolchain-runtime-path-parity.md) | Align install-time and shell-bootstrap path rules for Homebrew, fnm, npm global bin, pnpm, and install env files. | [toolchain-runtime-path-parity.md](./toolchain-runtime-path-parity.md) |
+| P12 | planned | [Install Profile Default Tuning](./install-profile-default-tuning.md) | Revisit profile defaults and make what each profile includes easier to understand at a glance. | [install-profile-default-tuning.md](./install-profile-default-tuning.md) |
+| P13 | planned | [Interactive Installer README Update](./interactive-installer-readme-update.md) | Sync the README with the current interactive installer flow and keyboard interactions. | [interactive-installer-readme-update.md](./interactive-installer-readme-update.md) |

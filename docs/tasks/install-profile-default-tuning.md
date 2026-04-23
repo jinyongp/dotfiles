@@ -2,7 +2,7 @@
 
 Status: `planned`
 
-Suggested priority: `P10`
+Suggested priority: `P12`
 
 ## Summary
 
