@@ -129,12 +129,16 @@ install::direct_target_label() {
 }
 
 install::print_direct_usage() {
+  local install_path_display
+
+  install_path_display="$(install::display_path "$DOTFILES_ROOT/install")"
+
   cat <<EOF
 Usage:
-  $DOTFILES_ROOT/install
-  $DOTFILES_ROOT/install list
-  $DOTFILES_ROOT/install <module>
-  $DOTFILES_ROOT/install <module> [item...]
+  $install_path_display
+  $install_path_display list
+  $install_path_display <module>
+  $install_path_display <module> [item...]
 
 Direct targets:
   packages
@@ -152,10 +156,10 @@ Aliases:
   omz -> oh_my_zsh
 
 Examples:
-  $DOTFILES_ROOT/install neovim
-  $DOTFILES_ROOT/install packages fnm eza
-  $DOTFILES_ROOT/install desktop_apps iterm2 raycast
-  $DOTFILES_ROOT/install theme
+  $install_path_display neovim
+  $install_path_display packages fnm eza
+  $install_path_display desktop_apps iterm2 raycast
+  $install_path_display theme
 EOF
 }
 

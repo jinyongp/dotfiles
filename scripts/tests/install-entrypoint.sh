@@ -14,6 +14,7 @@ install_entrypoint_test::setup_fixture() {
   WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/install-entrypoint.XXXXXX")"
   HOME_DIR="$WORK_DIR/home"
   CONFIG_DIR="$WORK_DIR/config"
+  REPO_HOME_DIR="$(cd -- "$DOTFILES_ROOT/.." && pwd)"
 
   mkdir -p "$HOME_DIR" "$CONFIG_DIR"
 }
@@ -21,12 +22,19 @@ install_entrypoint_test::setup_fixture() {
 install_entrypoint_test::run_install() {
   local name="$1"
   shift || true
+  install_entrypoint_test::run_install_with_home "$HOME_DIR" "$name" "$@"
+}
+
+install_entrypoint_test::run_install_with_home() {
+  local home_dir="$1"
+  local name="$2"
+  shift 2 || true
 
   local output_file="$WORK_DIR/${name}.out"
   local error_file="$WORK_DIR/${name}.err"
 
   env -i \
-    HOME="$HOME_DIR" \
+    HOME="$home_dir" \
     USER="${USER:-dotfiles}" \
     LOGNAME="${USER:-dotfiles}" \
     XDG_CONFIG_HOME="$CONFIG_DIR" \
@@ -71,6 +79,10 @@ install_entrypoint_test::assert_help() {
   install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "Usage:"
   install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "$DOTFILES_ROOT/install <module>"
   install_entrypoint_test::assert_no_stderr "help"
+
+  install_entrypoint_test::run_install_with_home "$REPO_HOME_DIR" "help_home" help
+  install_entrypoint_test::assert_contains "$WORK_DIR/help_home.out" "~/.dotfiles/install <module>"
+  install_entrypoint_test::assert_no_stderr "help_home"
   printf 'ok help\n'
 }
 
