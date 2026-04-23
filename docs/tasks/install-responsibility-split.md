@@ -1,6 +1,7 @@
 # Install Responsibility Split
 
-Status: `planned`  
+Status: `completed`
+
 Suggested priority: `P4`
 
 ## Summary
@@ -29,3 +30,5 @@ That makes the file hard to reason about and increases the cost of even small ch
 
 - This is a larger refactor than the other backlog items and should keep strong smoke coverage around the current flow.
 - Prompt rendering safety checks become more valuable before and during this work.
+- The first split intentionally preserved existing function names and global state.
+- Follow-up internal cleanup is tracked in [Install Internal Refactor Follow-ups](./install-internal-refactor-followups.md).
