@@ -1,7 +1,7 @@
 # Terminal Palette Detection
 
-Status: `planned`  
-Suggested priority: `P3`
+Status: `completed`
+Suggested priority: `P4`
 
 ## Summary
 
@@ -29,3 +29,4 @@ Terminal background detection is still conservative, so some environments will r
 
 - `COLORFGBG` and override environment variables are the main inputs to review first.
 - This task should improve confidence in the current policy, not add palette complexity without a clear payoff.
+- Completed by documenting the terminal styling contract and adding `scripts/tests/style-palette.sh`.

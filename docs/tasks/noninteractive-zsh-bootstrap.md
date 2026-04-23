@@ -1,6 +1,6 @@
 # Non-Interactive Zsh Bootstrap
 
-Status: `planned`  
+Status: `completed`
 Suggested priority: `P1`
 
 ## Summary
@@ -35,3 +35,4 @@ It also creates platform drift between environments where Homebrew is already av
 - Keep `.zshenv` minimal because it runs for every `zsh` process.
 - This work should document new machine-local override locations for universal and login-only shell additions.
 - The top-level README should be updated after the shell bootstrap contract is finalized.
+- Completed by adding repo-managed zsh bootstrap entrypoints and `scripts/tests/zsh-bootstrap.sh`.

@@ -59,6 +59,21 @@ For multi-item prompts such as CLI packages, fonts, and desktop apps:
 - installed entries can be disabled to avoid redundant reinstalls
 - scrolling indicators appear in short terminals when not all rows fit at once
 
+## Terminal Styling
+
+Installer styling keeps normal body text on the terminal default foreground so it stays readable across light and dark backgrounds.
+Color is reserved for prompt markers, selected states, warnings, errors, and key hints.
+
+Background detection uses this order:
+
+1. `DOTFILES_COLOR_SCHEME=light|dark`
+2. `COLORFGBG`, using the last semicolon-separated field as the background color code
+3. `unknown`, which keeps the conservative default-foreground-first palette
+
+Set `DOTFILES_COLOR_SCHEME=light` or `DOTFILES_COLOR_SCHEME=dark` if your terminal does not expose useful `COLORFGBG` data.
+Set `NO_COLOR=1`, `TERM=dumb`, or `CLICOLOR=0` to disable ANSI styling.
+Use `DOTFILES_FORCE_COLOR=1`, `FORCE_COLOR=1`, or `CLICOLOR_FORCE=1` when you need ANSI styling in a non-TTY or otherwise restricted shell.
+
 ## Platform Notes
 
 - macOS uses Homebrew
