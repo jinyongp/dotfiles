@@ -1,7 +1,7 @@
 # Prompt Layout and Style Separation
 
-Status: `planned`  
-Suggested priority: `P2`
+Status: `completed`
+Suggested priority: `P3`
 
 ## Summary
 
@@ -29,3 +29,4 @@ Small changes such as moving keyboard hints, adjusting rails, or changing marker
 
 - This task becomes safer once prompt rendering snapshots exist.
 - The target is refactoring, not changing the installer flow or visible UX on purpose.
+- Completed by splitting semantic prompt styling into `scripts/lib/prompt/style.bash` and visible line composition into `scripts/lib/prompt/layout.bash`.

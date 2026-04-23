@@ -1,7 +1,7 @@
 # Prompt Rendering Snapshots
 
-Status: `planned`  
-Suggested priority: `P1`
+Status: `completed`
+Suggested priority: `P2`
 
 ## Summary
 
@@ -29,3 +29,4 @@ Those changes are currently easy to regress because most verification is still v
 
 - This task should treat the current prompt UI as the baseline, not redesign it.
 - `scripts/lib/prompt.bash` is the primary target, with only minimal harness code around it.
+- Completed with `scripts/tests/prompt-rendering.sh` and stored prompt snapshots under `scripts/tests/prompt-snapshots/`.

@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 
+PROMPT__LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/style.sh" ]]; then
   # shellcheck disable=SC1090
   source "$DOTFILES_ROOT/scripts/lib/style.sh"
 fi
+
+# shellcheck disable=SC1090
+source "$PROMPT__LIB_DIR/prompt/style.bash"
+# shellcheck disable=SC1090
+source "$PROMPT__LIB_DIR/prompt/layout.bash"
 
 PROMPT__SESSION_OPEN=0
 PROMPT__RAW_MODE=0
@@ -11,266 +18,6 @@ PROMPT__CURSOR_HIDDEN=0
 PROMPT__RENDERED_LINES=0
 PROMPT__STTY_STATE=""
 PROMPT__CANCELLED=0
-
-prompt::style() {
-  local text="$1"
-  shift || true
-
-  if declare -F dotfiles_style >/dev/null 2>&1; then
-    dotfiles_style "$text" "$@"
-  else
-    printf '%s' "$text"
-  fi
-}
-
-prompt::frame() {
-  if declare -F dotfiles_frame >/dev/null 2>&1; then
-    dotfiles_frame "$1"
-  else
-    prompt::style "$1" dim fg=245
-  fi
-}
-
-prompt::title() {
-  if declare -F dotfiles_heading >/dev/null 2>&1; then
-    dotfiles_heading "$1"
-  else
-    prompt::style "$1" bold bright-white
-  fi
-}
-
-prompt::body() {
-  if declare -F dotfiles_body >/dev/null 2>&1; then
-    dotfiles_body "$1"
-  else
-    prompt::style "$1" bright-white
-  fi
-}
-
-prompt::value() {
-  if declare -F dotfiles_value >/dev/null 2>&1; then
-    dotfiles_value "$1"
-  else
-    prompt::style "$1" bold bright-cyan
-  fi
-}
-
-prompt::accent() {
-  if declare -F dotfiles_accent >/dev/null 2>&1; then
-    dotfiles_accent "$1"
-  else
-    prompt::style "$1" bold blue
-  fi
-}
-
-prompt::success() {
-  if declare -F dotfiles_success >/dev/null 2>&1; then
-    dotfiles_success "$1"
-  else
-    prompt::style "$1" bold green
-  fi
-}
-
-prompt::warning() {
-  if declare -F dotfiles_warning >/dev/null 2>&1; then
-    dotfiles_warning "$1"
-  else
-    prompt::style "$1" bold magenta
-  fi
-}
-
-prompt::danger() {
-  if declare -F dotfiles_error >/dev/null 2>&1; then
-    dotfiles_error "$1"
-  else
-    prompt::style "$1" bold red
-  fi
-}
-
-prompt::muted() {
-  if declare -F dotfiles_muted >/dev/null 2>&1; then
-    dotfiles_muted "$1"
-  else
-    prompt::style "$1" dim fg=245
-  fi
-}
-
-prompt::subtle() {
-  if declare -F dotfiles_subtle >/dev/null 2>&1; then
-    dotfiles_subtle "$1"
-  else
-    prompt::style "$1" fg=246
-  fi
-}
-
-prompt::hint() {
-  if declare -F dotfiles_hint >/dev/null 2>&1; then
-    dotfiles_hint "$1"
-  else
-    prompt::style "$1" dim italic fg=245
-  fi
-}
-
-prompt::description() {
-  if declare -F dotfiles_description >/dev/null 2>&1; then
-    dotfiles_description "$1"
-  else
-    prompt::style "$1" fg=248
-  fi
-}
-
-prompt::disabled() {
-  if declare -F dotfiles_disabled >/dev/null 2>&1; then
-    dotfiles_disabled "$1"
-  else
-    prompt::style "$1" dim fg=242
-  fi
-}
-
-prompt::active_label() {
-  if declare -F dotfiles_active >/dev/null 2>&1; then
-    dotfiles_active "$1"
-  else
-    prompt::style "$1" bold underline bright-white
-  fi
-}
-
-prompt::selected_label() {
-  if declare -F dotfiles_selected >/dev/null 2>&1; then
-    dotfiles_selected "$1"
-  else
-    prompt::style "$1" bold bright-green
-  fi
-}
-
-prompt::selected_active_label() {
-  if declare -F dotfiles_selected_active >/dev/null 2>&1; then
-    dotfiles_selected_active "$1"
-  else
-    prompt::style "$1" bold underline green
-  fi
-}
-
-prompt::line() {
-  printf '%s  %s' "$(prompt::frame "│")" "$1"
-}
-
-prompt::branch() {
-  printf '%s' "$(prompt::frame "╰")"
-}
-
-prompt::branch_line() {
-  printf '%s  %s' "$(prompt::branch)" "$1"
-}
-
-prompt::blank_line() {
-  printf '%s' "$(prompt::frame "│")"
-}
-
-prompt::keycap() {
-  if declare -F dotfiles_code >/dev/null 2>&1; then
-    dotfiles_code "$1"
-  else
-    prompt::accent "$1"
-  fi
-}
-
-prompt::shortcut_text() {
-  local hint="$1"
-  local remaining="$hint"
-  local output=""
-  local token="" prefix="" best_token="" best_prefix=""
-  local best_index=-1
-  local current_index=0
-  local tokens=(
-    "Ctrl+C"
-    "↑/↓"
-    "Space"
-    "Enter"
-    "Tab"
-    "Esc"
-  )
-
-  while [[ -n "$remaining" ]]; do
-    best_token=""
-    best_prefix=""
-    best_index=-1
-
-    for token in "${tokens[@]}"; do
-      if [[ "$remaining" != *"$token"* ]]; then
-        continue
-      fi
-
-      prefix="${remaining%%"$token"*}"
-      current_index=${#prefix}
-
-      if [[ "$best_index" -lt 0 || "$current_index" -lt "$best_index" ]]; then
-        best_index="$current_index"
-        best_token="$token"
-        best_prefix="$prefix"
-      fi
-    done
-
-    if [[ -z "$best_token" ]]; then
-      output="${output}$(prompt::hint "$remaining")"
-      break
-    fi
-
-    if [[ -n "$best_prefix" ]]; then
-      output="${output}$(prompt::hint "$best_prefix")"
-    fi
-    output="${output}$(prompt::keycap "$best_token")"
-    remaining="${remaining#*"$best_token"}"
-  done
-
-  printf '%s' "$output"
-}
-
-prompt::badge_text() {
-  printf '[%s]' "$1"
-}
-
-prompt::badge() {
-  local text="$1"
-  local badge_text=""
-
-  badge_text="$(prompt::badge_text "$text")"
-
-  case "$text" in
-    current) prompt::accent "$badge_text" ;;
-    installed) prompt::disabled "$badge_text" ;;
-    *) prompt::warning "$badge_text" ;;
-  esac
-}
-
-prompt::format_completed_line() {
-  local line="$1"
-  local label value
-
-  case "$line" in
-    Auto:\ *)
-      printf '%s %s' "$(prompt::warning "Auto:")" "$(prompt::body "${line#Auto: }")"
-      return 0
-      ;;
-    Reuse:\ *)
-      printf '%s %s' "$(prompt::accent "Reuse:")" "$(prompt::body "${line#Reuse: }")"
-      return 0
-      ;;
-    Skip:\ *)
-      printf '%s %s' "$(prompt::muted "Skip:")" "$(prompt::body "${line#Skip: }")"
-      return 0
-      ;;
-  esac
-
-  if [[ "$line" == *": "* ]]; then
-    label="${line%%:*}:"
-    value="${line#*: }"
-    printf '%s %s' "$(prompt::muted "$label")" "$(prompt::value "$value")"
-    return 0
-  fi
-
-  printf '%s' "$(prompt::body "$line")"
-}
 
 prompt::strip_ansi() {
   local text="$1"
@@ -468,31 +215,6 @@ prompt::terminal_columns() {
   printf '%s' "$columns"
 }
 
-prompt::render_option_line() {
-  local left_text="$1"
-  local status_text="${2:-}"
-  local columns padding_width padding=""
-  local visible_left visible_status rendered_status=""
-
-  visible_left="$(prompt::strip_ansi "$left_text")"
-
-  if [[ -z "$status_text" ]]; then
-    printf '%s' "$left_text"
-    return 0
-  fi
-
-  rendered_status="$(prompt::badge "$status_text")"
-  visible_status="$(prompt::badge_text "$status_text")"
-  columns="$(prompt::terminal_columns)"
-  padding_width=$((columns - ${#visible_left} - ${#visible_status}))
-  if [[ "$padding_width" -lt 1 ]]; then
-    padding_width=1
-  fi
-
-  printf -v padding '%*s' "$padding_width" ''
-  printf '%s%s%s' "$left_text" "$padding" "$rendered_status"
-}
-
 prompt::selected_labels_from_records() {
   local selected_ids="$1"
   shift || true
@@ -571,23 +293,6 @@ prompt::read_key() {
   esac
 }
 
-prompt::print_completed() {
-  local question="$1"
-  shift || true
-  local line
-
-  printf '%s  %s\n' "$(prompt::success "◇")" "$(prompt::title "$question")"
-  if [[ "$#" -eq 0 ]]; then
-    printf '%s\n' "$(prompt::blank_line)"
-    return 0
-  fi
-
-  for line in "$@"; do
-    printf '%s\n' "$(prompt::line "$(prompt::format_completed_line "$line")")"
-  done
-  printf '%s\n' "$(prompt::blank_line)"
-}
-
 prompt::summary() {
   local title="$1"
   shift || true
@@ -621,23 +326,23 @@ prompt::text() {
 
   details=("$@")
 
-  lines[${#lines[@]}]="$(prompt::accent "◆")  $(prompt::title "$question")"
+  lines[${#lines[@]}]="$(prompt::question_header "$question")"
   for detail in "${details[@]}"; do
     [[ -n "$detail" ]] || continue
-    lines[${#lines[@]}]="$(prompt::line "$(prompt::hint "$detail")")"
+    lines[${#lines[@]}]="$(prompt::hint_line "$detail")"
   done
   if [[ -n "$initial_value" ]]; then
-    lines[${#lines[@]}]="$(prompt::line "$(prompt::muted "Default:") $(prompt::subtle "$initial_value")")"
+    lines[${#lines[@]}]="$(prompt::default_line "$initial_value")"
   fi
 
   while true; do
     rendered_lines=("${lines[@]}")
     if [[ -n "$error_message" ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::line "$(prompt::danger "$error_message")")"
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::error_line "$error_message")"
     fi
 
     prompt::render_block "${rendered_lines[@]}"
-    printf '%s  %s ' "$(prompt::branch)" "$(prompt::accent ">")"
+    printf '%s' "$(prompt::input_prompt)"
     PROMPT__RENDERED_LINES=$((PROMPT__RENDERED_LINES + 1))
     read -r response
 
@@ -678,8 +383,7 @@ prompt::select() {
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines option_prefix current_description rendered_option option_label
-  local metadata_lines=()
+  local key rendered_lines current_description rendered_option is_current
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -710,42 +414,27 @@ prompt::select() {
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::accent "◆")  $(prompt::title "$question")"
-    metadata_lines=()
+    rendered_lines[${#rendered_lines[@]}]="$(prompt::question_header "$question")"
     current_description="${descriptions[$current_index]}"
-    [[ -n "$current_description" ]] && metadata_lines[${#metadata_lines[@]}]="$(prompt::description "$current_description")"
-    index=0
-    while [[ "$index" -lt "${#metadata_lines[@]}" ]]; do
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::line "${metadata_lines[$index]}")"
-      index=$((index + 1))
-    done
+    [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
 
     rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
 
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
-      if [[ "${disabled[$index]}" == "1" ]]; then
-        option_prefix="$(prompt::disabled "○")"
-        option_label="$(prompt::disabled "${labels[$index]}")"
-      elif [[ "$index" -eq "$current_index" ]]; then
-        option_prefix="$(prompt::accent "●")"
-        option_label="$(prompt::active_label "${labels[$index]}")"
+      if [[ "$index" -eq "$current_index" ]]; then
+        is_current=1
       else
-        option_prefix="$(prompt::subtle "○")"
-        option_label="$(prompt::body "${labels[$index]}")"
+        is_current=0
       fi
 
-      rendered_option="$(prompt::render_option_line "$(prompt::line "$option_prefix $option_label")" "${statuses[$index]}")"
+      rendered_option="$(prompt::select_option_line "${labels[$index]}" "$is_current" "${disabled[$index]}" "${statuses[$index]}")"
       rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
     rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
-    if [[ -n "$hint" ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::branch_line "$(prompt::shortcut_text "$hint")")"
-    else
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::branch_line "")"
-    fi
+    rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"
@@ -793,11 +482,10 @@ prompt::multiselect() {
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines current_description marker prefix rendered_option option_label
+  local key rendered_lines current_description rendered_option is_current
   local selected_ids="" selected_labels=""
   local total_lines reserved_lines visible_count
   local window_start window_end remaining_above remaining_below
-  local metadata_lines=()
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -829,15 +517,9 @@ prompt::multiselect() {
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::accent "◆")  $(prompt::title "$question")"
-    metadata_lines=()
+    rendered_lines[${#rendered_lines[@]}]="$(prompt::question_header "$question")"
     current_description="${descriptions[$current_index]}"
-    [[ -n "$current_description" ]] && metadata_lines[${#metadata_lines[@]}]="$(prompt::description "$current_description")"
-    index=0
-    while [[ "$index" -lt "${#metadata_lines[@]}" ]]; do
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::line "${metadata_lines[$index]}")"
-      index=$((index + 1))
-    done
+    [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
 
     rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
 
@@ -868,51 +550,28 @@ prompt::multiselect() {
     remaining_below=$((${#labels[@]} - window_end - 1))
 
     if [[ "$remaining_above" -gt 0 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::line "$(prompt::muted "↑ $remaining_above more")")"
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↑" "$remaining_above")"
     fi
 
     index="$window_start"
     while [[ "$index" -le "$window_end" ]]; do
-      if [[ "${disabled[$index]}" == "1" ]]; then
-        marker="$(prompt::disabled "◻")"
-        option_label="$(prompt::disabled "${labels[$index]}")"
-      elif [[ "${selected[$index]}" == "1" ]]; then
-        marker="$(prompt::success "◼")"
-        if [[ "$index" -eq "$current_index" ]]; then
-          option_label="$(prompt::selected_active_label "${labels[$index]}")"
-        else
-          option_label="$(prompt::selected_label "${labels[$index]}")"
-        fi
-      else
-        marker="$(prompt::subtle "◻")"
-        if [[ "$index" -eq "$current_index" ]]; then
-          option_label="$(prompt::active_label "${labels[$index]}")"
-        else
-          option_label="$(prompt::body "${labels[$index]}")"
-        fi
-      fi
-
       if [[ "$index" -eq "$current_index" ]]; then
-        prefix="$(prompt::accent "›")"
+        is_current=1
       else
-        prefix="$(prompt::frame " ")"
+        is_current=0
       fi
 
-      rendered_option="$(prompt::render_option_line "$(prompt::line "$prefix $marker $option_label")" "${statuses[$index]}")"
+      rendered_option="$(prompt::multiselect_option_line "${labels[$index]}" "$is_current" "${selected[$index]}" "${disabled[$index]}" "${statuses[$index]}")"
       rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
     if [[ "$remaining_below" -gt 0 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::line "$(prompt::muted "↓ $remaining_below more")")"
+      rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↓" "$remaining_below")"
     fi
 
     rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
-    if [[ -n "$hint" ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::branch_line "$(prompt::shortcut_text "$hint")")"
-    else
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::branch_line "")"
-    fi
+    rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"
