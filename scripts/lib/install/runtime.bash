@@ -80,55 +80,21 @@ install::enable_interactive_style() {
 }
 
 install::detect_platform() {
-  if [[ "${OSTYPE:-}" == darwin* ]]; then
-    DOTFILES_PLATFORM="macos"
-    DOTFILES_PLATFORM_LABEL="macOS"
-    return 0
-  fi
+  DOTFILES_PLATFORM="$(dotfiles::detect_platform_id || true)"
 
-  if [[ -n "${WSL_DISTRO_NAME:-}" ]]; then
-    DOTFILES_PLATFORM="wsl"
-    DOTFILES_PLATFORM_LABEL="WSL"
-    return 0
-  fi
-
-  if grep -qi microsoft /proc/version 2>/dev/null; then
-    DOTFILES_PLATFORM="wsl"
-    DOTFILES_PLATFORM_LABEL="WSL"
-    return 0
-  fi
-
-  if [[ "${OSTYPE:-}" == linux* ]]; then
-    DOTFILES_PLATFORM="linux"
-    DOTFILES_PLATFORM_LABEL="Linux"
-    return 0
-  fi
-
-  DOTFILES_PLATFORM="unknown"
-  DOTFILES_PLATFORM_LABEL="Unknown"
+  case "$DOTFILES_PLATFORM" in
+    macos) DOTFILES_PLATFORM_LABEL="macOS" ;;
+    wsl) DOTFILES_PLATFORM_LABEL="WSL" ;;
+    linux) DOTFILES_PLATFORM_LABEL="Linux" ;;
+    *)
+      DOTFILES_PLATFORM="unknown"
+      DOTFILES_PLATFORM_LABEL="Unknown"
+      ;;
+  esac
 }
 
 install::find_brew() {
-  local candidate
-
-  if command -v brew >/dev/null 2>&1; then
-    command -v brew
-    return 0
-  fi
-
-  for candidate in \
-    /opt/homebrew/bin/brew \
-    /usr/local/bin/brew \
-    /home/linuxbrew/.linuxbrew/bin/brew \
-    "$HOME/.linuxbrew/bin/brew"
-  do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
+  dotfiles::brew_bin_path
 }
 
 install::find_zsh() {

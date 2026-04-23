@@ -1,6 +1,6 @@
 # Catalog Package Metadata Source of Truth
 
-Status: `planned`
+Status: `completed`
 
 Suggested priority: `P10`
 

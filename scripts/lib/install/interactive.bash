@@ -480,7 +480,7 @@ install::ensure_git_identity_for_plan() {
 }
 
 install::git_personal_config_path() {
-  printf '%s/git/personal.local.ini' "$DOTFILES_CONFIG_DIR"
+  printf '%s/git/personal.local.ini' "${DOTFILES_CONFIG_DIR:-$(dotfiles::config_dir)}"
 }
 
 install::git_personal_config_display_path() {

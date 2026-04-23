@@ -8,9 +8,7 @@ package_manager::brew_bin() {
 }
 
 package_manager::activate_brew() {
-  local brew_bin
-  brew_bin="$(package_manager::brew_bin)"
-  eval "$("$brew_bin" shellenv)"
+  dotfiles::activate_brew_shellenv
 }
 
 package_manager::ensure_brew() {
@@ -71,19 +69,11 @@ package_manager::prepend_path() {
 }
 
 package_manager::npm_global_prefix() {
-  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-    print -r -- "$XDG_DATA_HOME/npm-global"
-    return 0
-  fi
-
-  case "$DOTFILES_PLATFORM" in
-    macos) print -r -- "$HOME/Library/Application Support/npm-global" ;;
-    *) print -r -- "$HOME/.local/share/npm-global" ;;
-  esac
+  dotfiles::npm_global_prefix
 }
 
 package_manager::npm_global_bin_dir() {
-  print -r -- "$(package_manager::npm_global_prefix)/bin"
+  dotfiles::npm_global_bin_dir
 }
 
 package_manager::npm_global_package_installed() {

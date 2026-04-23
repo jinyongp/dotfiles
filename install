@@ -4,7 +4,6 @@ set -euo pipefail
 
 DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RUNNER="$DOTFILES_ROOT/scripts/run-install-plan.zsh"
-DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
 
 source "$DOTFILES_ROOT/scripts/lib/install/bootstrap.bash"
 

@@ -21,49 +21,23 @@ dotfiles_prepend_path() {
 }
 
 dotfiles_configure_npm_global_path() {
-  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-    dotfiles_prepend_path "$XDG_DATA_HOME/npm-global/bin"
-  elif [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
-    dotfiles_prepend_path "$HOME/Library/Application Support/npm-global/bin"
-  else
-    dotfiles_prepend_path "$HOME/.local/share/npm-global/bin"
-  fi
+  dotfiles_prepend_path "$(dotfiles::npm_global_bin_dir)"
 }
 
 dotfiles_configure_pnpm_home() {
   if [[ -z "${PNPM_HOME:-}" ]]; then
-    if [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
-      export PNPM_HOME="$HOME/Library/pnpm"
-    else
-      export PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
-    fi
+    export PNPM_HOME="$(dotfiles::pnpm_home)"
   fi
 
   dotfiles_prepend_path "$PNPM_HOME"
 }
 
 dotfiles_fnm_install_dir() {
-  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-    print -r -- "$XDG_DATA_HOME/fnm"
-  elif [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
-    print -r -- "$HOME/Library/Application Support/fnm"
-  else
-    print -r -- "$HOME/.local/share/fnm"
-  fi
+  dotfiles::fnm_install_dir
 }
 
 dotfiles_fnm_runtime_dir() {
-  local runtime_dir="${XDG_RUNTIME_DIR:-}"
-  local fallback_dir="${${TMPDIR:-/tmp}%/}/fnm-runtime-${UID}"
-
-  if [[ -n "$runtime_dir" && -d "$runtime_dir" && -w "$runtime_dir" ]]; then
-    print -r -- "$runtime_dir"
-    return 0
-  fi
-
-  mkdir -p "$fallback_dir" 2>/dev/null || return 1
-  chmod 700 "$fallback_dir" 2>/dev/null || true
-  print -r -- "$fallback_dir"
+  dotfiles::fnm_runtime_dir
 }
 
 dotfiles_activate_fnm() {
@@ -177,18 +151,15 @@ dotfiles_brew_prefix() {
 }
 
 dotfiles_apply_brew_shellenv() {
-  local brew_bin
-
-  brew_bin="$(dotfiles_brew_bin 2>/dev/null)" || return 0
-  eval "$("$brew_bin" shellenv)"
+  dotfiles::activate_brew_shellenv
 }
 
 dotfiles_load_install_env() {
-  export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
-  export DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$DOTFILES_CONFIG_DIR/install.env}"
-  export DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$DOTFILES_CONFIG_DIR/env.zsh}"
-  export DOTFILES_PROFILE_ZSH="${DOTFILES_PROFILE_ZSH:-$DOTFILES_CONFIG_DIR/profile.zsh}"
-  export DOTFILES_LOCAL_ZSH="${DOTFILES_LOCAL_ZSH:-$DOTFILES_CONFIG_DIR/local.zsh}"
+  export DOTFILES_CONFIG_DIR="${DOTFILES_CONFIG_DIR:-$(dotfiles::config_dir)}"
+  export DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$(dotfiles::install_env_path)}"
+  export DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$(dotfiles::env_zsh_path)}"
+  export DOTFILES_PROFILE_ZSH="${DOTFILES_PROFILE_ZSH:-$(dotfiles::profile_zsh_path)}"
+  export DOTFILES_LOCAL_ZSH="${DOTFILES_LOCAL_ZSH:-$(dotfiles::local_zsh_path)}"
 
   if [[ -f "$DOTFILES_INSTALL_ENV" ]]; then
     source "$DOTFILES_INSTALL_ENV"

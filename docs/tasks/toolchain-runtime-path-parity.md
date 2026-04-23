@@ -1,6 +1,6 @@
 # Toolchain Runtime Path Parity
 
-Status: `planned`
+Status: `completed`
 
 Suggested priority: `P11`
 

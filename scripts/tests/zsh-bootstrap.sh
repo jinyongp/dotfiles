@@ -27,6 +27,8 @@ zsh_bootstrap_test::setup_fixture() {
   FAKE_BREW_PREFIX="$WORK_DIR/homebrew"
   FNM_TEST_ROOT="$WORK_DIR/fnm"
   TEST_TMPDIR="$WORK_DIR/tmp"
+  NPM_GLOBAL_BIN="$HOME_DIR/Library/Application Support/npm-global/bin"
+  FNM_INSTALL_DIR="$HOME_DIR/Library/Application Support/fnm"
   VSCODE_SHELL_INTEGRATION_SCRIPT="$WORK_DIR/vscode-shellIntegration-rc.zsh"
 
   mkdir -p \
@@ -35,6 +37,8 @@ zsh_bootstrap_test::setup_fixture() {
     "$INITIAL_BIN" \
     "$FAKE_BREW_PREFIX/bin" \
     "$FNM_TEST_ROOT/node-bin" \
+    "$NPM_GLOBAL_BIN" \
+    "$FNM_INSTALL_DIR" \
     "$TEST_TMPDIR" \
     "$HOME_DIR/Library/pnpm" \
     "$HOME_DIR/.local/share/pnpm"
@@ -213,6 +217,54 @@ zsh_bootstrap_test::assert_interactive_fnm_hook() {
   printf 'ok %s\n' "$name"
 }
 
+zsh_bootstrap_test::assert_shared_runtime_paths() {
+  local name="shared_runtime_paths"
+  local current_uid expected_runtime_dir
+
+  current_uid="$(id -u)"
+  expected_runtime_dir="${TEST_TMPDIR%/}/fnm-runtime-${current_uid}"
+
+  zsh_bootstrap_test::run_zsh "$name" -c '
+    case ":$PATH:" in
+      *":'"$NPM_GLOBAL_BIN"':"*) ;;
+      *) print -r -- "missing-npm-global-path"; exit 1 ;;
+    esac
+
+    case ":$PATH:" in
+      *":'"$HOME_DIR"'/Library/pnpm:"*) ;;
+      *) print -r -- "missing-pnpm-home-path"; exit 1 ;;
+    esac
+
+    case ":$PATH:" in
+      *":'"$FNM_INSTALL_DIR"':"*) ;;
+      *) print -r -- "missing-fnm-install-path"; exit 1 ;;
+    esac
+
+    print -r -- "config=$DOTFILES_CONFIG_DIR"
+    print -r -- "install_env=$DOTFILES_INSTALL_ENV"
+    print -r -- "env_zsh=$DOTFILES_ENV_ZSH"
+    print -r -- "profile_zsh=$DOTFILES_PROFILE_ZSH"
+    print -r -- "local_zsh=$DOTFILES_LOCAL_ZSH"
+    print -r -- "pnpm_home=$PNPM_HOME"
+    print -r -- "fnm_multishell=$FNM_MULTISHELL_PATH"
+    print -r -- "paths-ok"
+  '
+
+  zsh_bootstrap_test::assert_output "$name" "$(cat <<EOF
+config=$HOME_DIR/.config/dotfiles
+install_env=$HOME_DIR/.config/dotfiles/install.env
+env_zsh=$HOME_DIR/.config/dotfiles/env.zsh
+profile_zsh=$HOME_DIR/.config/dotfiles/profile.zsh
+local_zsh=$HOME_DIR/.config/dotfiles/local.zsh
+pnpm_home=$HOME_DIR/Library/pnpm
+fnm_multishell=$expected_runtime_dir/fnm_multishell
+paths-ok
+EOF
+)"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
 zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc() {
   local name="vscode_injection_no_zshrc_recursion"
   local output_file="$WORK_DIR/${name}.out"
@@ -254,6 +306,7 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_noninteractive_fnm_mode
   zsh_bootstrap_test::assert_bootstrap_guard_not_exported
   zsh_bootstrap_test::assert_set_e_direct_bootstrap
+  zsh_bootstrap_test::assert_shared_runtime_paths
   zsh_bootstrap_test::assert_interactive_fnm_hook
   zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc
 

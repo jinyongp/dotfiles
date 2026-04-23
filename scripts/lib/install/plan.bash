@@ -86,8 +86,12 @@ install::remember_saved_runtime_defaults() {
 
 install::saved_install_value() {
   local variable_name="$1"
-  local config_file="$DOTFILES_CONFIG_DIR/install.env"
+  local config_file="${DOTFILES_INSTALL_ENV:-}"
   local value=""
+
+  if [[ -z "$config_file" ]] && declare -F dotfiles::install_env_path >/dev/null 2>&1; then
+    config_file="$(dotfiles::install_env_path)"
+  fi
 
   [[ -f "$config_file" ]] || return 1
   value="$(

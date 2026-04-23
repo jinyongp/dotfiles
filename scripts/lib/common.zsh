@@ -12,11 +12,11 @@ if ! typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
   }
 fi
 
-typeset -g DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
-typeset -g DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
-typeset -g DOTFILES_ENV_ZSH="$DOTFILES_CONFIG_DIR/env.zsh"
-typeset -g DOTFILES_PROFILE_ZSH="$DOTFILES_CONFIG_DIR/profile.zsh"
-typeset -g DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
+typeset -g DOTFILES_CONFIG_DIR="${DOTFILES_CONFIG_DIR:-$(dotfiles::config_dir)}"
+typeset -g DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$(dotfiles::install_env_path)}"
+typeset -g DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$(dotfiles::env_zsh_path)}"
+typeset -g DOTFILES_PROFILE_ZSH="${DOTFILES_PROFILE_ZSH:-$(dotfiles::profile_zsh_path)}"
+typeset -g DOTFILES_LOCAL_ZSH="${DOTFILES_LOCAL_ZSH:-$(dotfiles::local_zsh_path)}"
 typeset -gaU DOTFILES_RESULT_INSTALLED_ITEMS=()
 typeset -gaU DOTFILES_RESULT_REUSED_ITEMS=()
 typeset -gaU DOTFILES_RESULT_SKIPPED_ITEMS=()

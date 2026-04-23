@@ -1,15 +1,7 @@
 #!/bin/zsh
 
 package_recipe::fnm_install_dir() {
-  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-    print -r -- "$XDG_DATA_HOME/fnm"
-    return 0
-  fi
-
-  case "$DOTFILES_PLATFORM" in
-    macos) print -r -- "$HOME/Library/Application Support/fnm" ;;
-    *) print -r -- "$HOME/.local/share/fnm" ;;
-  esac
+  dotfiles::fnm_install_dir
 }
 
 package_recipe::fnm_activate() {
