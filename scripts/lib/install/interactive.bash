@@ -1,9 +1,62 @@
 # Interactive prompt flow for module, leaf item, theme, package manager, and Git identity choices.
 
+install::apply_single_selection_to_records() {
+  local array_name="$1"
+  local selected_id="$2"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(install::array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(install::array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    disabled="$(prompt::record_field "$record" 5)"
+    status="$(prompt::record_field "$record" 6)"
+
+    if [[ "$id" == "$selected_id" && "$disabled" != "1" ]]; then
+      selected=1
+    else
+      selected=0
+    fi
+
+    install::array_record_set "$array_name" "$index" "$(install::compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
+install::apply_multi_selection_to_records() {
+  local array_name="$1"
+  local selected_ids="$2"
+  local count index=0
+  local record id label description selected disabled status
+
+  count="$(install::array_record_count "$array_name")"
+  while [[ "$index" -lt "$count" ]]; do
+    record="$(install::array_record_get "$array_name" "$index")"
+    id="$(prompt::record_field "$record" 1)"
+    label="$(prompt::record_field "$record" 2)"
+    description="$(prompt::record_field "$record" 3)"
+    disabled="$(prompt::record_field "$record" 5)"
+    status="$(prompt::record_field "$record" 6)"
+
+    if [[ "$disabled" != "1" ]] && install::contains_word "$selected_ids" "$id"; then
+      selected=1
+    else
+      selected=0
+    fi
+
+    install::array_record_set "$array_name" "$index" "$(install::compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
+    index=$((index + 1))
+  done
+}
+
 install::select_profile() {
   local profile_options=()
 
   install::read_records_into_array profile_options catalog::profile_records
+  install::apply_single_selection_to_records profile_options "${DOTFILES_INSTALL_PROFILE:-recommended}"
   prompt::select DOTFILES_INSTALL_PROFILE "Select installation profile." "$(install::select_prompt_hint)" "${profile_options[@]}"
   DOTFILES_INSTALL_PROFILE_LABEL="$(catalog::profile_label "$DOTFILES_INSTALL_PROFILE")"
   install::apply_profile_defaults
@@ -52,8 +105,9 @@ install::select_package_manager() {
       prompt::summary "Package manager" "Homebrew"
       ;;
     wsl)
-      options[0]=$'apt\tapt\tUse Ubuntu/Debian packages through apt-get.\t1\t0'
+      options[0]=$'apt\tapt\tUse Ubuntu/Debian packages through apt-get.\t0\t0'
       options[1]=$'brew\tHomebrew\tUse Homebrew on Linux for the main install flow.\t0\t0'
+      install::apply_single_selection_to_records options "${DOTFILES_PACKAGE_MANAGER:-apt}"
       prompt::select selected_package_manager "Select a package manager." "$(install::select_prompt_hint)" "${options[@]}"
       DOTFILES_PACKAGE_MANAGER="$selected_package_manager"
       ;;
@@ -88,6 +142,7 @@ install::select_modules() {
   local module_options=()
 
   install::read_records_into_array module_options catalog::module_records "$DOTFILES_PLATFORM"
+  install::apply_multi_selection_to_records module_options "$DOTFILES_SELECTED_MODULES"
   prompt::multiselect DOTFILES_SELECTED_MODULES "Select installation modules." "$(install::multiselect_prompt_hint)" "${module_options[@]}"
   DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
 }
@@ -139,7 +194,11 @@ install::prepare_leaf_options() {
   local array_name="$2"
 
   install::load_leaf_records "$module_id" "$array_name"
-  install::apply_profile_leaf_defaults "$module_id" "$array_name"
+  if install::module_item_state_exists "$module_id"; then
+    install::apply_multi_selection_to_records "$array_name" "$(install::get_module_items "$module_id")"
+  else
+    install::apply_profile_leaf_defaults "$module_id" "$array_name"
+  fi
 }
 
 install::apply_profile_leaf_defaults() {
@@ -187,6 +246,7 @@ install::apply_leaf_selection() {
   case "$module_id" in
     packages|fonts|desktop_apps)
       if [[ -z "$leaf_ids" ]]; then
+        install::clear_module_items "$module_id"
         DOTFILES_SELECTED_MODULES="$(install::remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"
         if [[ "$selectable_count" == "0" ]]; then
           SKIP_NOTES[${#SKIP_NOTES[@]}]="$(catalog::module_label "$module_id") was skipped because all available items are already installed."
@@ -207,7 +267,20 @@ install::apply_leaf_selection() {
   esac
 }
 
+install::clear_unselected_leaf_item_state() {
+  local module_id
+
+  for module_id in $LEAF_MODULES; do
+    if install::module_is_selected "$module_id"; then
+      continue
+    fi
+
+    install::clear_module_items "$module_id"
+  done
+}
+
 install::prompt_for_leaf_items() {
+  local reviewable_only="${1:-no}"
   local module_id leaf_ids selectable_count
   local leaf_options=()
 
@@ -222,6 +295,10 @@ install::prompt_for_leaf_items() {
 
     install::prepare_leaf_options "$module_id" leaf_options
     selectable_count="$(install::count_selectable_records "${leaf_options[@]}")"
+    if [[ "$reviewable_only" == "yes" && "$selectable_count" -eq 0 ]]; then
+      install::apply_leaf_selection "$module_id" "$(install::selected_ids_from_records "${leaf_options[@]}")" "$selectable_count" "${leaf_options[@]}"
+      continue
+    fi
     prompt::multiselect leaf_ids "$(install::leaf_prompt_title "$module_id")" "$(install::leaf_prompt_hint "$module_id")" "${leaf_options[@]}"
     install::apply_leaf_selection "$module_id" "$leaf_ids" "$selectable_count" "${leaf_options[@]}"
   done
@@ -293,6 +370,115 @@ install::maybe_review_leaf_items() {
   fi
 }
 
+install::git_identity_state_exists() {
+  case "${DOTFILES_GIT_IDENTITY_MODE:-}" in
+    reuse_existing|skip_for_now|configure_now) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+install::clear_git_identity_state() {
+  DOTFILES_GIT_CONFIGURE_PERSONAL="no"
+  DOTFILES_GIT_IDENTITY_MODE="not_needed"
+  DOTFILES_GIT_NAME=""
+  DOTFILES_GIT_EMAIL=""
+  DOTFILES_GIT_SIGNING_MODE="none"
+  DOTFILES_GIT_SIGNING_KEY=""
+  DOTFILES_GIT_SUMMARY=""
+}
+
+install::refresh_plan_after_structure_edit() {
+  install::clear_unselected_leaf_item_state
+  install::maybe_select_theme
+  install::maybe_select_package_manager
+  install::resolve_install_plan
+  install::maybe_review_leaf_items
+  install::resolve_install_plan
+  install::clear_unselected_leaf_item_state
+}
+
+install::refresh_plan_after_item_edit() {
+  install::resolve_install_plan
+  install::clear_unselected_leaf_item_state
+}
+
+install::summary_action_records() {
+  local action_id action_label action_description is_selected
+  local default_action=""
+
+  if install::plan_has_execution_targets; then
+    default_action="proceed"
+  elif [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    default_action="edit_modules"
+  else
+    default_action="edit_profile"
+  fi
+
+  if install::plan_has_execution_targets; then
+    is_selected=0
+    [[ "$default_action" == "proceed" ]] && is_selected=1
+    printf 'proceed\tProceed\tRun the current install plan now.\t%s\t0\n' "$is_selected"
+  fi
+
+  if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    is_selected=0
+    [[ "$default_action" == "edit_modules" ]] && is_selected=1
+    printf 'edit_modules\tEdit modules\tReturn to the module picker for this custom plan.\t%s\t0\n' "$is_selected"
+  else
+    is_selected=0
+    [[ "$default_action" == "edit_profile" ]] && is_selected=1
+    printf 'edit_profile\tEdit profile\tChoose a different install profile and rebuild the plan.\t%s\t0\n' "$is_selected"
+  fi
+
+  if install::plan_has_reviewable_leaf_modules; then
+    printf 'edit_items\tEdit selected items\tAdjust the current package, plugin, font, or app selections.\t0\t0\n'
+  fi
+
+  if install::module_is_selected "dotfiles"; then
+    printf 'edit_git\tEdit Git identity\tReopen the machine-local Git identity flow for this plan.\t0\t0\n'
+  fi
+
+  printf 'cancel\tCancel\tExit without running the current install plan.\t0\t0\n'
+}
+
+install::select_summary_action() {
+  local action_options=()
+
+  install::read_records_into_array action_options install::summary_action_records
+  prompt::select DOTFILES_SUMMARY_ACTION "Final summary actions." "$(install::select_prompt_hint)" "${action_options[@]}"
+}
+
+install::edit_summary_profile() {
+  install::select_profile
+  if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
+    install::select_modules
+  fi
+  install::refresh_plan_after_structure_edit
+}
+
+install::edit_summary_modules() {
+  install::select_modules
+  install::refresh_plan_after_structure_edit
+}
+
+install::edit_summary_items() {
+  install::prompt_for_leaf_items yes
+  install::refresh_plan_after_item_edit
+}
+
+install::ensure_git_identity_for_plan() {
+  if ! install::module_is_selected "dotfiles"; then
+    install::clear_git_identity_state
+    return 0
+  fi
+
+  if install::git_identity_state_exists; then
+    return 0
+  fi
+
+  install::prompt_for_git_identity
+}
+
 install::git_personal_config_path() {
   printf '%s/git/personal.local.ini' "$DOTFILES_CONFIG_DIR"
 }
@@ -317,11 +503,15 @@ install::print_git_identity_file_summary() {
 }
 
 install::prompt_for_git_identity_mode() {
+  local default_mode="${1:-skip_for_now}"
+  local mode_options=()
+
   install::print_git_identity_file_summary
-  prompt::select DOTFILES_GIT_IDENTITY_MODE "Machine-local Git identity." "$(install::select_prompt_hint)" \
-    $'reuse_existing\tReuse existing\tKeep the current machine-local Git file state unchanged.\t0\t0' \
-    $'skip_for_now\tSkip for now\tDo not write Git identity during this install run.\t1\t0' \
-    $'configure_now\tConfigure now\tEnter Git name, email, and signing values now.\t0\t0'
+  mode_options[0]=$'reuse_existing\tReuse existing\tKeep the current machine-local Git file state unchanged.\t0\t0'
+  mode_options[1]=$'skip_for_now\tSkip for now\tDo not write Git identity during this install run.\t0\t0'
+  mode_options[2]=$'configure_now\tConfigure now\tEnter Git name, email, and signing values now.\t0\t0'
+  install::apply_single_selection_to_records mode_options "$default_mode"
+  prompt::select DOTFILES_GIT_IDENTITY_MODE "Machine-local Git identity." "$(install::select_prompt_hint)" "${mode_options[@]}"
 }
 
 install::collect_git_identity_values() {
@@ -376,26 +566,38 @@ install::collect_git_identity_values() {
 }
 
 install::prompt_for_git_identity() {
+  local force_prompt="${1:-no}"
   local personal_file=""
   local personal_file_display
-
-  DOTFILES_GIT_IDENTITY_MODE="not_needed"
+  local default_mode="skip_for_now"
 
   if ! install::module_is_selected "dotfiles"; then
-    DOTFILES_GIT_SUMMARY=""
+    install::clear_git_identity_state
     return 0
   fi
 
   personal_file="$(install::git_personal_config_path)"
   personal_file_display="$(install::git_personal_config_display_path)"
 
-  if ! dotfiles_git_personal_config_is_template "$personal_file"; then
+  if [[ "$force_prompt" != "yes" ]] && ! dotfiles_git_personal_config_is_template "$personal_file"; then
     DOTFILES_GIT_IDENTITY_MODE="reuse_existing"
     DOTFILES_GIT_SUMMARY="Existing machine-local Git identity at $personal_file_display. You can edit it directly later."
+    DOTFILES_GIT_CONFIGURE_PERSONAL="no"
     return 0
   fi
 
-  install::prompt_for_git_identity_mode
+  case "${DOTFILES_GIT_IDENTITY_MODE:-}" in
+    reuse_existing|skip_for_now|configure_now)
+      default_mode="$DOTFILES_GIT_IDENTITY_MODE"
+      ;;
+    *)
+      if ! dotfiles_git_personal_config_is_template "$personal_file"; then
+        default_mode="reuse_existing"
+      fi
+      ;;
+  esac
+
+  install::prompt_for_git_identity_mode "$default_mode"
 
   case "$DOTFILES_GIT_IDENTITY_MODE" in
     reuse_existing)
@@ -411,4 +613,34 @@ install::prompt_for_git_identity() {
       install::collect_git_identity_values
       ;;
   esac
+}
+
+install::run_summary_action_loop() {
+  while true; do
+    install::ensure_git_identity_for_plan
+    install::finalize_runtime_state
+    install::print_plan_summary
+    install::select_summary_action
+
+    case "$DOTFILES_SUMMARY_ACTION" in
+      proceed)
+        return 0
+        ;;
+      edit_profile)
+        install::edit_summary_profile
+        ;;
+      edit_modules)
+        install::edit_summary_modules
+        ;;
+      edit_items)
+        install::edit_summary_items
+        ;;
+      edit_git)
+        install::prompt_for_git_identity yes
+        ;;
+      cancel)
+        return 1
+        ;;
+    esac
+  done
 }

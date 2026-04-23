@@ -22,6 +22,7 @@ install::init_state() {
   DOTFILES_INSTALL_PROFILE=""
   DOTFILES_INSTALL_PROFILE_LABEL=""
   DOTFILES_REVIEW_SELECTED_ITEMS=""
+  DOTFILES_SUMMARY_ACTION=""
   DOTFILES_PACKAGE_MANAGER=""
   DOTFILES_THEME=""
   DOTFILES_ENABLE_OH_MY_ZSH="0"
@@ -113,6 +114,11 @@ install::get_named_value() {
   eval "printf '%s' \"\${$variable_name-}\""
 }
 
+install::named_value_is_set() {
+  local variable_name="$1"
+  eval "[[ -n \${${variable_name}+x} ]]"
+}
+
 install::read_records_into_array() {
   local array_name="$1"
   shift
@@ -151,6 +157,17 @@ install::set_module_items() {
 
   install::set_named_value "$(install::module_item_var_name "$module_id")" "$selected_ids"
   install::set_named_value "$(install::module_item_labels_var_name "$module_id")" "$selected_labels"
+}
+
+install::clear_module_items() {
+  local module_id="$1"
+
+  unset "$(install::module_item_var_name "$module_id")"
+  unset "$(install::module_item_labels_var_name "$module_id")"
+}
+
+install::module_item_state_exists() {
+  install::named_value_is_set "$(install::module_item_var_name "$1")"
 }
 
 install::get_module_items() {

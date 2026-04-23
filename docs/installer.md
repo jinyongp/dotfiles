@@ -17,7 +17,7 @@ The interactive flow is plan-based:
 3. adjust modules or item selections only when the selected profile needs it
 4. answer only the follow-up prompts needed for that plan
 5. review the final plan summary
-6. confirm before any installation work starts
+6. proceed, revise the plan, or cancel from the summary actions
 
 Profiles are shortcuts for the first plan draft:
 
@@ -36,6 +36,19 @@ The summary can include:
 - auto-added dependencies
 - reused existing setup
 - leaf modules removed because no items were selected
+
+The final summary is also the last edit checkpoint before installation starts.
+Depending on the current plan, it can offer actions such as:
+
+- `Proceed`
+- `Edit profile` or `Edit modules`
+- `Edit selected items`
+- `Edit Git identity`
+- `Cancel`
+
+Profile and module edits rerun the conditional follow-up prompts needed for the new plan.
+Item edits reopen only the current package, plugin, font, or app selections.
+Git edits reopen the machine-local Git identity flow without restarting the installer.
 
 The `Custom` module picker starts with no selected modules, so pressing `Enter` there exits without installing anything.
 

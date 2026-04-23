@@ -1,7 +1,6 @@
 # Top-level installer orchestration.
 
 install::main() {
-  local proceed=""
   local zsh_bin=""
 
   install::init_state
@@ -50,25 +49,9 @@ install::main() {
   if [[ "$DOTFILES_INSTALL_PROFILE" == "custom" ]]; then
     install::select_modules
   fi
-  if [[ -z "$DOTFILES_SELECTED_MODULES" ]]; then
-    prompt::cancel "No installation modules were selected."
-    exit 0
-  fi
-  install::maybe_select_theme
-  install::maybe_select_package_manager
-  install::resolve_install_plan
-  install::maybe_review_leaf_items
-  install::resolve_install_plan
-  if ! install::plan_has_execution_targets; then
-    prompt::cancel "No installation work remains after item selection."
-    exit 0
-  fi
-  install::prompt_for_git_identity
-  install::finalize_runtime_state
-  install::print_plan_summary
-  prompt::confirm proceed "Proceed with installation?" "yes" "Enter to start installation."
+  install::refresh_plan_after_structure_edit
 
-  if [[ "$proceed" != "yes" ]]; then
+  if ! install::run_summary_action_loop; then
     prompt::cancel "Installation cancelled."
     exit 0
   fi
