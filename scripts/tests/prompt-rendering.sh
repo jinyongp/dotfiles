@@ -30,9 +30,11 @@ prompt_test::case_names() {
     "text_validation_retry" \
     "select_basic" \
     "select_with_disabled_and_status" \
+    "select_wrap_navigation" \
     "multiselect_basic" \
     "multiselect_with_scroll_indicators" \
-    "multiselect_with_disabled_rows"
+    "multiselect_with_disabled_rows" \
+    "multiselect_wrap_navigation"
 }
 
 prompt_test::mode_names() {
@@ -336,6 +338,20 @@ prompt_test::case_multiselect_basic() {
   printf '[[ value ]]\n%s\n' "$result"
 }
 
+prompt_test::case_select_wrap_navigation() {
+  local result=""
+  local records=()
+
+  records[0]="$(prompt_test::record "starship" "starship" "Cross-platform prompt using the Starship binary." "1" "0")"
+  records[1]="$(prompt_test::record "powerlevel10k" "powerlevel10k" "Feature-rich prompt for zsh with instant prompt support." "0" "0")"
+  records[2]="$(prompt_test::record "default" "default" "Keep the default shell prompt styling." "0" "0")"
+
+  prompt_test::set_keys "up" "enter"
+  prompt::select result "Select a shell theme." "Use ↑/↓ to choose, Enter to confirm." "${records[@]}"
+
+  printf '[[ value ]]\n%s\n' "$result"
+}
+
 prompt_test::case_multiselect_with_scroll_indicators() {
   local result=""
   local records=()
@@ -368,6 +384,20 @@ prompt_test::case_multiselect_with_disabled_rows() {
   records[4]="$(prompt_test::record "eza" "eza" "Modern replacement for ls." "0" "0")"
 
   prompt_test::set_keys "down" "space" "enter"
+  prompt::multiselect result "Select base CLI packages." "Use ↑/↓ to move, Space to toggle, Enter to confirm." "${records[@]}"
+
+  printf '[[ value ]]\n%s\n' "$result"
+}
+
+prompt_test::case_multiselect_wrap_navigation() {
+  local result=""
+  local records=()
+
+  records[0]="$(prompt_test::record "git" "git" "Required for cloning and repo workflows." "1" "0")"
+  records[1]="$(prompt_test::record "fnm" "fnm" "Fast Node.js version manager." "0" "0")"
+  records[2]="$(prompt_test::record "eza" "eza" "Modern replacement for ls." "0" "0")"
+
+  prompt_test::set_keys "up" "space" "enter"
   prompt::multiselect result "Select base CLI packages." "Use ↑/↓ to move, Space to toggle, Enter to confirm." "${records[@]}"
 
   printf '[[ value ]]\n%s\n' "$result"
@@ -407,6 +437,9 @@ prompt_test::run_case() {
     select_with_disabled_and_status)
       prompt_test::case_select_with_disabled_and_status
       ;;
+    select_wrap_navigation)
+      prompt_test::case_select_wrap_navigation
+      ;;
     multiselect_basic)
       prompt_test::case_multiselect_basic
       ;;
@@ -415,6 +448,9 @@ prompt_test::run_case() {
       ;;
     multiselect_with_disabled_rows)
       prompt_test::case_multiselect_with_disabled_rows
+      ;;
+    multiselect_wrap_navigation)
+      prompt_test::case_multiselect_wrap_navigation
       ;;
     *)
       prompt_test::fail "unknown case: $case_name"

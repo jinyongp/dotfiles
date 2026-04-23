@@ -290,6 +290,54 @@ prompt::first_selectable_index() {
   return 1
 }
 
+prompt::move_selectable_index() {
+  local direction="$1"
+  local current_index="$2"
+  shift 2 || true
+
+  local disabled=("$@")
+  local next_index="$current_index"
+  local attempts=0
+  local count="${#disabled[@]}"
+
+  if [[ "$count" -eq 0 ]]; then
+    printf '%s' "$current_index"
+    return 0
+  fi
+
+  while [[ "$attempts" -lt "$count" ]]; do
+    case "$direction" in
+      up)
+        if [[ "$next_index" -le 0 ]]; then
+          next_index=$((count - 1))
+        else
+          next_index=$((next_index - 1))
+        fi
+        ;;
+      down)
+        if [[ "$next_index" -ge $((count - 1)) ]]; then
+          next_index=0
+        else
+          next_index=$((next_index + 1))
+        fi
+        ;;
+      *)
+        printf '%s' "$current_index"
+        return 0
+        ;;
+    esac
+
+    if [[ "${disabled[$next_index]}" != "1" ]]; then
+      printf '%s' "$next_index"
+      return 0
+    fi
+
+    attempts=$((attempts + 1))
+  done
+
+  printf '%s' "$current_index"
+}
+
 prompt::read_key() {
   local key rest
 
@@ -498,16 +546,10 @@ prompt::select() {
 
     case "$key" in
       up)
-        while [[ "$current_index" -gt 0 ]]; do
-          current_index=$((current_index - 1))
-          [[ "${disabled[$current_index]}" != "1" ]] && break
-        done
+        current_index="$(prompt::move_selectable_index up "$current_index" "${disabled[@]}")"
         ;;
       down)
-        while [[ "$current_index" -lt $((${#labels[@]} - 1)) ]]; do
-          current_index=$((current_index + 1))
-          [[ "${disabled[$current_index]}" != "1" ]] && break
-        done
+        current_index="$(prompt::move_selectable_index down "$current_index" "${disabled[@]}")"
         ;;
       enter)
         prompt::leave_raw_mode
@@ -655,16 +697,10 @@ prompt::multiselect() {
 
     case "$key" in
       up)
-        while [[ "$current_index" -gt 0 ]]; do
-          current_index=$((current_index - 1))
-          [[ "${disabled[$current_index]}" != "1" ]] && break
-        done
+        current_index="$(prompt::move_selectable_index up "$current_index" "${disabled[@]}")"
         ;;
       down)
-        while [[ "$current_index" -lt $((${#labels[@]} - 1)) ]]; do
-          current_index=$((current_index + 1))
-          [[ "${disabled[$current_index]}" != "1" ]] && break
-        done
+        current_index="$(prompt::move_selectable_index down "$current_index" "${disabled[@]}")"
         ;;
       space)
         if [[ "${disabled[$current_index]}" != "1" ]]; then

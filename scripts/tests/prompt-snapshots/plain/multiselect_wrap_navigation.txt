@@ -1,0 +1,29 @@
+[[ render 1 ]]
+>  Select base CLI packages.
+   Required for cloning and repo workflows.
+   > [x] git
+     [ ] fnm
+     [ ] eza
+   Use Up/Down to move, Space to toggle, Enter to confirm.
+
+[[ render 2 ]]
+>  Select base CLI packages.
+   Modern replacement for ls.
+     [x] git
+     [ ] fnm
+   > [ ] eza
+   Use Up/Down to move, Space to toggle, Enter to confirm.
+
+[[ render 3 ]]
+>  Select base CLI packages.
+   Modern replacement for ls.
+     [x] git
+     [ ] fnm
+   > [x] eza
+   Use Up/Down to move, Space to toggle, Enter to confirm.
+
+=  Select base CLI packages.
+   git, eza
+
+[[ value ]]
+git eza
