@@ -1324,6 +1324,9 @@ print_plan_summary() {
   if [[ -n "$DOTFILES_AUTO_SELECTED_MODULES" ]]; then
     summary_lines[${#summary_lines[@]}]="Auto-added modules: $(module_labels_for_selection "$DOTFILES_AUTO_SELECTED_MODULES")"
   fi
+  if module_is_selected "dotfiles"; then
+    summary_lines[${#summary_lines[@]}]="Dotfiles links: ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, ~/.gitconfig"
+  fi
   summary_lines[${#summary_lines[@]}]="oh-my-zsh runtime: $(planned_oh_my_zsh_runtime_label)"
 
   for module_id in "${MODULE_ORDER[@]}"; do
@@ -1486,7 +1489,7 @@ run_direct_install() {
     fi
   fi
 
-  run_install_plan
+  run_install_plan_or_exit "Direct install failed."
   color_green "Direct install complete."
 
   if should_auto_launch_zsh; then
@@ -1551,6 +1554,22 @@ run_install_plan() {
 
   rm -f "$plan_file"
   return "$exit_code"
+}
+
+run_install_plan_or_exit() {
+  local failure_message="${1:-Installation failed.}"
+
+  if run_install_plan; then
+    return 0
+  fi
+
+  if [[ "${PROMPT__SESSION_OPEN:-0}" == "1" ]]; then
+    prompt::cancel "$failure_message"
+  else
+    color_red "$failure_message"
+  fi
+
+  exit 1
 }
 
 main() {
@@ -1623,7 +1642,7 @@ main() {
     exit 0
   fi
 
-  run_install_plan
+  run_install_plan_or_exit "Installation failed."
   prompt::outro "Installation complete."
 
   if should_auto_launch_zsh; then

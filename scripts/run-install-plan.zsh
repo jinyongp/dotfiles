@@ -11,6 +11,7 @@ if [[ -z "$PLAN_FILE" || ! -f "$PLAN_FILE" ]]; then
 fi
 
 source "$PLAN_FILE"
+source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"
 source "$DOTFILES_ROOT/scripts/lib/style.sh"
 source "$DOTFILES_ROOT/scripts/lib/common.zsh"
 source "$DOTFILES_ROOT/scripts/lib/install-env.zsh"

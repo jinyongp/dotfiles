@@ -5,7 +5,8 @@ dotfiles_has_command() {
 }
 
 dotfiles_source_if_exists() {
-  [[ -f "$1" ]] && source "$1"
+  [[ -f "$1" ]] || return 0
+  source "$1"
 }
 
 dotfiles_prepend_path() {
@@ -17,6 +18,82 @@ dotfiles_prepend_path() {
     *":$path_entry:"*) ;;
     *) export PATH="$path_entry:$PATH" ;;
   esac
+}
+
+dotfiles_configure_npm_global_path() {
+  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
+    dotfiles_prepend_path "$XDG_DATA_HOME/npm-global/bin"
+  elif [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
+    dotfiles_prepend_path "$HOME/Library/Application Support/npm-global/bin"
+  else
+    dotfiles_prepend_path "$HOME/.local/share/npm-global/bin"
+  fi
+}
+
+dotfiles_configure_pnpm_home() {
+  if [[ -z "${PNPM_HOME:-}" ]]; then
+    if [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
+      export PNPM_HOME="$HOME/Library/pnpm"
+    else
+      export PNPM_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/pnpm"
+    fi
+  fi
+
+  dotfiles_prepend_path "$PNPM_HOME"
+}
+
+dotfiles_fnm_install_dir() {
+  if [[ -n "${XDG_DATA_HOME:-}" ]]; then
+    print -r -- "$XDG_DATA_HOME/fnm"
+  elif [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
+    print -r -- "$HOME/Library/Application Support/fnm"
+  else
+    print -r -- "$HOME/.local/share/fnm"
+  fi
+}
+
+dotfiles_fnm_runtime_dir() {
+  local runtime_dir="${XDG_RUNTIME_DIR:-}"
+  local fallback_dir="${${TMPDIR:-/tmp}%/}/fnm-runtime-${UID}"
+
+  if [[ -n "$runtime_dir" && -d "$runtime_dir" && -w "$runtime_dir" ]]; then
+    print -r -- "$runtime_dir"
+    return 0
+  fi
+
+  mkdir -p "$fallback_dir" 2>/dev/null || return 1
+  chmod 700 "$fallback_dir" 2>/dev/null || true
+  print -r -- "$fallback_dir"
+}
+
+dotfiles_activate_fnm() {
+  local mode="${1:-base}"
+  local runtime_dir fnm_env
+  local -a fnm_args
+
+  dotfiles_prepend_path "$(dotfiles_fnm_install_dir)"
+
+  if ! dotfiles_has_command fnm; then
+    return 0
+  fi
+
+  runtime_dir="$(dotfiles_fnm_runtime_dir)" || return 0
+  fnm_args=(env --shell zsh --version-file-strategy=recursive)
+
+  if [[ "$mode" == "interactive" ]]; then
+    fnm_args+=(--use-on-cd)
+  fi
+
+  fnm_env="$(XDG_RUNTIME_DIR="$runtime_dir" fnm "${fnm_args[@]}" 2>/dev/null)" || return 0
+  [[ -n "$fnm_env" ]] || return 0
+  eval "$fnm_env"
+}
+
+dotfiles_configure_base_toolchain() {
+  dotfiles_apply_brew_shellenv
+  dotfiles_configure_npm_global_path
+  dotfiles_activate_fnm base
+  dotfiles_configure_pnpm_home
 }
 
 dotfiles_ensure_writable_dir() {
@@ -109,6 +186,8 @@ dotfiles_apply_brew_shellenv() {
 dotfiles_load_install_env() {
   export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
   export DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$DOTFILES_CONFIG_DIR/install.env}"
+  export DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$DOTFILES_CONFIG_DIR/env.zsh}"
+  export DOTFILES_PROFILE_ZSH="${DOTFILES_PROFILE_ZSH:-$DOTFILES_CONFIG_DIR/profile.zsh}"
   export DOTFILES_LOCAL_ZSH="${DOTFILES_LOCAL_ZSH:-$DOTFILES_CONFIG_DIR/local.zsh}"
 
   if [[ -f "$DOTFILES_INSTALL_ENV" ]]; then

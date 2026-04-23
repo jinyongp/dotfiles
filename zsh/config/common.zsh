@@ -1,13 +1,3 @@
-dotfiles_apply_brew_shellenv
-
-if [[ -n "${XDG_DATA_HOME:-}" ]]; then
-  dotfiles_prepend_path "$XDG_DATA_HOME/npm-global/bin"
-elif [[ "${DOTFILES_PLATFORM:-}" == "macos" ]]; then
-  dotfiles_prepend_path "$HOME/Library/Application Support/npm-global/bin"
-else
-  dotfiles_prepend_path "$HOME/.local/share/npm-global/bin"
-fi
-
 if dotfiles_has_command nvim; then
   if [[ -n "${XDG_STATE_HOME:-}" ]] && dotfiles_ensure_writable_dir "$XDG_STATE_HOME/nvim"; then
     export NVIM_LOG_FILE="$XDG_STATE_HOME/nvim/nvim.log"

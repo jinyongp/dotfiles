@@ -1,13 +1,24 @@
-# Shared dotfiles shell entrypoint.
+# Managed By
+#   This file is managed by ~/.dotfiles and linked to ~/.zshrc.
+#
+# Loaded As
+#   Interactive zsh startup for terminal sessions.
+#
+# Local Overrides
+#   Put machine-local interactive shell setup in:
+#     ~/.config/dotfiles/local.zsh
+#
+# Notes
+#   Universal environment belongs in ~/.config/dotfiles/env.zsh.
+#   Login-shell-only setup belongs in ~/.config/dotfiles/profile.zsh.
 
 typeset -g _dotfiles_rc_path="${${(%):-%N}:A}"
 typeset -g _dotfiles_zsh_root=""
 export DOTFILES="${DOTFILES:-${DOTFILES_ROOT:-${_dotfiles_rc_path:h:h}}}"
-export PATH="$DOTFILES/cmd:$PATH"
 
-export DOTFILES_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles"
-export DOTFILES_INSTALL_ENV="$DOTFILES_CONFIG_DIR/install.env"
-export DOTFILES_LOCAL_ZSH="$DOTFILES_CONFIG_DIR/local.zsh"
+if [[ "${DOTFILES_BOOTSTRAP_LOADED:-0}" != "1" && -f "$DOTFILES/zsh/lib/bootstrap.zsh" ]]; then
+  source "$DOTFILES/zsh/lib/bootstrap.zsh"
+fi
 
 export HISTSIZE=999999999
 export SAVEHIST=$HISTSIZE
@@ -16,9 +27,6 @@ export PROMPT_EOL_MARK=
 
 _dotfiles_zsh_root="$DOTFILES/zsh"
 
-source "$_dotfiles_zsh_root/lib/helpers.zsh"
-dotfiles_load_install_env
-dotfiles_detect_platform
 dotfiles_configure_state_home
 dotfiles_configure_oh_my_zsh
 
