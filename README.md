@@ -37,3 +37,4 @@ For the keymap reference, see [`docs/neovim-keymaps.md`](docs/neovim-keymaps.md)
 
 - Local shell override paths are documented in [`docs/installer.md`](docs/installer.md). Secrets should not be committed into the repository.
 - Installer-written machine-local Git files are documented in [`docs/installer.md`](docs/installer.md).
+- Commit message rules are documented in [`docs/contributing.md`](docs/contributing.md).
