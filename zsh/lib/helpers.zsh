@@ -61,6 +61,10 @@ dotfiles_activate_fnm() {
   fnm_env="$(XDG_RUNTIME_DIR="$runtime_dir" fnm "${fnm_args[@]}" 2>/dev/null)" || return 0
   [[ -n "$fnm_env" ]] || return 0
   eval "$fnm_env"
+
+  if [[ "$mode" != "interactive" ]]; then
+    XDG_RUNTIME_DIR="$runtime_dir" fnm use --silent-if-unchanged --version-file-strategy=recursive >/dev/null 2>&1 || true
+  fi
 }
 
 dotfiles_configure_base_toolchain() {

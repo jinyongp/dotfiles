@@ -36,7 +36,8 @@ zsh_bootstrap_test::setup_fixture() {
     "$HOME_DIR/.config/dotfiles" \
     "$INITIAL_BIN" \
     "$FAKE_BREW_PREFIX/bin" \
-    "$FNM_TEST_ROOT/node-bin" \
+    "$FNM_TEST_ROOT/default-node-bin" \
+    "$FNM_TEST_ROOT/project-node-bin" \
     "$NPM_GLOBAL_BIN" \
     "$FNM_INSTALL_DIR" \
     "$TEST_TMPDIR" \
@@ -63,9 +64,13 @@ zsh_bootstrap_test::setup_fixture() {
   zsh_bootstrap_test::write_executable "$FAKE_BREW_PREFIX/bin/fnm" \
     '#!/bin/sh' \
     'if [ "${1:-}" = "env" ]; then' \
+    '  multishell="${XDG_RUNTIME_DIR:-$FNM_TEST_ROOT/runtime}/fnm_multishell"' \
+    '  mkdir -p "$multishell/bin"' \
+    '  ln -sf "$FNM_TEST_ROOT/default-node-bin/node" "$multishell/bin/node"' \
+    '  ln -sf "$FNM_TEST_ROOT/default-node-bin/npm" "$multishell/bin/npm"' \
     '  printf "%s\n" "$*" >> "$FNM_TEST_ROOT/fnm-args.log"' \
-    '  printf "export PATH=\"%s/node-bin:$PATH\"\n" "$FNM_TEST_ROOT"' \
-    '  printf "export FNM_MULTISHELL_PATH=\"%s/fnm_multishell\"\n" "${XDG_RUNTIME_DIR:-$FNM_TEST_ROOT/runtime}"' \
+    '  printf "export PATH=\"%s/bin:$PATH\"\n" "$multishell"' \
+    '  printf "export FNM_MULTISHELL_PATH=\"%s\"\n" "$multishell"' \
     '  printf "export FNM_VERSION_FILE_STRATEGY=\"recursive\"\n"' \
     '  printf "export FNM_DIR=\"%s\"\n" "$FNM_TEST_ROOT"' \
     '  case " $* " in' \
@@ -79,10 +84,33 @@ zsh_bootstrap_test::setup_fixture() {
     '  printf "rehash\n"' \
     '  exit 0' \
     'fi' \
+    'if [ "${1:-}" = "use" ]; then' \
+    '  printf "%s\n" "$*" >> "$FNM_TEST_ROOT/fnm-args.log"' \
+    '  multishell="${FNM_MULTISHELL_PATH:-${XDG_RUNTIME_DIR:-$FNM_TEST_ROOT/runtime}/fnm_multishell}"' \
+    '  selected_bin="default-node-bin"' \
+    '  search_dir="$PWD"' \
+    '  while [ -n "$search_dir" ] && [ "$search_dir" != "/" ]; do' \
+    '    if [ -f "$search_dir/.node-version" ] || [ -f "$search_dir/.nvmrc" ]; then' \
+    '      selected_bin="project-node-bin"' \
+    '      break' \
+    '    fi' \
+    '    if [ -f "$search_dir/package.json" ] && grep -q "\"node\"" "$search_dir/package.json"; then' \
+    '      selected_bin="project-node-bin"' \
+    '      break' \
+    '    fi' \
+    '    search_dir="$(dirname -- "$search_dir")"' \
+    '  done' \
+    '  mkdir -p "$multishell/bin"' \
+    '  ln -sf "$FNM_TEST_ROOT/$selected_bin/node" "$multishell/bin/node"' \
+    '  ln -sf "$FNM_TEST_ROOT/$selected_bin/npm" "$multishell/bin/npm"' \
+    '  exit 0' \
+    'fi' \
     'exit 1'
 
-  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/node-bin/node" '#!/bin/sh' 'printf "node\n"'
-  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/node-bin/npm" '#!/bin/sh' 'printf "npm\n"'
+  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/default-node-bin/node" '#!/bin/sh' 'printf "node\n"'
+  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/default-node-bin/npm" '#!/bin/sh' 'printf "npm\n"'
+  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/project-node-bin/node" '#!/bin/sh' 'printf "project-node\n"'
+  zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/project-node-bin/npm" '#!/bin/sh' 'printf "project-npm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/Library/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/.local/share/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
   zsh_bootstrap_test::write_executable "$INITIAL_BIN/code" \
@@ -166,6 +194,45 @@ zsh_bootstrap_test::assert_noninteractive_fnm_mode() {
     zsh_bootstrap_test::fail "non-interactive zsh loaded fnm --use-on-cd"
   fi
   printf 'ok fnm_base_mode\n'
+}
+
+zsh_bootstrap_test::assert_noninteractive_fnm_version_file() {
+  local name="zsh_lc_fnm_version_file"
+  local project_dir="$WORK_DIR/project"
+
+  mkdir -p "$project_dir/packages/app"
+  printf '22\n' >"$project_dir/.node-version"
+
+  (
+    cd "$project_dir/packages/app" || exit 1
+    zsh_bootstrap_test::run_zsh "$name" -lc 'node'
+  )
+
+  zsh_bootstrap_test::assert_output "$name" "project-node"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+
+  if ! grep -q -- 'use --silent-if-unchanged --version-file-strategy=recursive' "$FNM_TEST_ROOT/fnm-args.log"; then
+    zsh_bootstrap_test::fail "non-interactive zsh did not apply the current fnm version file"
+  fi
+
+  printf 'ok %s\n' "$name"
+}
+
+zsh_bootstrap_test::assert_noninteractive_fnm_package_engines() {
+  local name="zsh_lc_fnm_package_engines"
+  local project_dir="$WORK_DIR/engines-project"
+
+  mkdir -p "$project_dir/packages/app"
+  printf '{"engines":{"node":"22"}}\n' >"$project_dir/package.json"
+
+  (
+    cd "$project_dir/packages/app" || exit 1
+    zsh_bootstrap_test::run_zsh "$name" -lc 'node'
+  )
+
+  zsh_bootstrap_test::assert_output "$name" "project-node"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
 }
 
 zsh_bootstrap_test::assert_bootstrap_guard_not_exported() {
@@ -303,6 +370,8 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_toolchain_case "zsh_c" -c 'source "$0"' "$CHECK_SCRIPT"
   zsh_bootstrap_test::assert_toolchain_case "zsh_lc" -lc 'source "$0"' "$CHECK_SCRIPT"
   zsh_bootstrap_test::assert_toolchain_case "zsh_script" "$CHECK_SCRIPT"
+  zsh_bootstrap_test::assert_noninteractive_fnm_version_file
+  zsh_bootstrap_test::assert_noninteractive_fnm_package_engines
   zsh_bootstrap_test::assert_noninteractive_fnm_mode
   zsh_bootstrap_test::assert_bootstrap_guard_not_exported
   zsh_bootstrap_test::assert_set_e_direct_bootstrap
