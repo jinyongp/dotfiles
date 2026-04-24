@@ -220,6 +220,7 @@ install::configure_direct_install() {
 
   if install::module_supports_direct_items "$target" && (( $# > 0 )); then
     install::set_direct_items "$target" "$@"
+    install::add_required_leaf_items_for_module "$target"
   fi
 }
 

@@ -37,7 +37,7 @@ catalog_metadata_test::assert_package_ids() {
   local package_ids
 
   package_ids="$(catalog::package_ids | paste -sd' ' -)"
-  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza tldr gnupg diff-so-fancy fnm" "unexpected visible package ids"
+  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza fzf zoxide tldr gnupg diff-so-fancy fnm" "unexpected visible package ids"
 
   if catalog::package_ids | grep -Fxq git; then
     catalog_metadata_test::fail "internal dependency package should not be visible in package_ids"
@@ -77,6 +77,8 @@ catalog_metadata_test::assert_package_records() {
 
   catalog_metadata_test::assert_contains "$brew_records" $'fd\tfd\tFast file finder. Uses fd on brew.\t0\t0' "missing brew fd record"
   catalog_metadata_test::assert_contains "$apt_records" $'fd\tfd\tFast file finder. Uses fd-find on apt.\t0\t0' "missing apt fd record"
+  catalog_metadata_test::assert_contains "$brew_records" $'fzf\tfzf\tCommand-line fuzzy finder.\t0\t0' "missing brew fzf record"
+  catalog_metadata_test::assert_contains "$apt_records" $'zoxide\tzoxide\tSmarter cd command with frecency.\t0\t0' "missing apt zoxide record"
   catalog_metadata_test::assert_contains "$brew_records" $'tldr\ttldr\tCommunity-maintained command examples. Uses tlrc on brew.\t0\t0' "missing brew tldr record"
   catalog_metadata_test::assert_contains "$apt_records" $'tldr\ttldr\tCommunity-maintained command examples. Uses tealdeer on apt.\t0\t0' "missing apt tldr record"
   catalog_metadata_test::assert_contains "$brew_records" $'fnm\tfnm\tFast Node.js version manager via Homebrew.\t0\t0' "missing brew fnm record"
@@ -91,7 +93,18 @@ catalog_metadata_test::assert_font_and_desktop_sources() {
   catalog_metadata_test::assert_equal "$(catalog::font_source bundled-firacodeiscript)" "FiraCodeiScript" "expected bundled font source"
   catalog_metadata_test::assert_equal "$(catalog::desktop_app_source arc)" "arc" "expected desktop app source"
   catalog_metadata_test::assert_equal "$(catalog::desktop_app_source visual-studio-code)" "visual-studio-code" "expected desktop app source"
+  catalog_metadata_test::assert_equal "$(catalog::desktop_app_source kekaexternalhelper)" "kekaexternalhelper" "expected hidden desktop app source"
+  if catalog::desktop_app_ids | grep -Fxq kekaexternalhelper; then
+    catalog_metadata_test::fail "required helper app should not be visible in desktop_app_ids"
+  fi
   printf 'ok font_and_desktop_sources\n'
+}
+
+catalog_metadata_test::assert_required_item_metadata() {
+  catalog_metadata_test::assert_equal "$(catalog::required_item_ids packages zoxide)" "fzf" "expected zoxide package dependency"
+  catalog_metadata_test::assert_equal "$(catalog::required_item_ids desktop_apps keka)" "kekaexternalhelper" "expected Keka helper dependency"
+  catalog_metadata_test::assert_equal "$(catalog::required_item_reason packages zoxide fzf)" "zoxide requires fzf for interactive selection." "expected zoxide dependency reason"
+  printf 'ok required_item_metadata\n'
 }
 
 catalog_metadata_test::main() {
@@ -100,6 +113,7 @@ catalog_metadata_test::main() {
   catalog_metadata_test::assert_package_command_names
   catalog_metadata_test::assert_package_records
   catalog_metadata_test::assert_font_and_desktop_sources
+  catalog_metadata_test::assert_required_item_metadata
   printf 'all catalog metadata tests passed\n'
 }
 

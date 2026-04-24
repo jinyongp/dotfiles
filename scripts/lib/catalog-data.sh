@@ -16,6 +16,8 @@ jq	jq	1	jq	jq	jq	jq	Command-line JSON processor.	Command-line JSON processor.
 gh	GitHub CLI	1	gh	gh	gh	gh	GitHub command-line client.	GitHub command-line client.
 fd	fd	1	fd	fdfind	fd	fd-find	Fast file finder. Uses fd on brew.	Fast file finder. Uses fd-find on apt.
 eza	eza	1	eza	eza	eza	eza	Modern replacement for ls.	Modern replacement for ls.
+fzf	fzf	1	fzf	fzf	fzf	fzf	Command-line fuzzy finder.	Command-line fuzzy finder.
+zoxide	zoxide	1	zoxide	zoxide	zoxide	zoxide	Smarter cd command with frecency.	Smarter cd command with frecency.
 tldr	tldr	1	tldr	tldr	tlrc	tealdeer	Community-maintained command examples. Uses tlrc on brew.	Community-maintained command examples. Uses tealdeer on apt.
 gnupg	GnuPG	1	gpg	gpg	gnupg	gnupg	GPG tooling for signing and encryption.	GPG tooling for signing and encryption.
 diff-so-fancy	diff-so-fancy	1	diff-so-fancy	diff-so-fancy	diff-so-fancy	diff-so-fancy	Nicer Git diff presentation.	Nicer Git diff presentation.
@@ -51,16 +53,29 @@ EOF
 # Columns:
 # 1. id
 # 2. label
-# 3. source
-# 4. description
+# 3. visible_in_leaf_picker
+# 4. source
+# 5. description
 catalog_data::desktop_app_rows() {
   cat <<'EOF'
-arc	Arc	arc	Arc browser via Homebrew cask.
-iterm2	iTerm2	iterm2	iTerm2 terminal emulator via Homebrew cask.
-raycast	Raycast	raycast	Raycast launcher via Homebrew cask.
-keka	Keka	keka	Keka archive utility via Homebrew cask.
-kekaexternalhelper	KekaExternalHelper	kekaexternalhelper	Keka helper app via Homebrew cask.
-karabiner-elements	Karabiner-Elements	karabiner-elements	Keyboard remapping utility via Homebrew cask.
-visual-studio-code	Visual Studio Code	visual-studio-code	VS Code editor via Homebrew cask.
+arc	Arc	1	arc	Arc browser via Homebrew cask.
+iterm2	iTerm2	1	iterm2	iTerm2 terminal emulator via Homebrew cask.
+raycast	Raycast	1	raycast	Raycast launcher via Homebrew cask.
+keka	Keka	1	keka	Keka archive utility via Homebrew cask.
+kekaexternalhelper	KekaExternalHelper	0	kekaexternalhelper	Keka helper app via Homebrew cask.
+karabiner-elements	Karabiner-Elements	1	karabiner-elements	Keyboard remapping utility via Homebrew cask.
+visual-studio-code	Visual Studio Code	1	visual-studio-code	VS Code editor via Homebrew cask.
+EOF
+}
+
+# Columns:
+# 1. module id
+# 2. item id
+# 3. required item id
+# 4. reason
+catalog_data::required_item_rows() {
+  cat <<'EOF'
+packages	zoxide	fzf	zoxide requires fzf for interactive selection.
+desktop_apps	keka	kekaexternalhelper	Keka requires KekaExternalHelper for Finder integration.
 EOF
 }

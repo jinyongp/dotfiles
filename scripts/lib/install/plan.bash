@@ -79,6 +79,108 @@ install::record_auto_selected_module() {
   AUTO_NOTES[${#AUTO_NOTES[@]}]="$(catalog::module_label "$module_id") was added automatically because $reason."
 }
 
+install::leaf_item_is_installed() {
+  local module_id="$1"
+  local item_id="$2"
+
+  case "$module_id" in
+    packages) install::package_is_installed "$item_id" ;;
+    oh_my_zsh) install::omz_plugin_is_installed "$item_id" ;;
+    fonts) install::font_is_installed "$item_id" ;;
+    desktop_apps) install::desktop_app_is_installed "$item_id" ;;
+    *) return 1 ;;
+  esac
+}
+
+install::labels_for_module_items() {
+  local module_id="$1"
+  local selected_ids="$2"
+  local labels=()
+  local item_id item_label
+
+  for item_id in $selected_ids; do
+    item_label="$(catalog::item_label "$module_id" "$item_id")"
+    [[ -n "$item_label" ]] || item_label="$item_id"
+    labels[${#labels[@]}]="$item_label"
+  done
+
+  if [[ "${#labels[@]}" -eq 0 ]]; then
+    return 0
+  fi
+
+  prompt::join_by ", " "${labels[@]}"
+}
+
+install::add_required_leaf_items_for_module() {
+  local module_id="$1"
+  local selected_ids=""
+  local expanded_ids=""
+  local pending_ids=""
+  local processed_ids=""
+  local item_id required_item_id reason required_label item_label
+
+  if ! install::module_is_selected "$module_id"; then
+    return 0
+  fi
+
+  if ! install::module_item_state_exists "$module_id"; then
+    return 0
+  fi
+
+  selected_ids="$(install::get_module_items "$module_id")"
+  [[ -n "$selected_ids" ]] || return 0
+
+  expanded_ids="$selected_ids"
+  pending_ids="$selected_ids"
+
+  while [[ -n "$pending_ids" ]]; do
+    item_id="${pending_ids%% *}"
+    if [[ "$pending_ids" == "$item_id" ]]; then
+      pending_ids=""
+    else
+      pending_ids="${pending_ids#* }"
+    fi
+
+    if install::contains_word "$processed_ids" "$item_id"; then
+      continue
+    fi
+    processed_ids="$(install::add_word "$processed_ids" "$item_id")"
+
+    while IFS= read -r required_item_id; do
+      [[ -n "$required_item_id" ]] || continue
+
+      if install::contains_word "$expanded_ids" "$required_item_id"; then
+        continue
+      fi
+
+      required_label="$(catalog::item_label "$module_id" "$required_item_id")"
+      item_label="$(catalog::item_label "$module_id" "$item_id")"
+      reason="$(catalog::required_item_reason "$module_id" "$item_id" "$required_item_id")"
+
+      if install::leaf_item_is_installed "$module_id" "$required_item_id"; then
+        REUSE_NOTES[${#REUSE_NOTES[@]}]="${required_label:-$required_item_id} is already installed and will be reused because ${item_label:-$item_id} requires it."
+        continue
+      fi
+
+      expanded_ids="$(install::add_word "$expanded_ids" "$required_item_id")"
+      pending_ids="$(install::add_word "$pending_ids" "$required_item_id")"
+      AUTO_NOTES[${#AUTO_NOTES[@]}]="${required_label:-$required_item_id} was added automatically because ${reason:-${item_label:-$item_id} requires it.}"
+    done < <(catalog::required_item_ids "$module_id" "$item_id")
+  done
+
+  if [[ "$expanded_ids" != "$selected_ids" ]]; then
+    install::set_module_items "$module_id" "$expanded_ids" "$(install::labels_for_module_items "$module_id" "$expanded_ids")"
+  fi
+}
+
+install::add_required_leaf_items() {
+  local module_id
+
+  for module_id in $LEAF_MODULES; do
+    install::add_required_leaf_items_for_module "$module_id"
+  done
+}
+
 install::remember_saved_runtime_defaults() {
   DOTFILES_SAVED_THEME="$DOTFILES_THEME"
   DOTFILES_SAVED_ENABLE_OH_MY_ZSH="$DOTFILES_ENABLE_OH_MY_ZSH"
@@ -194,6 +296,7 @@ install::resolve_install_plan() {
 
   install::refresh_plan_requirements
   install::update_planned_oh_my_zsh_runtime
+  install::add_required_leaf_items
 }
 
 install::finalize_runtime_state() {

@@ -18,6 +18,14 @@ mkdir -p "$HOME" "$DOTFILES_CONFIG_DIR"
 
 source "$DOTFILES_ROOT/scripts/lib/install/bootstrap.bash"
 
+install::package_is_installed() {
+  return 1
+}
+
+install::desktop_app_is_installed() {
+  return 1
+}
+
 install_direct_test::fail() {
   printf 'install-direct: %s\n' "$1" >&2
   exit 1
@@ -92,6 +100,22 @@ install_direct_test::assert_packages_items_configured() {
   printf 'ok packages_items_configured\n'
 }
 
+install_direct_test::assert_direct_item_dependencies_configured() {
+  install_direct_test::reset_case
+
+  install::configure_direct_install packages zoxide
+
+  install_direct_test::assert_equal "$(install::get_module_items packages)" "zoxide fzf" "expected fzf added for direct zoxide install"
+  install_direct_test::assert_equal "$(install::get_module_item_labels packages)" "zoxide, fzf" "expected direct package dependency labels"
+
+  install::configure_direct_install desktop_apps keka
+
+  install_direct_test::assert_equal "$(install::get_module_items desktop_apps)" "keka kekaexternalhelper" "expected helper added for direct Keka install"
+  install_direct_test::assert_equal "$(install::get_module_item_labels desktop_apps)" "Keka, KekaExternalHelper" "expected direct desktop app dependency labels"
+
+  printf 'ok direct_item_dependencies_configured\n'
+}
+
 install_direct_test::assert_theme_target_configured() {
   install_direct_test::reset_case
 
@@ -118,6 +142,7 @@ install_direct_test::main() {
   install_direct_test::assert_invalid_target_fails
   install_direct_test::assert_item_args_rejected_for_non_leaf_module
   install_direct_test::assert_packages_items_configured
+  install_direct_test::assert_direct_item_dependencies_configured
   install_direct_test::assert_theme_target_configured
   printf 'all install direct tests passed\n'
 }

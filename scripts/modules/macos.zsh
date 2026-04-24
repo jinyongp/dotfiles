@@ -98,10 +98,32 @@ module_desktop_apps_install_items() {
     app_ids=("${(@f)$(catalog::desktop_app_ids)}")
   fi
 
+  app_ids=("${(@f)$(macos::desktop_app_ids_with_required "${app_ids[@]}")}")
+
   dotfiles::log_step "Installing selected desktop applications"
 
   for app_id in "${app_ids[@]}"; do
     package_manager::install_brew_cask "$(catalog::desktop_app_source "$app_id")"
+  done
+}
+
+macos::desktop_app_ids_with_required() {
+  local -a expanded_ids
+  local app_id required_item_id
+
+  for app_id in "$@"; do
+    if (( ${expanded_ids[(Ie)$app_id]} == 0 )); then
+      expanded_ids+=("$app_id")
+      print -r -- "$app_id"
+    fi
+
+    while IFS= read -r required_item_id; do
+      [[ -n "$required_item_id" ]] || continue
+      if (( ${expanded_ids[(Ie)$required_item_id]} == 0 )); then
+        expanded_ids+=("$required_item_id")
+        print -r -- "$required_item_id"
+      fi
+    done < <(catalog::required_item_ids desktop_apps "$app_id")
   done
 }
 

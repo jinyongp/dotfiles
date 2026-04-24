@@ -222,6 +222,8 @@ install_smoke_test::write_fake_commands() {
     '    neovim) make_cmd nvim ;;' \
     '    ripgrep) make_cmd rg ;;' \
     '    fd) make_cmd fd ;;' \
+    '    fzf) make_cmd fzf ;;' \
+    '    zoxide) make_cmd zoxide ;;' \
     '    eza) make_cmd eza ;;' \
     '    fnm) make_cmd fnm ;;' \
     '    jq) make_cmd jq ;;' \
@@ -380,6 +382,8 @@ install_smoke_test::write_fake_commands() {
     '    neovim) make_cmd nvim ;;' \
     '    ripgrep) make_cmd rg ;;' \
     '    fd-find) make_cmd fdfind ;;' \
+    '    fzf) make_cmd fzf ;;' \
+    '    zoxide) make_cmd zoxide ;;' \
     '    tealdeer) make_cmd tldr ;;' \
     '    gnupg) make_cmd gpg ;;' \
     '    starship) make_cmd starship ;;' \
@@ -610,13 +614,13 @@ install_smoke_test::assert_direct_desktop_apps() {
   install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-desktop-apps"
 
-  install_smoke_test::run_direct_install desktop_apps iterm2 raycast
+  install_smoke_test::run_direct_install desktop_apps keka
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
   install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "desktop apps direct install should complete"
-  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask iterm2" "expected iterm2 cask install"
-  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask raycast" "expected raycast cask install"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask keka" "expected Keka cask install"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask kekaexternalhelper" "expected Keka helper cask install"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
   printf 'ok direct_desktop_apps\n'

@@ -18,6 +18,14 @@ mkdir -p "$HOME" "$DOTFILES_CONFIG_DIR"
 
 source "$DOTFILES_ROOT/scripts/lib/install/bootstrap.bash"
 
+install::package_is_installed() {
+  return 1
+}
+
+install::desktop_app_is_installed() {
+  return 1
+}
+
 install_plan_test::fail() {
   printf 'install-plan: %s\n' "$1" >&2
   exit 1
@@ -122,11 +130,29 @@ install_plan_test::assert_macos_defaults_needs_no_theme_or_package_manager() {
   printf 'ok macos_defaults_no_theme_or_package_manager\n'
 }
 
+install_plan_test::assert_required_leaf_item_dependencies_are_added() {
+  install_plan_test::reset_case
+  DOTFILES_SELECTED_MODULES="packages desktop_apps"
+  DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
+  install::set_module_items packages "zoxide" "zoxide"
+  install::set_module_items desktop_apps "keka" "Keka"
+
+  install::resolve_install_plan
+
+  install_plan_test::assert_equal "$(install::get_module_items packages)" "zoxide fzf" "expected fzf added for zoxide"
+  install_plan_test::assert_equal "$(install::get_module_item_labels packages)" "zoxide, fzf" "expected package dependency labels"
+  install_plan_test::assert_equal "$(install::get_module_items desktop_apps)" "keka kekaexternalhelper" "expected helper added for Keka"
+  install_plan_test::assert_equal "$(install::get_module_item_labels desktop_apps)" "Keka, KekaExternalHelper" "expected desktop app dependency labels"
+  install_plan_test::assert_equal "${#AUTO_NOTES[@]}" "2" "expected two auto dependency notes"
+  printf 'ok required_leaf_item_dependencies\n'
+}
+
 install_plan_test::main() {
   install_plan_test::assert_powerlevel10k_adds_oh_my_zsh
   install_plan_test::assert_powerlevel10k_reuses_existing_oh_my_zsh
   install_plan_test::assert_neovim_does_not_add_dotfiles
   install_plan_test::assert_macos_defaults_needs_no_theme_or_package_manager
+  install_plan_test::assert_required_leaf_item_dependencies_are_added
   printf 'all install plan tests passed\n'
 }
 

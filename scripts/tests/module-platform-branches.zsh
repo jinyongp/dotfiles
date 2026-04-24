@@ -101,6 +101,8 @@ platform_module_test::setup_fake_commands() {
     '    neovim) make_cmd nvim ;;' \
     '    ripgrep) make_cmd rg ;;' \
     '    fd-find) make_cmd fdfind ;;' \
+    '    fzf) make_cmd fzf ;;' \
+    '    zoxide) make_cmd zoxide ;;' \
     '    tealdeer) make_cmd tldr ;;' \
     '    gnupg) make_cmd gpg ;;' \
     '    starship) make_cmd starship ;;' \

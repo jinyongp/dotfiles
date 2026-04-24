@@ -246,7 +246,7 @@ catalog::module_records() {
 
   cat <<'EOF'
 dotfiles	Dotfiles	Link ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config files.	0	0
-packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, tldr, gnupg, diff-so-fancy, and fnm.	0	0
+packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, fzf, zoxide, tldr, gnupg, diff-so-fancy, and fnm.	0	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	0	0
 neovim	Neovim	Install Neovim with search tooling and optional TypeScript editor extras.	0	0
 EOF
@@ -406,24 +406,47 @@ catalog::font_label() {
 }
 
 catalog::desktop_app_ids() {
-  catalog_data::desktop_app_rows | awk -F '\t' '{ print $1 }'
+  catalog_data::desktop_app_rows | awk -F '\t' '$3 == "1" { print $1 }'
 }
 
 catalog::desktop_app_source() {
-  catalog::__row_field_by_id catalog_data::desktop_app_rows "$1" 3
+  catalog::__row_field_by_id catalog_data::desktop_app_rows "$1" 4
 }
 
 catalog::desktop_app_records() {
-  local app_id label source description
+  local app_id label visible _source description
 
-  while IFS=$'\t' read -r app_id label source description; do
+  while IFS=$'\t' read -r app_id label visible _source description; do
     [[ -n "$app_id" ]] || continue
+    [[ "$visible" == "1" ]] || continue
     printf '%s\t%s\t%s\t0\t0\n' "$app_id" "$label" "$description"
   done < <(catalog_data::desktop_app_rows)
 }
 
 catalog::desktop_app_label() {
   catalog::__row_field_by_id catalog_data::desktop_app_rows "$1" 2
+}
+
+catalog::required_item_ids() {
+  local module_id="$1"
+  local item_id="$2"
+
+  catalog_data::required_item_rows | awk -F '\t' -v module_id="$module_id" -v item_id="$item_id" '
+    $1 == module_id && $2 == item_id { print $3 }
+  '
+}
+
+catalog::required_item_reason() {
+  local module_id="$1"
+  local item_id="$2"
+  local required_item_id="$3"
+
+  catalog_data::required_item_rows | awk -F '\t' \
+    -v module_id="$module_id" \
+    -v item_id="$item_id" \
+    -v required_item_id="$required_item_id" '
+      $1 == module_id && $2 == item_id && $3 == required_item_id { print $4; exit }
+    '
 }
 
 catalog::item_label() {

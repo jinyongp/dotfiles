@@ -183,13 +183,13 @@ install_profile_test::assert_profile_record_cues() {
   recommended_description="$(install_profile_test::record_field_for_id recommended 3 "${macos_records[@]}")"
 
   install_profile_test::assert_equal "$recommended_status" "3 modules · 5 packages" "expected recommended cue"
-  install_profile_test::assert_equal "$full_status" "7 modules · 8 packages · 6 plugins · 4 fonts · 7 apps" "expected macOS full cue"
+  install_profile_test::assert_equal "$full_status" "7 modules · 10 packages · 6 plugins · 4 fonts · 6 apps" "expected macOS full cue"
   install_profile_test::assert_equal "$custom_status" "manual" "expected custom cue"
   install_profile_test::assert_equal "$minimal_description" "Dotfiles only." "expected minimal description"
   install_profile_test::assert_equal "$recommended_description" "Dotfiles + base CLI + Neovim baseline." "expected recommended description"
 
   full_status="$(install_profile_test::record_field_for_id full 6 "${linux_records[@]}")"
-  install_profile_test::assert_equal "$full_status" "4 modules · 8 packages · 6 plugins" "expected linux full cue"
+  install_profile_test::assert_equal "$full_status" "4 modules · 10 packages · 6 plugins" "expected linux full cue"
 
   printf 'ok profile_record_cues\n'
 }
