@@ -88,7 +88,8 @@ Examples:
 For multi-item prompts such as CLI packages, fonts, and desktop apps:
 
 - already installed entries are shown with status badges
-- installed entries can be disabled to avoid redundant reinstalls
+- installed entries remain navigable for review, but cannot be toggled for redundant reinstalls
+- required companion items are added automatically when a selected item needs them
 - scrolling indicators appear in short terminals when not all rows fit at once
 
 ## Terminal Styling
