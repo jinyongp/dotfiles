@@ -1,17 +1,38 @@
-
-#################################
-# type: description
-
-#################################
-# [type]   | [description]
-# feat     : New feature
-# fix      : Bug fix
-# chore    : Build process or auxiliary tool changes
-# docs     : Documentation only changes
-# refactor : A code change that neither fixes a bug nor adds a feature
-# perf     : A code change that improves performance
-# test     : Adding missing tests
-# build    : Changes that affect the build system or external dependencies
-# ci       : Changes to our CI configuration files and scripts
-# revert   : Reverts a previous commit
-# style    : Code style, changes that do not affect the meaning of the code
+# <type>[optional scope][!]: <description>
+#
+# [optional body]
+#
+# [optional footer(s)]
+#
+# Examples:
+#   feat(installer): add profile-based install planning
+#   fix(hooks): preserve colored WIP warnings
+#   docs: update installer usage notes
+#   refactor(prompt)!: simplify prompt state handling
+#
+# Types:
+#   feat:     A new feature
+#   fix:      A bug fix
+#   docs:     Documentation-only changes
+#   style:    Formatting or style changes that do not affect behavior
+#   refactor: Code changes that neither fix a bug nor add a feature
+#   perf:     Performance improvements
+#   test:     Adding or updating tests
+#   build:    Build system or dependency changes
+#   ci:       CI configuration or script changes
+#   chore:    Maintenance tasks that do not change runtime behavior
+#   revert:   Revert a previous commit
+#
+# Guidelines:
+#   - Use the imperative mood: "add", "fix", "update", not "added" or "fixes".
+#   - Keep the subject concise, ideally 72 characters or less.
+#   - Add a blank line before body text.
+#   - Explain why in the body when the subject is not enough.
+#   - Use "!" after the type/scope for breaking changes.
+#   - Document breaking changes with a footer:
+#       BREAKING CHANGE: describe the required migration
+#
+# Footer examples:
+#   Closes #123
+#   Refs #456
+#   BREAKING CHANGE: config files now load from XDG_CONFIG_HOME
