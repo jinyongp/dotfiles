@@ -8,9 +8,54 @@ fi
 
 source "$HOME/.dotfiles/utils/colors.zsh"
 
-while IFS= read -r message; do
-  if [[ $message =~ ^--wip-- ]]; then
-    echo -e "$(yellow "[WARN] A WIP commit is still in the recent history.") $(green "Run gunwip before pushing.")"
-    exit 1
+remote_name="${1:-}"
+zero_sha="0000000000000000000000000000000000000000"
+wip_found=0
+
+pre_push::commits_for_update() {
+  local local_sha="$1"
+  local remote_sha="$2"
+
+  if [[ "$local_sha" == "$zero_sha" ]]; then
+    return 0
   fi
-done <<<"$(git log -10 --format="%s" 2>/dev/null)"
+
+  if [[ -n "$remote_sha" && "$remote_sha" != "$zero_sha" ]] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+    git rev-list "${remote_sha}..${local_sha}"
+    return 0
+  fi
+
+  if [[ -n "$remote_name" ]] && git remote get-url "$remote_name" >/dev/null 2>&1; then
+    git rev-list "$local_sha" --not --remotes="$remote_name/*"
+    return 0
+  fi
+
+  git rev-list "$local_sha"
+}
+
+pre_push::check_commit() {
+  local commit="$1"
+  local subject=""
+  local summary=""
+
+  subject="$(git log -n 1 --format="%s" "$commit")"
+  if [[ ! "$subject" =~ ^--wip-- ]]; then
+    return 0
+  fi
+
+  summary="$(git log -n 1 --format="%h %s" "$commit")"
+  echo -e "$(yellow "[WARN] A WIP commit is included in this push.") $(green "Run gunwip before pushing.")"
+  echo -e "$(yellow "Blocked commit:") $summary"
+  wip_found=1
+}
+
+while read -r local_ref local_sha _remote_ref remote_sha; do
+  [[ -n "${local_ref:-}" ]] || continue
+
+  while IFS= read -r commit; do
+    [[ -n "$commit" ]] || continue
+    pre_push::check_commit "$commit"
+  done < <(pre_push::commits_for_update "$local_sha" "${remote_sha:-}")
+done
+
+exit "$wip_found"
