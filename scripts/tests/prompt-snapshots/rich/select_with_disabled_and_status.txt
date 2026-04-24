@@ -10,6 +10,16 @@
 
 [[ render 2 ]]
 ◆  Select a shell theme.
+   Installed already, but unavailable until oh-my-zsh is enabled.
+
+   ○ starship              [current]
+   ○ powerlevel10k       [installed]
+   ○ default
+
+   Use ↑/↓ to choose, Enter to confirm.
+
+[[ render 3 ]]
+◆  Select a shell theme.
    Use the default shell prompt styling.
 
    ○ starship              [current]

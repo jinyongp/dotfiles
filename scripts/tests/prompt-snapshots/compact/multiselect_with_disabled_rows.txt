@@ -10,6 +10,26 @@
 
 [[ render 2 ]]
 ◆  Select base CLI packages.
+   Already active in the current shell.
+     ◻ git
+     ◻ corepack [installed]
+     ◼ zoxide
+   › ◻ starship [current]
+     ◻ eza
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 3 ]]
+◆  Select base CLI packages.
+   Already active in the current shell.
+     ◻ git
+     ◻ corepack [installed]
+     ◼ zoxide
+   › ◻ starship [current]
+     ◻ eza
+   Use ↑/↓ to move, Space to toggle, Enter to confirm.
+
+[[ render 4 ]]
+◆  Select base CLI packages.
    Modern replacement for ls.
      ◻ git
      ◻ corepack [installed]
@@ -18,7 +38,7 @@
    › ◻ eza
    Use ↑/↓ to move, Space to toggle, Enter to confirm.
 
-[[ render 3 ]]
+[[ render 5 ]]
 ◆  Select base CLI packages.
    Modern replacement for ls.
      ◻ git

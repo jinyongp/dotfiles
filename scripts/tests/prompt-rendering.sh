@@ -318,7 +318,7 @@ prompt_test::case_select_with_disabled_and_status() {
   records[1]="$(prompt_test::record "powerlevel10k" "powerlevel10k" "Installed already, but unavailable until oh-my-zsh is enabled." "0" "1" "installed")"
   records[2]="$(prompt_test::record "default" "default" "Use the default shell prompt styling." "0" "0")"
 
-  prompt_test::set_keys "down" "enter"
+  prompt_test::set_keys "down" "down" "enter"
   prompt::select result "Select a shell theme." "Use ↑/↓ to choose, Enter to confirm." "${records[@]}"
 
   printf '[[ value ]]\n%s\n' "$result"
@@ -383,7 +383,7 @@ prompt_test::case_multiselect_with_disabled_rows() {
   records[3]="$(prompt_test::record "starship" "starship" "Already active in the current shell." "0" "1" "current")"
   records[4]="$(prompt_test::record "eza" "eza" "Modern replacement for ls." "0" "0")"
 
-  prompt_test::set_keys "down" "space" "enter"
+  prompt_test::set_keys "down" "space" "down" "space" "enter"
   prompt::multiselect result "Select base CLI packages." "Use ↑/↓ to move, Space to toggle, Enter to confirm." "${records[@]}"
 
   printf '[[ value ]]\n%s\n' "$result"

@@ -18,34 +18,33 @@ PROMPT__CURSOR_HIDDEN=0
 PROMPT__RENDERED_LINES=0
 PROMPT__STTY_STATE=""
 PROMPT__CANCELLED=0
+PROMPT__UI_MODE="${DOTFILES_INSTALL_UI_MODE:-compact}"
+
+case "$PROMPT__UI_MODE" in
+  plain|compact|rich) ;;
+  *) PROMPT__UI_MODE="compact" ;;
+esac
 
 prompt::ui_mode() {
-  case "${DOTFILES_INSTALL_UI_MODE:-compact}" in
-    plain|compact|rich)
-      printf '%s' "${DOTFILES_INSTALL_UI_MODE:-compact}"
-      ;;
-    *)
-      printf 'compact'
-      ;;
-  esac
+  printf '%s' "$PROMPT__UI_MODE"
 }
 
 prompt::is_plain_mode() {
-  [[ "$(prompt::ui_mode)" == "plain" ]]
+  [[ "$PROMPT__UI_MODE" == "plain" ]]
 }
 
 prompt::is_rich_mode() {
-  [[ "$(prompt::ui_mode)" == "rich" ]]
+  [[ "$PROMPT__UI_MODE" == "rich" ]]
 }
 
 prompt::uses_inline_status() {
-  [[ "$(prompt::ui_mode)" != "rich" ]]
+  [[ "$PROMPT__UI_MODE" != "rich" ]]
 }
 
 prompt::display_hint_token() {
   local token="$1"
 
-  case "$(prompt::ui_mode):$token" in
+  case "$PROMPT__UI_MODE:$token" in
     plain:↑/↓)
       printf 'Up/Down'
       ;;
@@ -147,9 +146,25 @@ prompt::leave_raw_mode() {
 }
 
 prompt::clear_rendered_block() {
+  local line_count remaining
+
   if [[ "${PROMPT__RENDERED_LINES:-0}" -gt 0 ]]; then
-    printf '\033[%dA' "$PROMPT__RENDERED_LINES"
-    printf '\r\033[J'
+    line_count="$PROMPT__RENDERED_LINES"
+    remaining="$line_count"
+
+    printf '\033[%dA' "$line_count"
+    while [[ "$remaining" -gt 0 ]]; do
+      printf '\r\033[K'
+      remaining=$((remaining - 1))
+      if [[ "$remaining" -gt 0 ]]; then
+        printf '\033[B'
+      fi
+    done
+
+    if [[ "$line_count" -gt 1 ]]; then
+      printf '\033[%dA' $((line_count - 1))
+    fi
+    printf '\r'
     PROMPT__RENDERED_LINES=0
   fi
 }
@@ -275,67 +290,40 @@ prompt::selected_labels_from_records() {
   prompt::join_by ", " "${labels[@]}"
 }
 
-prompt::first_selectable_index() {
-  local index=0
-  local is_disabled
-
-  for is_disabled in "$@"; do
-    if [[ "$is_disabled" != "1" ]]; then
-      printf '%s' "$index"
-      return 0
-    fi
-    index=$((index + 1))
-  done
-
-  return 1
-}
-
-prompt::move_selectable_index() {
+prompt::move_index() {
   local direction="$1"
   local current_index="$2"
-  shift 2 || true
+  local count="$3"
 
-  local disabled=("$@")
   local next_index="$current_index"
-  local attempts=0
-  local count="${#disabled[@]}"
 
   if [[ "$count" -eq 0 ]]; then
     printf '%s' "$current_index"
     return 0
   fi
 
-  while [[ "$attempts" -lt "$count" ]]; do
-    case "$direction" in
-      up)
-        if [[ "$next_index" -le 0 ]]; then
-          next_index=$((count - 1))
-        else
-          next_index=$((next_index - 1))
-        fi
-        ;;
-      down)
-        if [[ "$next_index" -ge $((count - 1)) ]]; then
-          next_index=0
-        else
-          next_index=$((next_index + 1))
-        fi
-        ;;
-      *)
-        printf '%s' "$current_index"
-        return 0
-        ;;
-    esac
-
-    if [[ "${disabled[$next_index]}" != "1" ]]; then
-      printf '%s' "$next_index"
+  case "$direction" in
+    up)
+      if [[ "$next_index" -le 0 ]]; then
+        next_index=$((count - 1))
+      else
+        next_index=$((next_index - 1))
+      fi
+      ;;
+    down)
+      if [[ "$next_index" -ge $((count - 1)) ]]; then
+        next_index=0
+      else
+        next_index=$((next_index + 1))
+      fi
+      ;;
+    *)
+      printf '%s' "$current_index"
       return 0
-    fi
+      ;;
+  esac
 
-    attempts=$((attempts + 1))
-  done
-
-  printf '%s' "$current_index"
+  printf '%s' "$next_index"
 }
 
 prompt::read_key() {
@@ -463,13 +451,20 @@ prompt::select() {
   local ids=()
   local labels=()
   local descriptions=()
+  local description_lines=()
   local disabled=()
   local statuses=()
+  local option_left_lines=()
+  local option_current_left_lines=()
+  local option_lines=()
+  local option_current_lines=()
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines current_description rendered_option is_current
+  local key rendered_lines current_description_line rendered_option
   local status_align_width=0
+  local header_line footer_line blank_line
+  local rich_mode=0 inline_status=0
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -492,66 +487,82 @@ prompt::select() {
     index=$((index + 1))
   done
 
-  if [[ "${#disabled[@]}" -gt 0 && "${disabled[$current_index]}" == "1" ]]; then
-    current_index="$(prompt::first_selectable_index "${disabled[@]}" || printf '0')"
-  fi
+  prompt::is_rich_mode && rich_mode=1
+  prompt::uses_inline_status && inline_status=1
+
+  header_line="$(prompt::question_header "$question")"
+  footer_line="$(prompt::footer_line "$hint")"
+  blank_line="$(prompt::blank_line)"
+
+  index=0
+  while [[ "$index" -lt "${#labels[@]}" ]]; do
+    if [[ -n "${descriptions[$index]}" ]]; then
+      description_lines[index]="$(prompt::description_line "${descriptions[$index]}")"
+    else
+      description_lines[index]=""
+    fi
+
+    option_left_lines[index]="$(prompt::select_option_left_text "${labels[$index]}" 0 "${disabled[$index]}")"
+    option_current_left_lines[index]="$(prompt::select_option_left_text "${labels[$index]}" 1 "${disabled[$index]}")"
+
+    if [[ "$inline_status" -eq 1 && -n "${statuses[$index]}" ]]; then
+      rendered_option="$(prompt::strip_ansi "${option_left_lines[$index]}")"
+      if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
+        status_align_width="${#rendered_option}"
+      fi
+    fi
+
+    index=$((index + 1))
+  done
+
+  index=0
+  while [[ "$index" -lt "${#labels[@]}" ]]; do
+    option_lines[index]="$(prompt::render_option_line "${option_left_lines[$index]}" "${statuses[$index]}" "$status_align_width")"
+    option_current_lines[index]="$(prompt::render_option_line "${option_current_left_lines[$index]}" "${statuses[$index]}" "$status_align_width")"
+    index=$((index + 1))
+  done
 
   prompt::enter_raw_mode
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::question_header "$question")"
-    current_description="${descriptions[$current_index]}"
-    [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
+    rendered_lines[${#rendered_lines[@]}]="$header_line"
+    current_description_line="${description_lines[$current_index]}"
+    [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
 
-    if prompt::is_rich_mode; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
-    fi
-
-    status_align_width=0
-    if prompt::uses_inline_status; then
-      index=0
-      while [[ "$index" -lt "${#labels[@]}" ]]; do
-        if [[ -n "${statuses[$index]}" ]]; then
-          rendered_option="$(prompt::select_option_left_text "${labels[$index]}" 0 "${disabled[$index]}")"
-          rendered_option="$(prompt::strip_ansi "$rendered_option")"
-          if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
-            status_align_width="${#rendered_option}"
-          fi
-        fi
-        index=$((index + 1))
-      done
+    if [[ "$rich_mode" -eq 1 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="$blank_line"
     fi
 
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
       if [[ "$index" -eq "$current_index" ]]; then
-        is_current=1
+        rendered_lines[${#rendered_lines[@]}]="${option_current_lines[$index]}"
       else
-        is_current=0
+        rendered_lines[${#rendered_lines[@]}]="${option_lines[$index]}"
       fi
-
-      rendered_option="$(prompt::select_option_line "${labels[$index]}" "$is_current" "${disabled[$index]}" "${statuses[$index]}" "$status_align_width")"
-      rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
-    if prompt::is_rich_mode; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if [[ "$rich_mode" -eq 1 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="$blank_line"
     fi
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
+    rendered_lines[${#rendered_lines[@]}]="$footer_line"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"
 
     case "$key" in
       up)
-        current_index="$(prompt::move_selectable_index up "$current_index" "${disabled[@]}")"
+        current_index="$(prompt::move_index up "$current_index" "${#labels[@]}")"
         ;;
       down)
-        current_index="$(prompt::move_selectable_index down "$current_index" "${disabled[@]}")"
+        current_index="$(prompt::move_index down "$current_index" "${#labels[@]}")"
         ;;
       enter)
+        if [[ "${disabled[$current_index]}" == "1" ]]; then
+          continue
+        fi
         prompt::leave_raw_mode
         prompt::clear_rendered_block
         prompt::set_result "$result_var" "${ids[$current_index]}"
@@ -575,17 +586,28 @@ prompt::multiselect() {
   local ids=()
   local labels=()
   local descriptions=()
+  local description_lines=()
   local selected=()
   local disabled=()
   local statuses=()
+  local option_left_unselected=()
+  local option_left_unselected_current=()
+  local option_left_selected=()
+  local option_left_selected_current=()
+  local option_line_unselected=()
+  local option_line_unselected_current=()
+  local option_line_selected=()
+  local option_line_selected_current=()
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines current_description rendered_option is_current
+  local key rendered_lines current_description_line rendered_option
   local selected_ids="" selected_labels=""
   local total_lines reserved_lines visible_count
   local window_start window_end remaining_above remaining_below
   local status_align_width=0
+  local header_line footer_line blank_line
+  local rich_mode=0 inline_status=0
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -609,26 +631,61 @@ prompt::multiselect() {
     index=$((index + 1))
   done
 
-  if [[ "${#disabled[@]}" -gt 0 && "${disabled[$current_index]}" == "1" ]]; then
-    current_index="$(prompt::first_selectable_index "${disabled[@]}" || printf '0')"
-  fi
+  prompt::is_rich_mode && rich_mode=1
+  prompt::uses_inline_status && inline_status=1
+
+  header_line="$(prompt::question_header "$question")"
+  footer_line="$(prompt::footer_line "$hint")"
+  blank_line="$(prompt::blank_line)"
+  total_lines="$(prompt::terminal_lines)"
+
+  index=0
+  while [[ "$index" -lt "${#labels[@]}" ]]; do
+    if [[ -n "${descriptions[$index]}" ]]; then
+      description_lines[index]="$(prompt::description_line "${descriptions[$index]}")"
+    else
+      description_lines[index]=""
+    fi
+
+    option_left_unselected[index]="$(prompt::multiselect_option_left_text "${labels[$index]}" 0 0 "${disabled[$index]}")"
+    option_left_unselected_current[index]="$(prompt::multiselect_option_left_text "${labels[$index]}" 1 0 "${disabled[$index]}")"
+    option_left_selected[index]="$(prompt::multiselect_option_left_text "${labels[$index]}" 0 1 "${disabled[$index]}")"
+    option_left_selected_current[index]="$(prompt::multiselect_option_left_text "${labels[$index]}" 1 1 "${disabled[$index]}")"
+
+    if [[ "$inline_status" -eq 1 && -n "${statuses[$index]}" ]]; then
+      rendered_option="$(prompt::strip_ansi "${option_left_unselected[$index]}")"
+      if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
+        status_align_width="${#rendered_option}"
+      fi
+    fi
+
+    index=$((index + 1))
+  done
+
+  index=0
+  while [[ "$index" -lt "${#labels[@]}" ]]; do
+    option_line_unselected[index]="$(prompt::render_option_line "${option_left_unselected[$index]}" "${statuses[$index]}" "$status_align_width")"
+    option_line_unselected_current[index]="$(prompt::render_option_line "${option_left_unselected_current[$index]}" "${statuses[$index]}" "$status_align_width")"
+    option_line_selected[index]="$(prompt::render_option_line "${option_left_selected[$index]}" "${statuses[$index]}" "$status_align_width")"
+    option_line_selected_current[index]="$(prompt::render_option_line "${option_left_selected_current[$index]}" "${statuses[$index]}" "$status_align_width")"
+    index=$((index + 1))
+  done
 
   prompt::enter_raw_mode
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::question_header "$question")"
-    current_description="${descriptions[$current_index]}"
-    [[ -n "$current_description" ]] && rendered_lines[${#rendered_lines[@]}]="$(prompt::description_line "$current_description")"
+    rendered_lines[${#rendered_lines[@]}]="$header_line"
+    current_description_line="${description_lines[$current_index]}"
+    [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
 
-    if prompt::is_rich_mode; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if [[ "$rich_mode" -eq 1 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="$blank_line"
     fi
 
-    total_lines="$(prompt::terminal_lines)"
     reserved_lines=7
     [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + 1))
-    [[ -n "$current_description" ]] && reserved_lines=$((reserved_lines + 1))
+    [[ -n "$current_description_line" ]] && reserved_lines=$((reserved_lines + 1))
     visible_count=$((total_lines - reserved_lines))
     if [[ "$visible_count" -lt 1 ]]; then
       visible_count=1
@@ -655,31 +712,21 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↑" "$remaining_above")"
     fi
 
-    status_align_width=0
-    if prompt::uses_inline_status; then
-      index="$window_start"
-      while [[ "$index" -le "$window_end" ]]; do
-        if [[ -n "${statuses[$index]}" ]]; then
-          rendered_option="$(prompt::multiselect_option_left_text "${labels[$index]}" 0 "${selected[$index]}" "${disabled[$index]}")"
-          rendered_option="$(prompt::strip_ansi "$rendered_option")"
-          if [[ "${#rendered_option}" -gt "$status_align_width" ]]; then
-            status_align_width="${#rendered_option}"
-          fi
-        fi
-        index=$((index + 1))
-      done
-    fi
-
     index="$window_start"
     while [[ "$index" -le "$window_end" ]]; do
-      if [[ "$index" -eq "$current_index" ]]; then
-        is_current=1
+      if [[ "${selected[$index]}" == "1" ]]; then
+        if [[ "$index" -eq "$current_index" ]]; then
+          rendered_lines[${#rendered_lines[@]}]="${option_line_selected_current[$index]}"
+        else
+          rendered_lines[${#rendered_lines[@]}]="${option_line_selected[$index]}"
+        fi
       else
-        is_current=0
+        if [[ "$index" -eq "$current_index" ]]; then
+          rendered_lines[${#rendered_lines[@]}]="${option_line_unselected_current[$index]}"
+        else
+          rendered_lines[${#rendered_lines[@]}]="${option_line_unselected[$index]}"
+        fi
       fi
-
-      rendered_option="$(prompt::multiselect_option_line "${labels[$index]}" "$is_current" "${selected[$index]}" "${disabled[$index]}" "${statuses[$index]}" "$status_align_width")"
-      rendered_lines[${#rendered_lines[@]}]="$rendered_option"
       index=$((index + 1))
     done
 
@@ -687,20 +734,20 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↓" "$remaining_below")"
     fi
 
-    if prompt::is_rich_mode; then
-      rendered_lines[${#rendered_lines[@]}]="$(prompt::blank_line)"
+    if [[ "$rich_mode" -eq 1 ]]; then
+      rendered_lines[${#rendered_lines[@]}]="$blank_line"
     fi
-    rendered_lines[${#rendered_lines[@]}]="$(prompt::footer_line "$hint")"
+    rendered_lines[${#rendered_lines[@]}]="$footer_line"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"
 
     case "$key" in
       up)
-        current_index="$(prompt::move_selectable_index up "$current_index" "${disabled[@]}")"
+        current_index="$(prompt::move_index up "$current_index" "${#labels[@]}")"
         ;;
       down)
-        current_index="$(prompt::move_selectable_index down "$current_index" "${disabled[@]}")"
+        current_index="$(prompt::move_index down "$current_index" "${#labels[@]}")"
         ;;
       space)
         if [[ "${disabled[$current_index]}" != "1" ]]; then
