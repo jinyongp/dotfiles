@@ -44,12 +44,25 @@ style_test::render() (
 style_test::render_with_env() (
   local mode="$1"
 
-  unset DOTFILES_COLOR_SCHEME COLORFGBG NO_COLOR TERM CLICOLOR DOTFILES_FORCE_COLOR FORCE_COLOR CLICOLOR_FORCE
+  unset DOTFILES_COLOR_SCHEME COLORFGBG NO_COLOR TERM CLICOLOR DOTFILES_FORCE_COLOR FORCE_COLOR CLICOLOR_FORCE DOTFILES_COLOR_OUTPUT_IS_TTY
 
   case "$mode" in
     no_color) export NO_COLOR=1 ;;
     term_dumb) export TERM=dumb ;;
     clicolor_off) export CLICOLOR=0 ;;
+    captured_tty) export DOTFILES_COLOR_OUTPUT_IS_TTY=1 ;;
+    no_color_over_captured_tty)
+      export NO_COLOR=1
+      export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+      ;;
+    term_dumb_over_captured_tty)
+      export TERM=dumb
+      export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+      ;;
+    clicolor_off_over_captured_tty)
+      export CLICOLOR=0
+      export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+      ;;
     dotfiles_force_over_no_color)
       export NO_COLOR=1
       export DOTFILES_FORCE_COLOR=1
@@ -100,6 +113,10 @@ style_test::test_ansi_enablement() {
   style_test::assert_eq "no_color_disables_ansi" "x" "$(style_test::render_with_env no_color)"
   style_test::assert_eq "term_dumb_disables_ansi" "x" "$(style_test::render_with_env term_dumb)"
   style_test::assert_eq "clicolor_zero_disables_ansi" "x" "$(style_test::render_with_env clicolor_off)"
+  style_test::assert_eq "captured_tty_enables_ansi" $'\033[1;34mx\033[0m' "$(style_test::render_with_env captured_tty)"
+  style_test::assert_eq "no_color_overrides_captured_tty" "x" "$(style_test::render_with_env no_color_over_captured_tty)"
+  style_test::assert_eq "term_dumb_overrides_captured_tty" "x" "$(style_test::render_with_env term_dumb_over_captured_tty)"
+  style_test::assert_eq "clicolor_zero_overrides_captured_tty" "x" "$(style_test::render_with_env clicolor_off_over_captured_tty)"
   style_test::assert_eq "dotfiles_force_overrides_no_color" $'\033[1;34mx\033[0m' "$(style_test::render_with_env dotfiles_force_over_no_color)"
   style_test::assert_eq "force_color_overrides_term_dumb" $'\033[1;34mx\033[0m' "$(style_test::render_with_env force_color_over_term_dumb)"
   style_test::assert_eq "clicolor_force_overrides_clicolor_zero" $'\033[1;34mx\033[0m' "$(style_test::render_with_env clicolor_force_over_clicolor_off)"

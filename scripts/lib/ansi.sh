@@ -15,6 +15,10 @@ dotfiles_ansi_enabled() {
     return 1
   fi
 
+  if [[ "${DOTFILES_COLOR_OUTPUT_IS_TTY:-0}" == "1" ]]; then
+    return 0
+  fi
+
   [[ -t 1 ]]
 }
 
