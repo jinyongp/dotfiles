@@ -1,0 +1,42 @@
+#!/bin/bash
+
+set -euo pipefail
+
+if [[ -t 1 ]]; then
+  export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+fi
+
+source "$HOME/.dotfiles/utils/colors.zsh"
+
+message_file="${1:-}"
+subject=""
+conventional_subject_pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([A-Za-z0-9._/-]+\))?!?: [^[:space:]].*$'
+
+if [[ -z "$message_file" || ! -f "$message_file" ]]; then
+  echo -e "$(red "[ERROR] Commit message file is missing.")"
+  exit 1
+fi
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+  line="${line%$'\r'}"
+
+  [[ -n "$line" ]] || continue
+  [[ "${line:0:1}" == "#" ]] && continue
+
+  subject="$line"
+  break
+done <"$message_file"
+
+if [[ -z "$subject" ]]; then
+  echo -e "$(red "[ERROR] Commit message subject is empty.")"
+  echo -e "$(yellow "Use Conventional Commits, for example:") $(green "fix(hooks): handle push ranges")"
+  exit 1
+fi
+
+if [[ ! "$subject" =~ $conventional_subject_pattern || "$subject" =~ [[:space:]]$ ]]; then
+  echo -e "$(red "[ERROR] Commit message must follow Conventional Commits.")"
+  echo -e "$(yellow "Expected:") $(green "type(scope)!: description")"
+  echo -e "$(yellow "Allowed types:") feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo -e "$(yellow "Actual:") $subject"
+  exit 1
+fi
