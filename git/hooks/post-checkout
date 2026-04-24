@@ -2,24 +2,29 @@
 
 set -e
 
-source $HOME/.dotfiles/utils/colors.zsh
+if [[ -t 1 ]]; then
+  export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+fi
+
+source "$HOME/.dotfiles/utils/colors.zsh"
 
 if [[ $(git show --quiet --format="%s" 2>/dev/null) =~ ^--wip-- ]]; then
-  echo -e "$(yellow "[NOTICE] WIP commit was found.")"
+  echo -e "$(yellow "[NOTICE] You checked out a WIP commit.")"
   while true; do
-    read -p "$(echo -e "$(green "Resolve? (Y/n)") ")" -n1 answer </dev/tty
+    printf '%b ' "$(green "Resolve it now? (Y/n)")" >/dev/tty
+    IFS= read -r -n1 answer </dev/tty
     case $answer in
     Y | y | '')
       git reset HEAD~1 --quiet
-      echo -e "\n$(green "Resolved.")"
+      echo -e "\n$(green "WIP commit resolved.")"
       break
       ;;
     n)
-      echo -e "\n$(red "Cancelled.")"
+      echo -e "\n$(red "Keeping the WIP commit.")"
       break
       ;;
     *)
-      echo -ne "$(yellow " - y/n (default \"y\")")\n"
+      echo -ne "$(yellow " - Please answer y or n. The default is y.")\n"
       ;;
     esac
   done

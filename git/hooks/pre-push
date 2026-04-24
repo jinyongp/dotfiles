@@ -2,11 +2,15 @@
 
 set -e
 
-source $HOME/.dotfiles/utils/colors.zsh
+if [[ -t 1 ]]; then
+  export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+fi
 
-while IFS='\n' read -r message; do
+source "$HOME/.dotfiles/utils/colors.zsh"
+
+while IFS= read -r message; do
   if [[ $message =~ ^--wip-- ]]; then
-    echo -e "$(yellow "[WARN] WIP commit was found. Please resolve it by using") $(green "$ gunwip")"
+    echo -e "$(yellow "[WARN] A WIP commit is still in the recent history.") $(green "Run gunwip before pushing.")"
     exit 1
   fi
 done <<<"$(git log -10 --format="%s" 2>/dev/null)"

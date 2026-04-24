@@ -2,10 +2,14 @@
 
 set -e
 
-source $HOME/.dotfiles/utils/colors.zsh
+if [[ -t 1 ]]; then
+  export DOTFILES_COLOR_OUTPUT_IS_TTY=1
+fi
+
+source "$HOME/.dotfiles/utils/colors.zsh"
 
 if [[ $(git show --quiet --format="%s" 2>/dev/null) =~ ^--wip-- ]]; then
-  echo -e "$(blue "[NOTICE] Resolve it first by using") $(green "$ gunwip")\n"
+  echo -e "$(blue "[NOTICE] The current HEAD is a WIP commit.") $(green "Run gunwip before committing.")\n"
   git --no-pager log --oneline --decorate --color --all --pretty=format:"%C(auto)%h %C(auto)%d %C(auto)%s %C(black)%C(bold)%cr" | head -n 1
   exit 1
 fi
