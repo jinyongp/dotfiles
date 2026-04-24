@@ -94,18 +94,18 @@ install_profile_test::apply_profile() {
 
 install_profile_test::selected_record_ids() {
   local record id selected
-  local ids=""
+  local selected_ids=""
 
   for record in "$@"; do
     id="$(prompt::record_field "$record" 1)"
     selected="$(prompt::record_field "$record" 4)"
 
     if [[ "$selected" == "1" ]]; then
-      ids="$(install::add_word "$ids" "$id")"
+      selected_ids="$(install::add_word "$selected_ids" "$id")"
     fi
   done
 
-  printf '%s' "$ids"
+  printf '%s' "$selected_ids"
 }
 
 install_profile_test::record_field_for_id() {

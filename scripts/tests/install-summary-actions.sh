@@ -86,28 +86,30 @@ install_summary_test::assert_record_selected() {
 }
 
 install_summary_test::record_ids() {
-  local record id ids=""
+  local record id
+  local record_ids=""
 
   for record in "$@"; do
     id="$(prompt::record_field "$record" 1)"
-    ids="$(install::add_word "$ids" "$id")"
+    record_ids="$(install::add_word "$record_ids" "$id")"
   done
 
-  printf '%s' "$ids"
+  printf '%s' "$record_ids"
 }
 
 install_summary_test::selected_record_ids() {
-  local record id selected ids=""
+  local record id selected
+  local selected_ids=""
 
   for record in "$@"; do
     id="$(prompt::record_field "$record" 1)"
     selected="$(prompt::record_field "$record" 4)"
     if [[ "$selected" == "1" ]]; then
-      ids="$(install::add_word "$ids" "$id")"
+      selected_ids="$(install::add_word "$selected_ids" "$id")"
     fi
   done
 
-  printf '%s' "$ids"
+  printf '%s' "$selected_ids"
 }
 
 install_summary_test::reset_case() {
