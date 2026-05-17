@@ -4,25 +4,23 @@ set -euo pipefail
 
 base=$(basename "$0")
 
-default=""
-
-input=$default
-fg_color=$default
-bg_color=$default
-style=$default
-
-is_default() { [ "$1" = "$default" ]; }
+input=""
+fg_color=""
+bg_color=""
+newline=1
+styles=""
 
 usage() {
   cat <<EOF
-Usage: $base [options]
+Usage: $base [options] [text]
 
 Available options:
-  -h    Print this help and exit
-  -t    Text to print
-  -f    Foreground color (default: 0)
-  -b    Background color (default: 0)
-  -s    Style (default: 0)
+  -h, --help             Print this help and exit
+  -t, --text TEXT        Text to print
+  -f, --fg COLOR         Foreground color, 0-255
+  -b, --bg COLOR         Background color, 0-255
+  -s, --style STYLE      Style to apply; repeatable
+  -n, --no-newline       Do not print the trailing newline
 
 Available styles:
   bold
@@ -35,12 +33,19 @@ Available styles:
   strikethrough
 
 Examples:
-  $base -t 'Hello, World!'
-  $base -t 'Hello, World!' -f 1 -b 2 -s bold
-  $base -t 'Hello, World!' -f 1 -b 2 -s bold -s italic
-  echo 'Hello, World!' | $base -f 1 -b 2 -s bold -s bold
-
 EOF
+  printf '  %s %s\n' "$base" "'Hello, World!'"
+  printf '    Hello, World!\n\n'
+  printf '  %s %s\n' "$base" "'Hello, World!' -f 42"
+  printf '    \033[38;5;42mHello, World!\033[0m\n\n'
+  printf '  %s %s\n' "$base" "'Warning' --fg=196 --style=bold"
+  printf '    \033[38;5;196;1mWarning\033[0m\n\n'
+  printf '  %s %s\n' "$base" "'Selected' -f 15 -b 24 -s bold -s underline"
+  printf '    \033[38;5;15;48;5;24;1;4mSelected\033[0m\n\n'
+  printf '  %s\n' "printf 'No newline' | $base -f 70 --no-newline"
+  printf '    \033[38;5;70mNo newline\033[0m\n\n'
+  printf '  %s %s\n' "$base" "-- -f 1"
+  printf '    -f 1\n\n'
 }
 
 debug() {
@@ -52,92 +57,158 @@ debug() {
 
 read_stdin() { [ -t 0 ] || cat; }
 
-main() {
-  input=${input:-$(read_stdin)}
+die() {
+  echo "$base: $1" >&2
+  exit 1
+}
 
-  if [ -z "$input" ]; then
-    usage
-    exit 1
+is_color_code() {
+  [[ "$1" =~ ^[0-9]+$ ]] && (( $1 >= 0 && $1 <= 255 ))
+}
+
+style_sgr() {
+  case "$1" in
+  bold) printf '1' ;;
+  dim) printf '2' ;;
+  italic) printf '3' ;;
+  underline) printf '4' ;;
+  curly-underline) printf '4:3' ;;
+  blink) printf '5' ;;
+  reverse) printf '7' ;;
+  strikethrough) printf '9' ;;
+  *) return 1 ;;
+  esac
+}
+
+join_sgr() {
+  local IFS=";"
+  printf '%s' "$*"
+}
+
+need_value() {
+  local option="$1"
+  local value="${2:-}"
+
+  [[ -n "$value" ]] || die "$option requires an argument"
+  printf '%s' "$value"
+}
+
+parse_args() {
+  local -a text_parts=()
+  local option=""
+  local value=""
+
+  while (($# > 0)); do
+    case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    -n|--no-newline)
+      newline=0
+      shift
+      ;;
+    -t|--text)
+      input="$(need_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --text=*)
+      input="${1#--text=}"
+      shift
+      ;;
+    -f|--fg)
+      fg_color="$(need_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --fg=*)
+      fg_color="${1#--fg=}"
+      shift
+      ;;
+    -b|--bg)
+      bg_color="$(need_value "$1" "${2:-}")"
+      shift 2
+      ;;
+    --bg=*)
+      bg_color="${1#--bg=}"
+      shift
+      ;;
+    -s|--style)
+      value="$(need_value "$1" "${2:-}")"
+      styles+="${value}"$'\n'
+      shift 2
+      ;;
+    --style=*)
+      value="${1#--style=}"
+      [[ -n "$value" ]] || die "--style requires an argument"
+      styles+="${value}"$'\n'
+      shift
+      ;;
+    --)
+      shift
+      text_parts+=("$@")
+      break
+      ;;
+    --*)
+      die "invalid option: $1"
+      ;;
+    -*)
+      option="$1"
+      die "invalid option: $option"
+      ;;
+    *)
+      text_parts+=("$1")
+      shift
+      ;;
+    esac
+  done
+
+  if [ -z "$input" ] && ((${#text_parts[@]} > 0)); then
+    input="${text_parts[*]}"
   fi
+}
 
+main() {
   debug "Options
     input    $input
     fg_color $fg_color
     bg_color $bg_color
-    style    $style
+    styles   $styles
   "
 
+  [ -n "$input" ] || input="$(read_stdin)"
+  [ -n "$input" ] || die "missing text"
+
+  local -a sgr=()
   local style_code=""
-  if ! is_default "$style"; then
-    for s in $(echo "$style" | tr ";" "\n"); do
-      case $s in
-      bold) style_code+=";1" ;;
-      dim) style_code+=";2" ;;
-      italic) style_code+=";3" ;;
-      underline) style_code+=";4" ;;
-      # double-underline) style_code+=";4:21" ;;
-      curly-underline) style_code+=";4:3" ;;
-      # dotted-underline) style_code+=";4:4" ;;
-      # dashed-underline) style_code+=";4:5" ;;
-      blink) style_code+=";5" ;;
-      reverse) style_code+=";7" ;;
-      # invisible) style_code+=";8" ;;
-      strikethrough) style_code+=";9" ;;
-      # overline) style_code+=";53" ;;
-      *) style_code+="" ;;
-      esac
-    done
+
+  if [ -n "$fg_color" ]; then
+    is_color_code "$fg_color" || die "foreground color must be between 0 and 255"
+    sgr+=("38;5;$fg_color")
   fi
 
-  local color_code=""
-  if ! is_default "$fg_color"; then
-    color_code+="38;5;$fg_color"
+  if [ -n "$bg_color" ]; then
+    is_color_code "$bg_color" || die "background color must be between 0 and 255"
+    sgr+=("48;5;$bg_color")
   fi
 
-  if ! is_default "$bg_color"; then
-    [ -n "$color_code" ] && color_code+=";"
-    color_code+="48;5;$bg_color"
+  if [ -n "$styles" ]; then
+    while IFS= read -r style; do
+      [ -n "$style" ] || continue
+      style_code="$(style_sgr "$style")" || die "unknown style: $style"
+      sgr+=("$style_code")
+    done <<< "$styles"
   fi
 
-  result="\e[${color_code}${style_code}m$input\e[0m\n"
-  debug "Raw Result
-    $(printf "%s" "$result")
-  "
+  if ((${#sgr[@]} > 0)); then
+    printf '\033[%sm%s\033[0m' "$(join_sgr "${sgr[@]}")" "$input"
+  else
+    printf '%s' "$input"
+  fi
 
-  printf '%b' "$result"
+  if (( newline )); then
+    printf '\n'
+  fi
 }
 
-while getopts ":ht:f:b:s:-:" opt; do
-  case $opt in
-  h)
-    usage
-    exit 0
-    ;;
-  t) input=$OPTARG ;;
-  f) fg_color=$OPTARG ;;
-  b) bg_color=$OPTARG ;;
-  s) style+="$OPTARG;" ;;
-  \?)
-    echo "Invalid option: -$OPTARG" >&2
-    exit 1
-    ;;
-  :)
-    echo "Option -$OPTARG requires an argument." >&2
-    exit 1
-    ;;
-  -)
-    case "$OPTARG" in
-    help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "Invalid option: --$OPTARG" >&2
-      exit 1
-      ;;
-    esac
-    ;;
-  esac
-done
-
+parse_args "$@"
 main "$@"

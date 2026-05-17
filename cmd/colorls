@@ -2,11 +2,63 @@
 
 set -euo pipefail
 
-text="${*:-}"
+base="$(basename "$0")"
+
+usage() {
+  cat <<EOF
+Usage: $base [options] [label]
+
+Print the 256-color ANSI palette. If label is provided, use it instead of the
+color number in every swatch.
+
+Available options:
+  -h, --help    Print this help and exit
+
+Examples:
+EOF
+  printf '  %s\n' "$base"
+  printf '    '
+  printf '\x1b[48;5;000m 000 \x1b[0m '
+  printf '\x1b[38;5;000m000\x1b[0m '
+  printf '\x1b[48;5;001m 001 \x1b[0m '
+  printf '\x1b[38;5;001m001\x1b[0m '
+  printf '...\n\n'
+  printf '  %s %s\n' "$base" "'OK'"
+  printf '    '
+  printf '\x1b[48;5;000m OK \x1b[0m '
+  printf '\x1b[38;5;000mOK\x1b[0m '
+  printf '\x1b[48;5;001m OK \x1b[0m '
+  printf '\x1b[38;5;001mOK\x1b[0m '
+  printf '...\n'
+}
+
+label_text=""
+
+while (($# > 0)); do
+  case "$1" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  --)
+    shift
+    break
+    ;;
+  -*)
+    echo "$base: unknown option: $1" >&2
+    exit 1
+    ;;
+  *)
+    break
+    ;;
+  esac
+done
+
+label_text="$*"
 
 for ((i = 0; i <= 255; i++)); do
   color="$(printf '%03d' "$i")"
-  label="${text:-$color}"
+  label="${label_text:-$color}"
   printf '\x1b[48;5;%sm %s \x1b[0m ' "$color" "$label"
   printf '\x1b[38;5;%sm%s\x1b[0m ' "$color" "$label"
 
@@ -15,3 +67,5 @@ for ((i = 0; i <= 255; i++)); do
   [[ "$i" -lt 16 && $(((i + 1) % 16)) -eq 0 ]] && echo
   [[ "$i" -ge 16 && $(((i - 15) % 36)) -eq 0 ]] && echo
 done
+
+echo

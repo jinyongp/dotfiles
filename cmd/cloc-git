@@ -4,20 +4,138 @@ set -euo pipefail
 
 cmd="$(basename "$0")"
 tmp_dir=""
+clone_log=""
 
 cleanup() {
   [[ -n "$tmp_dir" && -d "$tmp_dir" ]] && rm -rf "$tmp_dir"
+  [[ -n "$clone_log" && -f "$clone_log" ]] && rm -f "$clone_log"
+  return 0
 }
 
 trap cleanup EXIT
 
+usage() {
+  cat <<EOF
+Usage: $cmd <git-url>
+
+Clone a repository into a temporary directory and run cloc against it.
+
+Examples:
+  $cmd https://github.com/jinyongp/untouchable
+    $cmd: cloning github.com/jinyongp/untouchable with gh...
+    $cmd: counting lines...
+    github.com/AlDanial/cloc v 2.08  T=0.02 s
+    -------------------------------------------------------------------------------
+    Language                     files          blank        comment           code
+    -------------------------------------------------------------------------------
+    TypeScript                      18            423            309           1464
+    YAML                             2            862              0           3190
+    -------------------------------------------------------------------------------
+    SUM:                            28           1355            309           5025
+    -------------------------------------------------------------------------------
+
+  $cmd git@github.com:owner/private-repo.git
+    $cmd: cloning github.com/owner/private-repo with ssh...
+    $cmd: counting lines...
+    github.com/AlDanial/cloc v 2.08  T=...
+EOF
+}
+
+die() {
+  echo "$cmd: $1" >&2
+  exit 1
+}
+
+info() {
+  echo "$cmd: $1" >&2
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+github_slug() {
+  local url="$1"
+  local slug=""
+
+  case "$url" in
+    https://github.com/*|http://github.com/*)
+      slug="${url#*://github.com/}"
+      ;;
+    git@github.com:*)
+      slug="${url#git@github.com:}"
+      ;;
+    ssh://git@github.com/*)
+      slug="${url#ssh://git@github.com/}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+
+  slug="${slug%%\?*}"
+  slug="${slug%%#*}"
+  slug="${slug%/}"
+  slug="${slug%.git}"
+
+  [[ "$slug" == */* ]] || return 1
+  printf '%s' "$slug"
+}
+
+github_ssh_url() {
+  local slug="$1"
+  printf 'git@github.com:%s.git' "$slug"
+}
+
+clone_repo() {
+  local repo_url="$1"
+  local slug=""
+  local clone_url="$repo_url"
+  local git_ssh_command="${GIT_SSH_COMMAND:-ssh -o BatchMode=yes}"
+
+  if slug="$(github_slug "$repo_url")"; then
+    if command -v gh >/dev/null 2>&1 && GH_PROMPT_DISABLED=1 gh auth status -h github.com >/dev/null 2>&1; then
+      info "cloning github.com/$slug with gh..."
+      GH_PROMPT_DISABLED=1 gh repo clone "$slug" "$tmp_dir" -- --depth 1 --quiet >"$clone_log" 2>&1
+      return
+    fi
+
+    clone_url="$(github_ssh_url "$slug")"
+    info "cloning github.com/$slug with ssh..."
+  else
+    info "cloning repository..."
+  fi
+
+  GIT_SSH_COMMAND="$git_ssh_command" GIT_TERMINAL_PROMPT=0 git clone --quiet --depth 1 "$clone_url" "$tmp_dir" >"$clone_log" 2>&1
+}
+
+case "${1:-}" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+esac
+
 if [[ $# -ne 1 ]]; then
-  echo "Usage: $cmd <git-url>"
+  usage >&2
   exit 1
 fi
 
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/cloc-git.XXXXXX")"
+require_command git
+require_command cloc
 
-git clone --depth 1 "$1" "$tmp_dir" >/dev/null 2>&1
-echo
+tmp_parent="${TMPDIR:-/tmp}"
+tmp_parent="${tmp_parent%/}"
+tmp_dir="$(mktemp -d "$tmp_parent/cloc-git.XXXXXX")"
+clone_log="$(mktemp "$tmp_parent/cloc-git.XXXXXX.log")"
+
+if ! clone_repo "$1"; then
+  cat "$clone_log" >&2
+  if github_slug "$1" >/dev/null 2>&1; then
+    echo "$cmd: GitHub private repos require either valid gh auth or SSH access." >&2
+  fi
+  exit 1
+fi
+
+info "counting lines..."
 cloc "$tmp_dir"
