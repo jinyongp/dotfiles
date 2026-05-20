@@ -9,13 +9,13 @@ compatibility: Requires Git worktree for default scope. Designed for Codex read-
 # Review Loop
 
 Modes:
-- `web`: browser/client, SSR/rendering, hydration, client state, assets
+- `web`: browser/client, SSR/rendering, hydration, client state, assets, UI/UX
 - `server`: HTTP/API, middleware, auth/session, webhooks, jobs, queues, integrations
 - `database`: schema, migrations, ORM/models, SQL, transactions, indexes, constraints, fixtures/backfills
 - `node`: JS/TS runtime, package scripts, CLIs, workers, libs, build tooling, modules/deps/process/fs
 
 Aliases:
-- web: `frontend client browser ui ssr rendering hydration assets`
+- web: `frontend client browser ui ux design ssr rendering hydration assets`
 - server: `api backend http middleware auth session webhook jobs queue integration`
 - database: `db sql orm migration schema transaction index constraint repository data-access`
 - node: `js ts typescript javascript nodejs package npm pnpm yarn cli worker build esm cjs`
@@ -23,7 +23,7 @@ Aliases:
 Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`. No mode: infer from request/files; unclear => ask one mode question.
 
 Infer mode from paths/content:
-- web: `component|page|layout|style|css|client|browser|hydration|asset`
+- web: `component|page|layout|style|css|client|browser|hydration|asset|screen`
 - server: `route|api|middleware|controller|auth|session|webhook|job|queue`
 - database: `schema|migration|sql|prisma|drizzle|typeorm|model|repository`
 - node: `package.json|tsconfig|script|cli|worker|build|esm|cjs|fs|process`
@@ -70,11 +70,16 @@ Steps: verify root; verify explicit scope readable; default enumerate staged/uns
 
 Use selected modes only.
 
+For any selected mode, read `references/code-quality.md` when scope adds or changes authored helpers, composables, function signatures, normalization/resolve layers, duplicate domain helpers, or public-ish APIs.
+
 Web:
 1. Client security, sensitive data, storage
 2. SSR/render/hydration/assets/cache/redirects
 3. Interaction, async state, double submit, stale responses
 4. UI/API contract drift, generated clients, validation assumptions
+5. UI/UX fluency, information hierarchy, raw data rendering, action clarity
+
+For Web UI/UX fluency review, read `references/ui-ux.md` when scope includes user-facing screens, components, cards, tables, dashboards, order/admin views, forms, status/action surfaces, or data-heavy UI.
 
 Server:
 1. Security, authz, tenancy, permissions, sensitive data
