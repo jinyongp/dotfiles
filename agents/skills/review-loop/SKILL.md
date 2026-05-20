@@ -20,9 +20,9 @@ Aliases:
 - database: `db sql orm migration schema transaction index constraint repository data-access`
 - node: `js ts typescript javascript nodejs package npm pnpm yarn cli worker build esm cjs`
 
-Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`. No mode: infer from request/files; unclear => ask one mode question.
+Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`. No explicit area/mode/axis: inspect requested scope first, then infer review area, modes, risk axes, and agent plan from changed code plus direct contracts. Ask only when the target or material coverage is genuinely ambiguous.
 
-Infer mode from paths/content:
+Infer review plan from paths/content:
 - web: `component|page|layout|style|css|client|browser|hydration|asset|screen`
 - server: `route|api|middleware|controller|auth|session|webhook|job|queue`
 - database: `schema|migration|sql|prisma|drizzle|typeorm|model|repository`
@@ -35,17 +35,18 @@ Parent owns scope, modes, axes, findings, fixes, decisions, validation, oscillat
 ## Gates
 
 1. Scope explicit wins. No scope = current Git uncommitted only. Never whole repo by default.
-2. Stop+ask if no Git repo, empty default scope, unreadable/unclear target, unclear modes.
+2. Stop+ask if no Git repo, empty default scope, unreadable/unclear target, or review plan still unclear after scope inference.
 3. User says plain `review`/`code review` only => review-only. User says `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
-4. First pass: read-only axis subagents if available; else ask serial fallback approval.
-5. Budget = live thread. Run axes in waves; do not drop axes.
-6. Subagents direct children only, no recursion, read-only.
-7. Parent aggregates, edits, tests, validates, final.
-8. Loop until no actionable in-scope findings or user decision blocks.
-9. Oscillation: A->B->A serious. Same issue twice => stop/blocker.
-10. Close subagents before final CI/end; copy unresolved findings first.
-11. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
-12. DB guard: no prod/staging migrations, destructive resets, seed truncation, backfills, data repair, live provider ops, shared-env writes without explicit approval.
+4. Before subagents: derive a review plan from scope. Select only material modes/axes and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
+5. First pass: planned read-only subagents if available; else ask serial fallback approval.
+6. Budget = live thread. Run planned axes in waves; do not drop selected axes.
+7. Subagents direct children only, no recursion, read-only.
+8. Parent aggregates, edits, tests, validates, final.
+9. Loop until no actionable in-scope findings or user decision blocks.
+10. Oscillation: A->B->A serious. Same issue twice => stop/blocker.
+11. Close subagents before final CI/end; copy unresolved findings first.
+12. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
+13. DB guard: no prod/staging migrations, destructive resets, seed truncation, backfills, data repair, live provider ops, shared-env writes without explicit approval.
 
 Severity:
 - P0: exploit/data loss/prod outage
@@ -64,11 +65,11 @@ git diff --cached -- <path>
 git diff -- <path>
 ```
 
-Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; classify paths by modes; read only direct deps/contracts/tests/config/generated sources needed to confirm findings.
+Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; derive review area (feature/module/file set), modes, axes, and agent plan from changed paths/content plus direct deps/contracts/tests/config/generated sources; read only context needed to confirm findings.
 
 ## Axes
 
-Use selected modes only.
+Use selected modes only. Do not run every listed axis merely because a mode matched. Select axes whose failure modes are plausible from changed code and direct contracts; include high-risk axes when scope touches auth, permissions, persistence, migrations, provider I/O, process/env, routing, or user-facing workflows.
 
 For any selected mode, read `references/code-quality.md` when scope adds or changes authored helpers, composables, function signatures, normalization/resolve layers, duplicate domain helpers, or public-ish APIs.
 
@@ -104,11 +105,11 @@ Node:
 6. Perf/memory/stream/backpressure/cleanup
 7. Tests/fixtures/mocks/determinism/typecheck/build
 
-Custom axes: preserve. Too many axes => waves. Do not merge unless asked.
+Custom axes: preserve. Too many axes => waves. Small adjacent axes may share one read-only subagent; high-risk or broad independent axes get their own subagent. Agent count = useful independent review threads for the selected axes, bounded by available capacity, not fixed by config.
 
 ## Subagent Prompt
 
-Each axis gets same scope + one axis. Also pass relevant known context: user decisions, explicit non-goals, allowed/forbidden approaches, legacy/compat policy, product constraints, validation constraints, repo conventions, prior accepted risks. Do not let subagents flag issues that contradict accepted constraints.
+Each review assignment gets same scope + selected mode/axis set. Prefer one focused axis per subagent when risk is high; combine tightly related low-risk axes when that improves signal. Also pass relevant known context: user decisions, explicit non-goals, allowed/forbidden approaches, legacy/compat policy, product constraints, validation constraints, repo conventions, prior accepted risks. Do not let subagents flag issues that contradict accepted constraints.
 
 Read-only. Adjacent direct contracts OK only to confirm concrete finding. No writes/validation.
 
