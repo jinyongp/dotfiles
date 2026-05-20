@@ -8,6 +8,11 @@ compatibility: Requires Git worktree for default scope. Designed for Codex read-
 
 # Review Loop
 
+Trigger semantics:
+- `/review-loop`, `review until clean`, `review-and-fix`, or `code review with fixes` means the user is explicitly requesting the review-loop workflow, including read-only subagents when the inferred scope/risk is broad enough to benefit.
+- Plain `review` or `code review` means review-only; use subagents only when the user explicitly asks for review-loop, subagents, delegation, or parallel review.
+- Do not ask the user to restate "use subagents" when review-loop was invoked and scope/risk justifies parallel read-only review. Derive the needed agent count from scope.
+
 Modes:
 - `web`: browser/client, SSR/rendering, hydration, client state, assets, UI/UX
 - `server`: HTTP/API, middleware, auth/session, webhooks, jobs, queues, integrations
@@ -30,19 +35,21 @@ Infer review plan from paths/content:
 
 ## Contract
 
-Parent owns scope, modes, axes, findings, fixes, decisions, validation, oscillation, subagents. Final = canonical review record unless user asks otherwise.
+Goal: exhaustively review the given scope and its direct contracts, fix in-scope actionable issues, then repeat review/validation until no in-scope actionable findings remain or a user decision blocks progress.
+
+Parent owns scope, coverage, modes, axes, findings, fixes, decisions, validation, oscillation, subagents. Final = canonical review record unless user asks otherwise.
 
 ## Gates
 
 1. Scope explicit wins. No scope = current Git uncommitted only. Never whole repo by default.
 2. Stop+ask if no Git repo, empty default scope, unreadable/unclear target, or review plan still unclear after scope inference.
 3. User says plain `review`/`code review` only => review-only. User says `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
-4. Before subagents: derive a review plan from scope. Select only material modes/axes and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
+4. Before subagents: derive a coverage plan from scope. Cover every in-scope changed file/behavior and direct contract needed to judge it. Select material modes/axes for that coverage and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
 5. First pass: planned read-only subagents if available; else ask serial fallback approval.
 6. Budget = live thread. Run planned axes in waves; do not drop selected axes.
 7. Subagents direct children only, no recursion, read-only.
 8. Parent aggregates, edits, tests, validates, final.
-9. Loop until no actionable in-scope findings or user decision blocks.
+9. Loop until the whole scoped coverage plan has no actionable in-scope findings or user decision blocks.
 10. Oscillation: A->B->A serious. Same issue twice => stop/blocker.
 11. Close subagents before final CI/end; copy unresolved findings first.
 12. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
@@ -65,11 +72,11 @@ git diff --cached -- <path>
 git diff -- <path>
 ```
 
-Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; derive review area (feature/module/file set), modes, axes, and agent plan from changed paths/content plus direct deps/contracts/tests/config/generated sources; read only context needed to confirm findings.
+Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; derive review area (feature/module/file set), modes, axes, coverage map, and agent plan from changed paths/content plus direct deps/contracts/tests/config/generated sources; read enough context to cover every in-scope behavior and confirm findings.
 
 ## Axes
 
-Use selected modes only. Do not run every listed axis merely because a mode matched. Select axes whose failure modes are plausible from changed code and direct contracts; include high-risk axes when scope touches auth, permissions, persistence, migrations, provider I/O, process/env, routing, or user-facing workflows.
+Use selected modes only. Do not run every listed axis merely because a mode matched, but do not leave any in-scope changed behavior unreviewed. Select axes whose failure modes are plausible from changed code and direct contracts; include high-risk axes when scope touches auth, permissions, persistence, migrations, provider I/O, process/env, routing, or user-facing workflows.
 
 For any selected mode, read `references/code-quality.md` when scope adds or changes authored helpers, composables, function signatures, normalization/resolve layers, duplicate domain helpers, or public-ish APIs.
 
@@ -130,17 +137,17 @@ Status: `actionable|suspected|out-of-scope|user-decision`. Clean: `no actionable
 5. No broad redesign, public contract reshape, package/routing/auth/session/deploy/DB engine/ORM migration/destructive repair/product change without approval.
 6. Do not “fix” by weakening tests, changing expected behavior without approval, adding speculative refactor, dependency upgrade, legacy path, or compatibility shim that violates stated direction.
 7. After fixes: re-review touched files/contracts; run targeted validation.
-8. Affected-axis re-review after fixes. Full selected-axis pass before final cleanup if relevant files changed since last pass.
+8. Affected-axis re-review after fixes. If fixes alter reviewed behavior, refresh the coverage map and repeat selected axes until the entire scope is clean.
 9. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
 
 ## Validation
 
 Discover repo commands. Prefer targeted tests, touched-package typecheck/lint, route/API/middleware/webhook/integration mocks, browser/runtime tests, schema/generated-client checks, migration dry-run, SQL lint/parse, local/test DB, query/transaction tests, CLI/import checks.
 
-Final: project CI or nearest local equivalent for scope. If format/lint-fix exists and code changed, run cleanup, re-review changed files, rerun validation.
+Final: project CI or nearest local equivalent for scope. If format/lint-fix exists and code changed, run cleanup, re-review changed files/contracts, rerun validation. Final status cannot be clean unless scoped coverage, fixes, re-review, and validation are complete or explicitly blocked.
 
 Never prod-affecting/destructive/deploy/dependency update/secret rotation/live provider/destructive migration/seed reset/backfill/shared-env DB write without approval.
 
 ## Final
 
-Include scope, modes, review-only vs fix, axis execution, final status, axis summary, fixed issues, deferred decisions, validation, remaining risks. No code changes? say so. No decisions? “No remaining user decisions.” Validation blocked? exact missing service/credential/dependency/env.
+Include scope, coverage summary, modes, review-only vs fix, axis execution, final status, axis summary, fixed issues, deferred decisions, validation, remaining risks. No code changes? say so. No decisions? “No remaining user decisions.” Validation blocked? exact missing service/credential/dependency/env.
