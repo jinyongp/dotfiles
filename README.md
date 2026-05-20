@@ -18,6 +18,8 @@ Run a single target directly when you only want one part of the setup.
 
 ```sh
 ~/.dotfiles/install neovim
+~/.dotfiles/install agents
+~/.dotfiles/install packages taskwarrior
 ~/.dotfiles/install packages fnm eza
 ~/.dotfiles/install theme
 ```

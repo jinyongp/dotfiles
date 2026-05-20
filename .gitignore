@@ -1,6 +1,7 @@
 -*
 __*
 .codex
+.taskwarrior/
 .backup
 .DS_Store
 

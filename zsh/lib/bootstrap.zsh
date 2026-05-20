@@ -10,10 +10,10 @@ typeset -g DOTFILES_BOOTSTRAP_LOADED=1
 
 source "$DOTFILES/zsh/lib/helpers.zsh"
 
-dotfiles_prepend_path "$DOTFILES/cmd"
 dotfiles_load_install_env
 dotfiles_detect_platform || true
 dotfiles_configure_base_toolchain
 dotfiles_source_if_exists "$DOTFILES_ENV_ZSH"
+dotfiles_prepend_path "$DOTFILES/cmd"
 
 unset _dotfiles_bootstrap_path

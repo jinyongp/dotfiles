@@ -2,14 +2,15 @@
   "[shellscript]": {
     "editor.defaultFormatter": "bmalehorn.shell-syntax"
   },
+  "cSpell.numSuggestions": 0,
   "cSpell.customDictionaries": {
-    "custom": true,
-    "internal-terms": false,
-    "project-dictionary": {
+    "words": {
       "name": "Workspace",
       "path": "${workspaceRoot}/.vscode/dictionary.txt",
       "addWords": true,
       "scope": "workspace"
     },
+    "custom": true,
+    "internal-terms": false
   },
 }

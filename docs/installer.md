@@ -63,6 +63,9 @@ You can skip the interactive flow and run a single target directly.
 
 ```sh
 ./install neovim
+./install agents
+./install agents codex
+./install packages taskwarrior
 ./install packages fnm eza
 ./install theme
 ```
@@ -73,6 +76,8 @@ Notes:
 - leaf modules such as `packages`, `oh_my_zsh`, `fonts`, and `desktop_apps` accept item IDs after the target name
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`
+- direct `agents` installs shared AI agent rules for detected tools; pass `codex` to prepare Codex config even when the CLI is not installed
+- `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/task` shim stays ahead in PATH and delegates to that binary
 
 ## Conditional Prompts
 
@@ -123,6 +128,11 @@ Machine-local overrides and generated config live outside the repository.
 - backups for replaced linked files: `~/.config/dotfiles/backups/<timestamp>`
 - Git path overrides: `~/.config/dotfiles/git/root.local.ini`
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
+AI agent setup is intentionally additive. `./install agents` keeps shared rule files in the repo-managed `agents/rules/` directory and shared skill sources in `agents/skills/`, then adds or updates a marked include block in `~/.codex/AGENTS.md`.
+For Codex, it also links the shared `caveman`, `git-commit`, `planning`, `review-loop`, and `taskwarrior` skills into `~/.codex/skills/<name>` when the target path does not already exist.
+It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
+
+Taskwarrior project-local mode is opt-in per repository. When `.taskwarrior/taskrc` exists in the current directory or a parent, the repo-managed `cmd/task` shim sets `TASKRC` and `TASKDATA` to that project before delegating to the real Taskwarrior binary. If no project-local config is found, it falls back to the normal global Taskwarrior config.
 
 The installer creates the shell override files with header comments when they do not already exist.
 Existing override files are preserved.

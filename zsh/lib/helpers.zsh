@@ -11,13 +11,22 @@ dotfiles_source_if_exists() {
 
 dotfiles_prepend_path() {
   local path_entry="$1"
+  local entry rebuilt_path=""
+  local -a path_entries
 
   [[ -d "$path_entry" ]] || return 0
 
-  case ":$PATH:" in
-    *":$path_entry:"*) ;;
-    *) export PATH="$path_entry:$PATH" ;;
-  esac
+  path_entries=("${(@s.:.)PATH}")
+  for entry in "${path_entries[@]}"; do
+    [[ "$entry" == "$path_entry" ]] && continue
+    if [[ -n "$rebuilt_path" ]]; then
+      rebuilt_path="$rebuilt_path:$entry"
+    else
+      rebuilt_path="$entry"
+    fi
+  done
+
+  export PATH="$path_entry${rebuilt_path:+:$rebuilt_path}"
 }
 
 dotfiles_configure_npm_global_path() {

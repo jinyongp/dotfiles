@@ -293,6 +293,16 @@ zsh_bootstrap_test::assert_shared_runtime_paths() {
 
   zsh_bootstrap_test::run_zsh "$name" -c '
     case ":$PATH:" in
+      *":'"$DOTFILES_ROOT"'/cmd:"*) ;;
+      *) print -r -- "missing-dotfiles-cmd-path"; exit 1 ;;
+    esac
+
+    case ":$PATH:" in
+      ":'"$DOTFILES_ROOT"'/cmd:"*) ;;
+      *) print -r -- "dotfiles-cmd-not-first"; exit 1 ;;
+    esac
+
+    case ":$PATH:" in
       *":'"$NPM_GLOBAL_BIN"':"*) ;;
       *) print -r -- "missing-npm-global-path"; exit 1 ;;
     esac
@@ -326,6 +336,36 @@ local_zsh=$HOME_DIR/.config/dotfiles/local.zsh
 pnpm_home=$HOME_DIR/Library/pnpm
 fnm_multishell=$expected_runtime_dir/fnm_multishell
 paths-ok
+EOF
+)"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
+zsh_bootstrap_test::assert_task_shim_project_local() {
+  local name="task_shim_project_local"
+  local project_dir="$WORK_DIR/task-project"
+  local project_real_dir=""
+
+  mkdir -p "$project_dir/.taskwarrior/data" "$WORK_DIR/real-task-bin"
+  project_real_dir="$(cd "$project_dir" && pwd -P)"
+  printf 'data.location=%s\nconfirmation=1\n' "$project_real_dir/.taskwarrior/data" >"$project_real_dir/.taskwarrior/taskrc"
+  zsh_bootstrap_test::write_executable "$WORK_DIR/real-task-bin/task" \
+    '#!/bin/sh' \
+    'printf "TASKRC=%s\n" "${TASKRC:-}"' \
+    'printf "TASKDATA=%s\n" "${TASKDATA:-}"'
+
+  (
+    cd "$project_real_dir" || exit 1
+    zsh_bootstrap_test::run_zsh "$name" -c '
+      export PATH="'"$DOTFILES_ROOT"'/cmd:'"$WORK_DIR"'/real-task-bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      task list
+    '
+  )
+
+  zsh_bootstrap_test::assert_output "$name" "$(cat <<EOF
+TASKRC=$project_real_dir/.taskwarrior/taskrc
+TASKDATA=$project_real_dir/.taskwarrior/data
 EOF
 )"
   zsh_bootstrap_test::assert_no_stderr "$name"
@@ -376,6 +416,7 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_bootstrap_guard_not_exported
   zsh_bootstrap_test::assert_set_e_direct_bootstrap
   zsh_bootstrap_test::assert_shared_runtime_paths
+  zsh_bootstrap_test::assert_task_shim_project_local
   zsh_bootstrap_test::assert_interactive_fnm_hook
   zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc
 

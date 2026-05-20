@@ -35,6 +35,7 @@ ibmcloud
 ignorecase
 incsearch
 iterm
+jinyongp
 karabiner
 keka
 kekaexternalhelper
@@ -87,6 +88,9 @@ strikethrough
 tablin
 tabline
 tamcore
+taskdata
+taskrc
+taskwarrior
 termencoding
 tlrc
 ttimeout
