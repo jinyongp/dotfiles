@@ -22,6 +22,12 @@ Aliases:
 
 Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`. No mode: infer from request/files; unclear => ask one mode question.
 
+Infer mode from paths/content:
+- web: `component|page|layout|style|css|client|browser|hydration|asset`
+- server: `route|api|middleware|controller|auth|session|webhook|job|queue`
+- database: `schema|migration|sql|prisma|drizzle|typeorm|model|repository`
+- node: `package.json|tsconfig|script|cli|worker|build|esm|cjs|fs|process`
+
 ## Contract
 
 Parent owns scope, modes, axes, findings, fixes, decisions, validation, oscillation, subagents. Final = canonical review record unless user asks otherwise.
@@ -30,7 +36,7 @@ Parent owns scope, modes, axes, findings, fixes, decisions, validation, oscillat
 
 1. Scope explicit wins. No scope = current Git uncommitted only. Never whole repo by default.
 2. Stop+ask if no Git repo, empty default scope, unreadable/unclear target, unclear modes.
-3. Review-only only if user says review-only/audit/report/summary/no edits/findings. Else review-and-fix.
+3. User says plain `review`/`code review` only => review-only. User says `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
 4. First pass: read-only axis subagents if available; else ask serial fallback approval.
 5. Budget = live thread. Run axes in waves; do not drop axes.
 6. Subagents direct children only, no recursion, read-only.
@@ -40,6 +46,12 @@ Parent owns scope, modes, axes, findings, fixes, decisions, validation, oscillat
 10. Close subagents before final CI/end; copy unresolved findings first.
 11. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
 12. DB guard: no prod/staging migrations, destructive resets, seed truncation, backfills, data repair, live provider ops, shared-env writes without explicit approval.
+
+Severity:
+- P0: exploit/data loss/prod outage
+- P1: likely bug/regression/security/auth/data-integrity issue
+- P2: edge-case bug, missing validation/test causing real risk
+- P3: maintainability/nit only if correctness/operation affected
 
 ## Scope Discovery
 
@@ -52,7 +64,7 @@ git diff --cached -- <path>
 git diff -- <path>
 ```
 
-Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; empty default ask+stop; classify paths by modes; read only direct deps/contracts/tests/config/generated sources needed to confirm findings.
+Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; classify paths by modes; read only direct deps/contracts/tests/config/generated sources needed to confirm findings.
 
 ## Axes
 
@@ -91,7 +103,17 @@ Custom axes: preserve. Too many axes => waves. Do not merge unless asked.
 
 ## Subagent Prompt
 
-Each axis gets same scope + one axis. Read-only. Adjacent direct contracts OK only to confirm concrete finding. Return only file refs, evidence, severity, likely root cause, suggested validation, status: `actionable|suspected|out-of-scope|user-decision`. Clean: “no actionable findings”. No writes/validation.
+Each axis gets same scope + one axis. Also pass relevant known context: user decisions, explicit non-goals, allowed/forbidden approaches, legacy/compat policy, product constraints, validation constraints, repo conventions, prior accepted risks. Do not let subagents flag issues that contradict accepted constraints.
+
+Read-only. Adjacent direct contracts OK only to confirm concrete finding. No writes/validation.
+
+Finding format:
+
+```text
+path:line | P0-P3 | mode/axis | status | issue | fix | validation
+```
+
+Status: `actionable|suspected|out-of-scope|user-decision`. Clean: `no actionable findings`. Include evidence, not prose.
 
 ## Fix Loop
 
@@ -100,9 +122,10 @@ Each axis gets same scope + one axis. Read-only. Adjacent direct contracts OK on
 3. If not review-only, fix clear local in-scope issues.
 4. Prove suspected security/race/runtime/cache/webhook/data/transaction/migration/query/integration bugs before edit with smallest reliable repro/test/dry-run/schema/query/transaction/replay/mock/import check.
 5. No broad redesign, public contract reshape, package/routing/auth/session/deploy/DB engine/ORM migration/destructive repair/product change without approval.
-6. After fixes: re-review touched files/contracts; run targeted validation.
-7. Affected-axis re-review after fixes. Full selected-axis pass before final cleanup if relevant files changed since last pass.
-8. Check oscillation before touching same issue again.
+6. Do not “fix” by weakening tests, changing expected behavior without approval, adding speculative refactor, dependency upgrade, legacy path, or compatibility shim that violates stated direction.
+7. After fixes: re-review touched files/contracts; run targeted validation.
+8. Affected-axis re-review after fixes. Full selected-axis pass before final cleanup if relevant files changed since last pass.
+9. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
 
 ## Validation
 
