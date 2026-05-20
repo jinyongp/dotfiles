@@ -18,7 +18,28 @@ Use when user asks plan/design/approach/tradeoffs or task is ambiguous/non-trivi
 - Unknown? Say unknown; ask.
 - Trivial/specified? Proceed with stated assumptions.
 
-Do not rubber-stamp unsafe/abstract/under-specified/inconsistent/conflicting decisions. Surface issue; suggest correction.
+Do not accept unsafe/abstract/under-specified/inconsistent/conflicting decisions as-is, even if user "decided". Surface issue; suggest correction.
+
+## Ledger
+
+Keep unresolved items visible in conversation:
+
+- scope
+- constraints
+- success criteria
+- non-goals
+- validation
+- owner decision needed
+
+Never move open decisions into docs as settled facts.
+
+## Gates
+
+- Free-text decision with scope/constraints? Restate structured meaning before acting.
+- Completion signal from tool/agent/MCP? Treat as candidate; run local acceptance check.
+- Before execution, restate final goal in one sentence when ambiguity was material.
+- No candidate accepted by default. User choice, explicit constraint, or verified code fact required.
+- If two accepted items conflict, stop and reconcile before work.
 
 ## Before Work
 
@@ -36,6 +57,8 @@ Do not rubber-stamp unsafe/abstract/under-specified/inconsistent/conflicting dec
 - Options useful? include options + required recommendation.
 - Mark optional choices optional.
 - Do not let docs hide unresolved choices.
+- User answer vague? Convert to testable wording and confirm.
+- User answer risky? Present guardrail, default recommendation, and consequence.
 
 ## Docs
 
