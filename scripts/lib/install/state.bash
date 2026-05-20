@@ -3,6 +3,7 @@
 MODULE_ORDER=(
   packages
   dotfiles
+  agents
   oh_my_zsh
   neovim
   fonts
@@ -10,7 +11,7 @@ MODULE_ORDER=(
   macos_defaults
 )
 
-LEAF_MODULES="packages oh_my_zsh fonts desktop_apps"
+LEAF_MODULES="packages agents oh_my_zsh fonts desktop_apps"
 
 # Mutable installer state is initialized explicitly so tests and entrypoints can
 # reset plan state without re-sourcing libraries.

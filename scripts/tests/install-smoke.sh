@@ -228,6 +228,7 @@ install_smoke_test::write_fake_commands() {
     '    fnm) make_cmd fnm ;;' \
     '    jq) make_cmd jq ;;' \
     '    gh) make_cmd gh ;;' \
+    '    task) make_cmd task ;;' \
     '    zsh) make_cmd zsh ;;' \
     '  esac' \
     '}' \
@@ -343,7 +344,7 @@ install_smoke_test::write_fake_commands() {
     '#!/bin/sh' \
     'package_name="${2:-}"' \
     'case "$package_name" in' \
-    '  jq|eza|git|curl|unzip|zsh|neovim|ripgrep|fd-find|tealdeer|gnupg|starship|gh)' \
+    '  jq|eza|git|curl|unzip|zsh|neovim|ripgrep|fd-find|tealdeer|gnupg|starship|gh|taskwarrior)' \
     '    exit 0' \
     '    ;;' \
     'esac' \
@@ -387,6 +388,7 @@ install_smoke_test::write_fake_commands() {
     '    tealdeer) make_cmd tldr ;;' \
     '    gnupg) make_cmd gpg ;;' \
     '    starship) make_cmd starship ;;' \
+    '    taskwarrior) make_cmd task ;;' \
     '  esac' \
     '}' \
     'case "${1:-}" in' \
@@ -548,12 +550,56 @@ install_smoke_test::assert_direct_neovim() {
   printf 'ok direct_neovim\n'
 }
 
+install_smoke_test::assert_direct_agents() {
+  local normalized_output
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "direct-agents"
+
+  mkdir -p "$HOME_DIR/.codex/sessions" "$HOME_DIR/.codex/cache"
+  mkdir -p "$HOME_DIR/.codex/skills/caveman"
+  printf '%s\n' '{"token":"keep"}' >"$HOME_DIR/.codex/auth.json"
+  printf '%s\n' 'local-caveman-skill' >"$HOME_DIR/.codex/skills/caveman/SKILL.md"
+  {
+    printf '%s\n' '# Local Codex Rules'
+    printf '%s\n' "@$HOME_DIR/.codex/RTK.md"
+    printf '%s\n' "@$HOME_DIR/.codex/skills/caveman/SKILL.md"
+    printf '%s\n' 'Use Browser Plugin for browser checks, not Playwright.'
+  } >"$HOME_DIR/.codex/AGENTS.md"
+  printf '%s\n' 'local-session' >"$HOME_DIR/.codex/sessions/session.jsonl"
+
+  install_smoke_test::run_direct_install agents
+  install_smoke_test::assert_no_stderr "$ERROR_FILE"
+
+  normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
+  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "agents direct install should complete"
+  install_smoke_test::assert_not_contains "$normalized_output" "Warning: Skipping existing agent skill" "existing agent skills should not be report warnings"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "# Local Codex Rules" "agents install should preserve existing Codex AGENTS.md content"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "<!-- dotfiles:agents:codex:start -->" "agents install should add managed Codex block"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agents install should include BASE.md first for Codex"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$HOME_DIR/.codex/skills/caveman/SKILL.md" "agents install should preserve existing legacy includes"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "Use Browser Plugin for browser checks, not Playwright." "agents install should preserve existing legacy rules"
+  if grep -Fq -- "$DOTFILES_ROOT/agents/rules/PLANNING.md" "$HOME_DIR/.codex/AGENTS.md"; then
+    install_smoke_test::fail "codex install should not always-read planning rules"
+  fi
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/planning" "$DOTFILES_ROOT/agents/skills/planning"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"
+  install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok direct_agents\n'
+}
+
 install_smoke_test::assert_direct_packages() {
   local normalized_output
 
   install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-packages"
-  install_smoke_test::run_direct_install packages fnm eza
+  install_smoke_test::run_direct_install packages fnm eza taskwarrior
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
@@ -561,8 +607,10 @@ install_smoke_test::assert_direct_packages() {
   install_smoke_test::assert_contains "$normalized_output" "No shell restart is needed." "packages direct install should not need shell restart"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fnm" "expected brew install for fnm"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install eza" "expected brew install for eza"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install task" "expected brew install for taskwarrior"
   install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/fnm"
   install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/eza"
+  install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/task"
   install_smoke_test::assert_not_exists "$HOME_DIR/.zshenv"
   install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/git"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
@@ -694,6 +742,7 @@ install_smoke_test::main() {
   install_smoke_test::assert_direct_dotfiles
   install_smoke_test::assert_direct_theme
   install_smoke_test::assert_direct_neovim
+  install_smoke_test::assert_direct_agents
   install_smoke_test::assert_direct_packages
   install_smoke_test::assert_direct_fonts
   install_smoke_test::assert_direct_desktop_apps

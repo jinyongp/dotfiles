@@ -90,6 +90,7 @@ install_entrypoint_test::assert_list() {
   install_entrypoint_test::run_install "list" list
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "Available direct install targets:"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "dotfiles:"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "agents:"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "theme:"
   install_entrypoint_test::assert_no_stderr "list"
   printf 'ok list\n'

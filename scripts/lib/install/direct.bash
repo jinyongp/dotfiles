@@ -5,6 +5,7 @@ install::normalize_direct_target() {
     vim|nvim) printf 'neovim' ;;
     omz|oh-my-zsh) printf 'oh_my_zsh' ;;
     desktop-apps) printf 'desktop_apps' ;;
+    codex|codex-cli) printf 'agents' ;;
     macos-defaults) printf 'macos_defaults' ;;
     *) printf '%s' "$1" ;;
   esac
@@ -35,6 +36,7 @@ install::load_direct_item_records() {
 
   case "$module_id" in
     packages) install::read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER" ;;
+    agents) install::read_records_into_array "$array_name" catalog::agent_records ;;
     oh_my_zsh) install::read_records_into_array "$array_name" catalog::omz_plugin_records ;;
     fonts) install::read_records_into_array "$array_name" catalog::font_records ;;
     desktop_apps) install::read_records_into_array "$array_name" catalog::desktop_app_records ;;
@@ -143,6 +145,7 @@ Usage:
 Direct targets:
   packages
   dotfiles
+  agents
   oh_my_zsh
   neovim
   fonts
@@ -154,9 +157,14 @@ Aliases:
   vim -> neovim
   nvim -> neovim
   omz -> oh_my_zsh
+  codex -> agents codex
+  codex-cli -> agents codex
 
 Examples:
   $install_path_display neovim
+  $install_path_display agents
+  $install_path_display agents codex
+  $install_path_display packages taskwarrior
   $install_path_display packages fnm eza
   $install_path_display desktop_apps iterm2 raycast
   $install_path_display theme
@@ -176,8 +184,12 @@ install::print_direct_target_list() {
 install::configure_direct_install() {
   local target="$1"
   shift || true
+  local requested_target="$target"
 
   target="$(install::normalize_direct_target "$target")"
+  case "$requested_target" in
+    codex|codex-cli) set -- codex "$@" ;;
+  esac
 
   DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"
   DOTFILES_RUN_THEME_INSTALL="0"

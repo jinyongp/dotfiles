@@ -53,6 +53,8 @@ install_direct_test::assert_alias_normalization() {
   install_direct_test::assert_equal "$(install::normalize_direct_target nvim)" "neovim" "expected nvim alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target omz)" "oh_my_zsh" "expected omz alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target desktop-apps)" "desktop_apps" "expected desktop-apps alias"
+  install_direct_test::assert_equal "$(install::normalize_direct_target codex)" "agents" "expected codex alias"
+  install_direct_test::assert_equal "$(install::normalize_direct_target codex-cli)" "agents" "expected codex-cli alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target macos-defaults)" "macos_defaults" "expected macos-defaults alias"
   printf 'ok alias_normalization\n'
 }
@@ -90,14 +92,30 @@ install_direct_test::assert_item_args_rejected_for_non_leaf_module() {
 install_direct_test::assert_packages_items_configured() {
   install_direct_test::reset_case
 
-  install::configure_direct_install packages fnm eza
+  install::configure_direct_install packages fnm eza taskwarrior
 
   install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "packages" "expected packages selected"
   install_direct_test::assert_equal "$DOTFILES_PACKAGE_MANAGER" "brew" "expected brew package manager on macOS"
-  install_direct_test::assert_equal "$(install::get_module_items packages)" "fnm eza" "expected package item ids"
-  install_direct_test::assert_equal "$(install::get_module_item_labels packages)" "eza, fnm" "expected package item labels"
+  install_direct_test::assert_equal "$(install::get_module_items packages)" "fnm eza taskwarrior" "expected package item ids"
+  install_direct_test::assert_equal "$(install::get_module_item_labels packages)" "eza, fnm, Taskwarrior" "expected package item labels"
   install_direct_test::assert_equal "$DOTFILES_RUN_THEME_INSTALL" "0" "did not expect theme install for packages"
   printf 'ok packages_items_configured\n'
+}
+
+install_direct_test::assert_agents_items_configured() {
+  install_direct_test::reset_case
+
+  install::configure_direct_install agents codex
+
+  install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "agents" "expected agents selected"
+  install_direct_test::assert_equal "$(install::get_module_items agents)" "codex" "expected agent item ids"
+  install_direct_test::assert_equal "$(install::get_module_item_labels agents)" "Codex" "expected agent item labels"
+
+  install::configure_direct_install codex
+
+  install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "agents" "expected codex alias to select agents"
+  install_direct_test::assert_equal "$(install::get_module_items agents)" "codex" "expected codex alias item"
+  printf 'ok agents_items_configured\n'
 }
 
 install_direct_test::assert_direct_item_dependencies_configured() {
@@ -142,6 +160,7 @@ install_direct_test::main() {
   install_direct_test::assert_invalid_target_fails
   install_direct_test::assert_item_args_rejected_for_non_leaf_module
   install_direct_test::assert_packages_items_configured
+  install_direct_test::assert_agents_items_configured
   install_direct_test::assert_direct_item_dependencies_configured
   install_direct_test::assert_theme_target_configured
   printf 'all install direct tests passed\n'
