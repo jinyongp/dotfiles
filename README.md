@@ -2,26 +2,46 @@
 
 ## Installation
 
-Clone the repository to `~/.dotfiles`.
+Clone the repository to `~/.dotfiles`, then run the installer.
 
 ```sh
 git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles
+~/.dotfiles/install
 ```
 
-Run the interactive installer.
+Use the `dotfiles` command after shell setup is installed.
 
 ```sh
-~/.dotfiles/install
+dotfiles install
+dotfiles list
+dotfiles update
 ```
 
 Run a single target directly when you only want one part of the setup.
 
 ```sh
-~/.dotfiles/install neovim
-~/.dotfiles/install agents
-~/.dotfiles/install packages taskwarrior
-~/.dotfiles/install packages fnm eza
-~/.dotfiles/install theme
+dotfiles install neovim
+dotfiles install agents
+dotfiles install packages taskwarrior
+dotfiles install packages fnm eza
+dotfiles install theme
+```
+
+When no other `dfx` command is installed, zsh gets `dfx` as a short alias for `dotfiles`.
+
+For a quick install on a new machine, use the remote bootstrap script.
+The script clones or fast-forwards `~/.dotfiles`, then runs the installer.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/jinyongp/dotfiles/main/scripts/install-remote.bash | bash
+```
+
+To inspect it first:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/jinyongp/dotfiles/main/scripts/install-remote.bash
+less install-remote.bash
+bash install-remote.bash
 ```
 
 The interactive installer is plan-first: it starts with a profile (`Minimal`, `Recommended`, `Full`, or `Custom`), then lets you review, revise, or cancel the final plan before anything runs.

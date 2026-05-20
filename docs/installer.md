@@ -4,7 +4,40 @@ This document covers the interactive installer, direct install targets, and mach
 
 ## Interactive Flow
 
-Run the top-level installer from the repo root or from `~/.dotfiles`.
+Clone the repository, then run the top-level installer from the repo root or from `~/.dotfiles`.
+
+```sh
+git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles
+~/.dotfiles/install
+```
+
+After the shell dotfiles are installed, `$DOTFILES/cmd` is available on `PATH`, so the same flow is available through the `dotfiles` command.
+
+```sh
+dotfiles install
+dotfiles list
+dotfiles update
+dotfiles doctor
+```
+
+When no existing `dfx` command is installed, zsh defines `dfx` as a short alias for `dotfiles`.
+
+The remote bootstrap script is a shortcut for new machines.
+It clones or fast-forwards the repository first, then runs the installer.
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/jinyongp/dotfiles/main/scripts/install-remote.bash | bash
+```
+
+To inspect the remote bootstrap before running it:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/jinyongp/dotfiles/main/scripts/install-remote.bash
+less install-remote.bash
+bash install-remote.bash
+```
+
+From inside an existing checkout, the installer can still be run directly.
 
 ```sh
 ./install
@@ -62,17 +95,18 @@ Set `DOTFILES_INSTALL_UI_MODE=plain|compact|rich` to choose the interactive inst
 You can skip the interactive flow and run a single target directly.
 
 ```sh
-./install neovim
-./install agents
-./install agents codex
-./install packages taskwarrior
-./install packages fnm eza
-./install theme
+dotfiles install neovim
+dotfiles install agents
+dotfiles install agents codex
+dotfiles install packages taskwarrior
+dotfiles install packages fnm eza
+dotfiles install theme
 ```
 
 Notes:
 
-- `install list` prints the available direct-install targets for the current platform
+- `dotfiles list` prints the available direct-install targets for the current platform
+- direct `./install ...` still works from inside the repository
 - leaf modules such as `packages`, `oh_my_zsh`, `fonts`, and `desktop_apps` accept item IDs after the target name
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`

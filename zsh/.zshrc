@@ -47,6 +47,8 @@ dotfiles_configure_theme
 source "$_dotfiles_zsh_root/env.zsh"
 source "$_dotfiles_zsh_root/plugin.zsh"
 
+fpath=("$_dotfiles_zsh_root/completions" $fpath)
+
 if dotfiles_has_terminal_ui && [[ "${DOTFILES_ENABLE_OH_MY_ZSH:-0}" != "0" && -d "${ZSH:-$HOME/.oh-my-zsh}" ]]; then
   source "$ZSH/oh-my-zsh.sh"
 fi

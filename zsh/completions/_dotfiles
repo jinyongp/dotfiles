@@ -1,0 +1,32 @@
+#compdef dotfiles dfx
+
+local -a entries
+local command_name target
+
+command_name="${words[2]:-}"
+target="${words[3]:-}"
+
+case "$CURRENT" in
+  2)
+    entries=("${(@f)$(dotfiles complete commands 2>/dev/null)}")
+    _describe -t commands 'dotfiles command' entries
+    ;;
+  3)
+    case "$command_name" in
+      install)
+        entries=("${(@f)$(dotfiles complete targets 2>/dev/null)}")
+        _describe -t install-targets 'install target' entries
+        ;;
+    esac
+    ;;
+  *)
+    case "$command_name" in
+      install)
+        entries=("${(@f)$(dotfiles complete items "$target" 2>/dev/null)}")
+        if (( ${#entries[@]} > 0 )); then
+          _describe -t install-items 'install item' entries
+        fi
+        ;;
+    esac
+    ;;
+esac

@@ -67,11 +67,31 @@ install_entrypoint_test::assert_syntax() {
   local file
 
   bash -n "$DOTFILES_ROOT/install"
+  bash -n "$DOTFILES_ROOT/cmd/dotfiles"
+  bash -n "$DOTFILES_ROOT/scripts/install-remote.bash"
   for file in "$DOTFILES_ROOT"/scripts/lib/install/*.bash; do
     bash -n "$file"
   done
 
   printf 'ok syntax\n'
+}
+
+install_entrypoint_test::run_dotfiles_command() {
+  local name="$1"
+  shift || true
+
+  local output_file="$WORK_DIR/${name}.out"
+  local error_file="$WORK_DIR/${name}.err"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    dotfiles "$@" >"$output_file" 2>"$error_file"
 }
 
 install_entrypoint_test::assert_help() {
@@ -94,6 +114,26 @@ install_entrypoint_test::assert_list() {
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "theme:"
   install_entrypoint_test::assert_no_stderr "list"
   printf 'ok list\n'
+}
+
+install_entrypoint_test::assert_dotfiles_command() {
+  install_entrypoint_test::run_dotfiles_command "dotfiles_path" path
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_path.out" "$DOTFILES_ROOT"
+  install_entrypoint_test::assert_no_stderr "dotfiles_path"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_commands" complete commands
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_commands.out" "install:run the interactive installer or direct install target"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_commands"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_targets" complete targets
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "neovim:Neovim"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_targets"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_items" complete items packages
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_items.out" "taskwarrior:Taskwarrior"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_items"
+
+  printf 'ok dotfiles_command\n'
 }
 
 install_entrypoint_test::assert_invalid_target() {
@@ -121,6 +161,7 @@ install_entrypoint_test::main() {
   install_entrypoint_test::assert_syntax
   install_entrypoint_test::assert_help
   install_entrypoint_test::assert_list
+  install_entrypoint_test::assert_dotfiles_command
   install_entrypoint_test::assert_invalid_target
 }
 

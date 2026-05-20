@@ -4,6 +4,10 @@ if dotfiles_has_command git; then
   alias 'gcmsg!'="gc! --message"
 fi
 
+if dotfiles_has_command dotfiles && ! dotfiles_has_command dfx; then
+  alias dfx="dotfiles"
+fi
+
 if dotfiles_has_command eza; then
   alias ls="eza --classify --icons --color=automatic --header --sort=type --git --show-symlinks"
   alias la="ls --all --long"

@@ -1,0 +1,194 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+dotfiles::usage() {
+  cat <<EOF
+Usage:
+  dotfiles install [target] [item...]
+  dotfiles list
+  dotfiles update
+  dotfiles doctor
+  dotfiles path
+
+Aliases:
+  dfx -> dotfiles, when no existing dfx command is installed
+EOF
+}
+
+dotfiles::ensure_git_repo() {
+  if ! git -C "$DOTFILES_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'dotfiles: not a git repository: %s\n' "$DOTFILES_ROOT" >&2
+    return 1
+  fi
+}
+
+dotfiles::ensure_clean_worktree() {
+  local status=""
+
+  status="$(git -C "$DOTFILES_ROOT" status --porcelain)"
+  if [[ -n "$status" ]]; then
+    printf 'dotfiles: local changes found; refusing to update.\n' >&2
+    printf '%s\n' "$status" >&2
+    return 1
+  fi
+}
+
+dotfiles::update() {
+  local upstream=""
+  local local_head=""
+  local remote_head=""
+
+  dotfiles::ensure_git_repo
+  dotfiles::ensure_clean_worktree
+
+  upstream="$(git -C "$DOTFILES_ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+  if [[ -z "$upstream" ]]; then
+    printf 'dotfiles: current branch has no upstream.\n' >&2
+    printf 'dotfiles: run: git -C %q pull --ff-only <remote> <branch>\n' "$DOTFILES_ROOT" >&2
+    return 1
+  fi
+
+  git -C "$DOTFILES_ROOT" fetch --prune
+
+  local_head="$(git -C "$DOTFILES_ROOT" rev-parse HEAD)"
+  remote_head="$(git -C "$DOTFILES_ROOT" rev-parse "$upstream")"
+
+  if [[ "$local_head" == "$remote_head" ]]; then
+    printf 'dotfiles: already up to date.\n'
+    return 0
+  fi
+
+  git -C "$DOTFILES_ROOT" pull --ff-only
+}
+
+dotfiles::doctor() {
+  local failed=0
+
+  printf 'root: %s\n' "$DOTFILES_ROOT"
+
+  if git -C "$DOTFILES_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    printf 'git: ok\n'
+  else
+    printf 'git: missing repo\n'
+    failed=1
+  fi
+
+  if [[ -x "$DOTFILES_ROOT/install" ]]; then
+    printf 'installer: ok\n'
+  else
+    printf 'installer: not executable\n'
+    failed=1
+  fi
+
+  if [[ -d "$DOTFILES_ROOT/zsh" && -d "$DOTFILES_ROOT/cmd" ]]; then
+    printf 'layout: ok\n'
+  else
+    printf 'layout: missing expected directories\n'
+    failed=1
+  fi
+
+  return "$failed"
+}
+
+dotfiles::complete_records() {
+  local id=""
+  local label=""
+
+  while IFS=$'\t' read -r id label _; do
+    [[ -n "$id" ]] || continue
+    printf '%s:%s\n' "$id" "$label"
+  done
+}
+
+dotfiles::complete() {
+  local context="${1:-commands}"
+  local module_id="${2:-}"
+  local platform=""
+
+  export DOTFILES_ROOT
+  # shellcheck disable=SC1091
+  source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
+  # shellcheck disable=SC1091
+  source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+
+  platform="${DOTFILES_PLATFORM:-}"
+  if [[ -z "$platform" ]]; then
+    platform="$(dotfiles::detect_platform_id 2>/dev/null || true)"
+  fi
+  if [[ -z "$platform" ]]; then
+    platform="linux"
+  fi
+
+  case "$context" in
+    commands)
+      cat <<'EOF'
+install:run the interactive installer or direct install target
+list:list direct install targets
+update:fast-forward this dotfiles repository
+doctor:check the local dotfiles setup
+path:print the dotfiles repository path
+help:show help
+EOF
+      ;;
+    targets)
+      catalog::module_records "$platform" | dotfiles::complete_records
+      cat <<'EOF'
+theme:Install dependencies for the current shell theme.
+vim:alias for neovim
+nvim:alias for neovim
+omz:alias for oh_my_zsh
+desktop-apps:alias for desktop_apps
+codex:alias for agents codex
+codex-cli:alias for agents codex
+EOF
+      if [[ "$platform" == "macos" ]]; then
+        cat <<'EOF'
+macos-defaults:alias for macos_defaults
+EOF
+      fi
+      ;;
+    items)
+      case "$module_id" in
+        packages) catalog::package_records brew | dotfiles::complete_records ;;
+        agents) catalog::agent_records | dotfiles::complete_records ;;
+        oh_my_zsh|omz) catalog::omz_plugin_records | dotfiles::complete_records ;;
+        fonts) catalog::font_records | dotfiles::complete_records ;;
+        desktop_apps|desktop-apps) catalog::desktop_app_records | dotfiles::complete_records ;;
+      esac
+      ;;
+  esac
+}
+
+case "${1:-help}" in
+  -h|--help|help)
+    dotfiles::usage
+    ;;
+  install)
+    shift
+    exec "$DOTFILES_ROOT/install" "$@"
+    ;;
+  list)
+    exec "$DOTFILES_ROOT/install" list
+    ;;
+  update)
+    dotfiles::update
+    ;;
+  doctor)
+    dotfiles::doctor
+    ;;
+  path)
+    printf '%s\n' "$DOTFILES_ROOT"
+    ;;
+  complete)
+    shift
+    dotfiles::complete "$@"
+    ;;
+  *)
+    printf 'dotfiles: unknown command: %s\n' "$1" >&2
+    dotfiles::usage >&2
+    exit 2
+    ;;
+esac
