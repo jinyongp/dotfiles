@@ -143,6 +143,8 @@ omz:alias for oh_my_zsh
 desktop-apps:alias for desktop_apps
 codex:alias for agents codex
 codex-cli:alias for agents codex
+claude:alias for agents claude
+claude-cli:alias for agents claude
 EOF
       if [[ "$platform" == "macos" ]]; then
         cat <<'EOF'

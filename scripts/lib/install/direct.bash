@@ -6,6 +6,7 @@ install::normalize_direct_target() {
     omz|oh-my-zsh) printf 'oh_my_zsh' ;;
     desktop-apps) printf 'desktop_apps' ;;
     codex|codex-cli) printf 'agents' ;;
+    claude|claude-cli) printf 'agents' ;;
     macos-defaults) printf 'macos_defaults' ;;
     *) printf '%s' "$1" ;;
   esac
@@ -189,6 +190,7 @@ install::configure_direct_install() {
   target="$(install::normalize_direct_target "$target")"
   case "$requested_target" in
     codex|codex-cli) set -- codex "$@" ;;
+    claude|claude-cli) set -- claude "$@" ;;
   esac
 
   DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"

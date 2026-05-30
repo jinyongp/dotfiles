@@ -118,6 +118,8 @@ catalog_metadata_test::assert_agent_metadata() {
 
   catalog_metadata_test::assert_contains "$agent_records" $'codex\tCodex\tUpdate ~/.codex/AGENTS.md with shared dotfiles agent rules.\t0\t0' "missing Codex agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label codex)" "Codex" "expected Codex agent label"
+  catalog_metadata_test::assert_contains "$agent_records" $'claude\tClaude\tUpdate ~/.claude/CLAUDE.md with shared dotfiles agent rules.\t0\t0' "missing Claude agent record"
+  catalog_metadata_test::assert_equal "$(catalog::agent_label claude)" "Claude" "expected Claude agent label"
   printf 'ok agent_metadata\n'
 }
 

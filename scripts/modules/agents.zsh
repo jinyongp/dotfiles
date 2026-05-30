@@ -4,6 +4,7 @@ typeset -ga AGENTS_MANAGED_RULE_FILES=(
   BASE.md
   RTK.md
   CAVEMAN.md
+  PLANNING.md
 )
 
 module_agents_supported() {
@@ -16,7 +17,7 @@ module_agents_summary() {
 
 module_agents_details() {
   echo "Keeps shared rules in the dotfiles agents directory and updates selected tool-native instruction files."
-  echo "Codex uses ~/.codex/AGENTS.md."
+  echo "Codex uses ~/.codex/AGENTS.md; Claude uses ~/.claude/CLAUDE.md."
   echo "Existing auth, sessions, history, caches, and unmanaged files are preserved."
 }
 
@@ -102,6 +103,14 @@ agents::codex_skills_dir() {
   print -r -- "$HOME/.codex/skills"
 }
 
+agents::claude_path() {
+  print -r -- "$HOME/.claude/CLAUDE.md"
+}
+
+agents::claude_skills_dir() {
+  print -r -- "$HOME/.claude/skills"
+}
+
 agents::link_preserving_existing() {
   local source_path="$1"
   local target_path="$2"
@@ -125,11 +134,10 @@ agents::link_preserving_existing() {
   dotfiles::log_success "Linked $target_path"
 }
 
-agents::install_codex_skills() {
+agents::install_skills() {
+  local target_dir="$1"
   local source_path target_path skill_name
-  local target_dir
 
-  target_dir="$(agents::codex_skills_dir)"
   dotfiles::ensure_dir "$target_dir"
 
   for source_path in "$DOTFILES_ROOT"/agents/skills/*(/N); do
@@ -145,7 +153,11 @@ agents::install_adapter() {
   case "$adapter_id" in
     codex)
       agents::upsert_managed_block codex "$(agents::codex_path)"
-      agents::install_codex_skills
+      agents::install_skills "$(agents::codex_skills_dir)"
+      ;;
+    claude)
+      agents::upsert_managed_block claude "$(agents::claude_path)"
+      agents::install_skills "$(agents::claude_skills_dir)"
       ;;
     *)
       dotfiles::record_skipped "Unknown agent adapter: $adapter_id"
@@ -158,7 +170,7 @@ agents::detected_adapter_ids() {
   local adapter_id
   local detected_ids=()
 
-  for adapter_id in codex; do
+  for adapter_id in codex claude; do
     if agents::adapter_is_detected "$adapter_id"; then
       detected_ids+=("$adapter_id")
     fi
@@ -171,6 +183,9 @@ agents::adapter_is_detected() {
   case "$1" in
     codex)
       command -v codex >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]
+      ;;
+    claude)
+      command -v claude >/dev/null 2>&1 || [[ -d "$HOME/.claude" ]]
       ;;
     *)
       return 1
