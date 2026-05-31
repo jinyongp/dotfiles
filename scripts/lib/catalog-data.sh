@@ -23,6 +23,7 @@ gnupg	GnuPG	1	gpg	gpg	gnupg	gnupg	GPG tooling for signing and encryption.	GPG to
 diff-so-fancy	diff-so-fancy	1	diff-so-fancy	diff-so-fancy	diff-so-fancy	diff-so-fancy	Nicer Git diff presentation.	Nicer Git diff presentation.
 fnm	fnm	1	fnm	fnm	fnm		Fast Node.js version manager via Homebrew.	Fast Node.js version manager via the official install script.
 taskwarrior	Taskwarrior	1	task	task	task	taskwarrior	Taskwarrior CLI.	Taskwarrior CLI.
+prx	prx	1	prx	prx			Local HTTPS reverse proxy and port registry via bundled install script.	Local HTTPS reverse proxy and port registry via bundled install script.
 curl	curl	0	curl	curl	curl	curl	curl command.	curl command.
 git	git	0	git	git	git	git	git command.	git command.
 neovim	Neovim	0	nvim	nvim	neovim	neovim	Neovim editor.	Neovim editor.
