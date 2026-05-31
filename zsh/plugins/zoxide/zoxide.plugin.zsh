@@ -2,4 +2,4 @@ if (( ! $+commands[zoxide] )); then
   return
 fi
 
-eval "$(zoxide init zsh)"
+dotfiles_cache_zsh_script zoxide generated zoxide "zoxide init zsh" "zoxide --version"

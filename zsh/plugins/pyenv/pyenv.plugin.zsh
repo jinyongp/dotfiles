@@ -10,10 +10,9 @@ if [[ -d "$PYENV_ROOT/shims" ]]; then
 fi
 
 if dotfiles_ensure_writable_dir "$PYENV_ROOT/shims"; then
-  eval "$(pyenv init -)"
+  dotfiles_cache_zsh_script pyenv generated pyenv "pyenv init - --no-rehash" "pyenv --version" "root:${PYENV_ROOT}"
 fi
 
-python --version &>/dev/null
-if [[ $? -eq 127 ]] && (( $+commands[python3] )); then
+if (( ! $+commands[python] && $+commands[python3] )); then
   alias python=python3
 fi
