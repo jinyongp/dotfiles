@@ -151,6 +151,76 @@ dotfiles_configure_state_home() {
   export XDG_STATE_HOME="$preferred_state_home"
 }
 
+dotfiles_cache_zsh_completion() {
+  emulate -L zsh
+
+  local prog="$1"
+  local completion_cmd="$2"
+  local version_cmd="${3:-$prog --version}"
+  local completion_fn="${4:-_${prog}}"
+  local hash_cmd signature hash cache_signature cached_signature
+  local cache_dir cache_file cache_tmp completion_out
+  local cmd_path version
+  local -a stale_cache_files
+
+  [[ -n "$prog" && -n "$completion_cmd" ]] || return 0
+
+  cmd_path="${commands[$prog]:-$(command -v "$prog" 2>/dev/null)}"
+  [[ -n "$cmd_path" ]] || return 0
+
+  dotfiles_ensure_writable_dir "${ZSH_CACHE_DIR}/completions" || return 0
+
+  version="$(eval "$version_cmd" 2>/dev/null | tr '\n' ' ')"
+  signature="${cmd_path}|${version}|${ZSH_VERSION}|${completion_cmd}|${DOTFILES_PLATFORM:-}"
+
+  if (( $+commands[openssl] )); then
+    hash_cmd="$(printf '%s' "$signature" | openssl dgst -sha256 -r 2>/dev/null | awk '{print $1}')"
+  elif (( $+commands[sha256sum] )); then
+    hash_cmd="$(printf '%s' "$signature" | sha256sum 2>/dev/null | awk '{print $1}')"
+  elif (( $+commands[shasum] )); then
+    hash_cmd="$(printf '%s' "$signature" | shasum -a 256 2>/dev/null | awk '{print $1}')"
+  else
+    return 0
+  fi
+
+  hash="${hash_cmd}"
+  [[ -n "$hash" ]] || return 0
+
+  cache_dir="${ZSH_CACHE_DIR}/completions"
+  cache_file="${cache_dir}/_${prog}.zsh"
+  cache_signature="# dotfiles-cache-signature: ${hash}"
+
+  stale_cache_files=("${cache_dir}/_${prog}."*.zsh(N))
+  (( ${#stale_cache_files[@]} )) && rm -f -- "${stale_cache_files[@]}" 2>/dev/null || true
+
+  cached_signature=""
+  if [[ -r "$cache_file" ]]; then
+    IFS= read -r cached_signature < "$cache_file" || true
+  fi
+
+  if [[ ! -s "$cache_file" || "$cached_signature" != "$cache_signature" ]]; then
+    cache_tmp="${cache_file}.tmp.$$"
+    completion_out="$(eval "$completion_cmd" 2>/dev/null | tr -d '\r')"
+    if [[ -z "$completion_out" ]]; then
+      rm -f "$cache_tmp" "$cache_file"
+      return 0
+    fi
+
+    {
+      print -r -- "$cache_signature"
+      print -r -- "$completion_out"
+    } >| "$cache_tmp" && mv -f "$cache_tmp" "$cache_file"
+    if [[ ! -s "$cache_file" ]]; then
+      rm -f "$cache_tmp" "$cache_file"
+      return 0
+    fi
+  fi
+
+  source "$cache_file"
+  typeset -g -A _comps
+  [[ -n "$completion_fn" ]] && _comps[$prog]="$completion_fn"
+}
+
 dotfiles_brew_bin() {
   dotfiles::brew_bin_path
 }
