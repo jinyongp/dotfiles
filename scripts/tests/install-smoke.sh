@@ -270,15 +270,27 @@ install_smoke_test::write_fake_commands() {
     '#!/bin/sh' \
     'log_file="${SMOKE_STATE_DIR}/git.log"' \
     'printf "%s\n" "$*" >> "$log_file"' \
+    'if [ "${1:-}" = "-C" ] && [ "${3:-}" = "rev-parse" ] && [ "${4:-}" = "HEAD" ]; then' \
+    '  printf "%s\n" "smoke-prx-skill-revision"' \
+    '  exit 0' \
+    'fi' \
     'if [ "${1:-}" = "clone" ]; then' \
     '  target=""' \
+    '  source_url=""' \
     '  for arg in "$@"; do' \
+    '    case "$arg" in https://*) source_url="$arg" ;; esac' \
     '    target="$arg"' \
     '  done' \
     '  mkdir -p "$target"' \
     '  case "$target" in' \
     '    */.oh-my-zsh)' \
     '      mkdir -p "$target/custom/plugins" "$target/custom/themes"' \
+    '      ;;' \
+    '  esac' \
+    '  case "$source_url" in' \
+    '    https://github.com/jinyongp/prx.git)' \
+    '      mkdir -p "$target/skills/prx"' \
+    '      printf "%s\n" "---" "name: prx" "description: smoke prx skill" "---" "" "# prx" > "$target/skills/prx/SKILL.md"' \
     '      ;;' \
     '  esac' \
     '  exit 0' \
@@ -586,6 +598,9 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/planning" "$DOTFILES_ROOT/agents/skills/planning"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/prx" "$DOTFILES_CONFIG_DIR/agents/external-skills/prx"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/prx/SKILL.md" "smoke prx skill" "agents install should download external prx skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'prx	smoke-prx-skill-revision	main	https://github.com/jinyongp/prx.git	skills/prx' "agents install should record external prx skill revision"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"

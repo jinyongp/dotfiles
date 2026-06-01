@@ -402,6 +402,10 @@ catalog::agent_label() {
   esac
 }
 
+catalog::external_skill_records() {
+  catalog_data::external_skill_rows
+}
+
 catalog::font_ids() {
   catalog_data::font_rows | awk -F '\t' '{ print $1 }'
 }

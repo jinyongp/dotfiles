@@ -81,3 +81,14 @@ packages	zoxide	fzf	zoxide requires fzf for interactive selection.
 desktop_apps	keka	kekaexternalhelper	Keka requires KekaExternalHelper for Finder integration.
 EOF
 }
+
+# Columns:
+# 1. id
+# 2. Git repository URL
+# 3. ref
+# 4. skill directory path
+catalog_data::external_skill_rows() {
+  cat <<'EOF'
+prx	https://github.com/jinyongp/prx.git	main	skills/prx
+EOF
+}

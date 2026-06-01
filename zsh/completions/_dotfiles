@@ -17,6 +17,13 @@ case "$CURRENT" in
         entries=("${(@f)$(dotfiles complete targets 2>/dev/null)}")
         _describe -t install-targets 'install target' entries
         ;;
+      agents)
+        entries=(
+          'list:list external agent skills'
+          'sync:fetch latest configured external agent skills'
+        )
+        _describe -t agents-commands 'agents command' entries
+        ;;
     esac
     ;;
   *)
@@ -26,6 +33,14 @@ case "$CURRENT" in
         if (( ${#entries[@]} > 0 )); then
           _describe -t install-items 'install item' entries
         fi
+        ;;
+      agents)
+        case "$target" in
+          sync)
+            entries=("${(@f)$(dotfiles complete external-skills 2>/dev/null)}")
+            _describe -t external-skills 'external agent skill' entries
+            ;;
+        esac
         ;;
     esac
     ;;

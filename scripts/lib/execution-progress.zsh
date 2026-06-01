@@ -228,6 +228,33 @@ dotfiles::execution_record_event() {
     return 0
   fi
 
+  dotfiles::execution_record_event_quiet "$kind" "$message"
+
+  case "$kind" in
+    file_change)
+      state="completed"
+      ;;
+    completed_work)
+      state="completed"
+      ;;
+    error)
+      state="failed"
+      stream="stderr"
+      ;;
+    *)
+      ;;
+  esac
+
+  dotfiles::execution_write "$stream" "$(dotfiles::execution_status_line "$state" "$message")"
+}
+
+dotfiles::execution_record_event_quiet() {
+  local kind="$1"
+
+  if [[ "$DOTFILES_EXECUTION_STEP_ACTIVE" -ne 1 ]]; then
+    return 0
+  fi
+
   case "$kind" in
     installed)
       DOTFILES_EXECUTION_STEP_INSTALLED_COUNT=$((DOTFILES_EXECUTION_STEP_INSTALLED_COUNT + 1))
@@ -240,26 +267,16 @@ dotfiles::execution_record_event() {
       ;;
     file_change)
       DOTFILES_EXECUTION_STEP_FILE_CHANGE_COUNT=$((DOTFILES_EXECUTION_STEP_FILE_CHANGE_COUNT + 1))
-      state="completed"
       ;;
     completed_work)
       DOTFILES_EXECUTION_STEP_EXTRA_COUNT=$((DOTFILES_EXECUTION_STEP_EXTRA_COUNT + 1))
-      state="completed"
       ;;
     warning)
       DOTFILES_EXECUTION_STEP_WARNING_COUNT=$((DOTFILES_EXECUTION_STEP_WARNING_COUNT + 1))
       ;;
-    error)
-      state="failed"
-      stream="stderr"
-      ;;
-    installing)
-      ;;
     *)
       ;;
   esac
-
-  dotfiles::execution_write "$stream" "$(dotfiles::execution_status_line "$state" "$message")"
 }
 
 dotfiles::execution_run_step() {

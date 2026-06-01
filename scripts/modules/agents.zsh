@@ -79,7 +79,7 @@ agents::upsert_managed_block() {
 
   if [[ -f "$target_path" ]] && cmp -s "$tmp_file" "$target_path"; then
     rm -f "$tmp_file"
-    dotfiles::record_reused "$(catalog::agent_label "$adapter_id") instruction block"
+    dotfiles::record_reused_quiet "$(catalog::agent_label "$adapter_id") instruction block"
     dotfiles::log_info "$(catalog::agent_label "$adapter_id") instruction block is already current."
     return 0
   fi
@@ -111,6 +111,14 @@ agents::claude_skills_dir() {
   print -r -- "$HOME/.claude/skills"
 }
 
+agents::external_skills_dir() {
+  print -r -- "$DOTFILES_CONFIG_DIR/agents/external-skills"
+}
+
+agents::external_skills_lock_path() {
+  print -r -- "$DOTFILES_CONFIG_DIR/agents/external-skills.lock"
+}
+
 agents::link_preserving_existing() {
   local source_path="$1"
   local target_path="$2"
@@ -118,13 +126,13 @@ agents::link_preserving_existing() {
   dotfiles::ensure_dir "${target_path:h}"
 
   if [[ -L "$target_path" && "$(readlink "$target_path")" == "$source_path" ]]; then
-    dotfiles::record_reused "Agent skill link already in place: $(dotfiles::display_path "$target_path")"
+    dotfiles::record_reused_quiet "Agent skill link already in place: $(dotfiles::display_path "$target_path")"
     dotfiles::log_info "Already linked: $target_path"
     return 0
   fi
 
   if [[ -e "$target_path" || -L "$target_path" ]]; then
-    dotfiles::record_skipped "Agent skill already exists: $(dotfiles::display_path "$target_path")"
+    dotfiles::record_skipped_quiet "Agent skill already exists: $(dotfiles::display_path "$target_path")"
     dotfiles::log_info "Preserving existing agent skill: $target_path"
     return 0
   fi
@@ -147,6 +155,209 @@ agents::install_skills() {
   done
 }
 
+agents::record_external_skill_version() {
+  local skill_id="$1"
+  local repo_url="$2"
+  local ref="$3"
+  local skill_path="$4"
+  local revision="$5"
+  local lock_path tmp_file timestamp
+
+  lock_path="$(agents::external_skills_lock_path)"
+  dotfiles::ensure_dir "${lock_path:h}"
+  tmp_file="$(agents::tmpfile_for "$lock_path")"
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  if [[ -f "$lock_path" ]]; then
+    awk -F '\t' -v skill_id="$skill_id" '$1 != skill_id { print }' "$lock_path" >"$tmp_file"
+  fi
+
+  print -r -- "${skill_id}	${revision}	${ref}	${repo_url}	${skill_path}	${timestamp}" >>"$tmp_file"
+
+  if [[ -f "$lock_path" ]]; then
+    mv "$tmp_file" "$lock_path"
+    dotfiles::record_file_updated "$lock_path"
+  else
+    mv "$tmp_file" "$lock_path"
+    dotfiles::record_file_created "$lock_path"
+  fi
+}
+
+agents::sync_external_skill() {
+  local skill_id="$1"
+  local repo_url="$2"
+  local ref="$3"
+  local skill_path="$4"
+  local target_dir clone_root repo_dir stage_dir source_dir revision
+
+  typeset -g AGENTS_SYNCED_EXTERNAL_SKILL_PATH=""
+  target_dir="$(agents::external_skills_dir)/$skill_id"
+
+  if ! command -v git >/dev/null 2>&1; then
+    if [[ -d "$target_dir" ]]; then
+      dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
+      dotfiles::log_warn "Using cached external agent skill because git is unavailable: $skill_id"
+      AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
+      return 0
+    fi
+
+    dotfiles::record_skipped "External agent skill $skill_id because git is unavailable"
+    dotfiles::log_warn "Skipping external agent skill because git is unavailable: $skill_id"
+    return 1
+  fi
+
+  dotfiles::ensure_dir "$(agents::external_skills_dir)"
+  clone_root="$(mktemp -d "$(agents::external_skills_dir)/.${skill_id}.clone.XXXXXX")"
+  repo_dir="$clone_root/repo"
+  stage_dir="$(agents::external_skills_dir)/.${skill_id}.stage.$$"
+
+  if ! git clone --quiet --depth 1 --branch "$ref" "$repo_url" "$repo_dir" >/dev/null 2>&1; then
+    rm -rf "$clone_root" "$stage_dir"
+
+    if [[ -d "$target_dir" ]]; then
+      dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
+      dotfiles::log_warn "Using cached external agent skill because update failed: $skill_id"
+      AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
+      return 0
+    fi
+
+    dotfiles::record_skipped "External agent skill $skill_id because download failed"
+    dotfiles::log_warn "Skipping external agent skill because download failed: $skill_id"
+    return 1
+  fi
+
+  revision="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || true)"
+  source_dir="$repo_dir/$skill_path"
+  if [[ -z "$revision" || ! -f "$source_dir/SKILL.md" ]]; then
+    rm -rf "$clone_root" "$stage_dir"
+    dotfiles::record_skipped "External agent skill $skill_id because source is invalid"
+    dotfiles::log_warn "Skipping external agent skill because source is invalid: $skill_id"
+    return 1
+  fi
+
+  rm -rf "$stage_dir"
+  dotfiles::ensure_dir "$stage_dir"
+  cp -R "$source_dir"/. "$stage_dir"/
+  rm -rf "$target_dir"
+  mv "$stage_dir" "$target_dir"
+  rm -rf "$clone_root"
+
+  agents::record_external_skill_version "$skill_id" "$repo_url" "$ref" "$skill_path" "$revision"
+  dotfiles::record_completed_work "Updated external agent skill $skill_id to $revision"
+  dotfiles::log_success "Updated external agent skill $skill_id to $revision"
+  AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
+}
+
+agents::install_external_skill() {
+  local skill_id="$1"
+  local repo_url="$2"
+  local ref="$3"
+  local skill_path="$4"
+  local target_dir
+
+  typeset -g AGENTS_SYNCED_EXTERNAL_SKILL_PATH=""
+  target_dir="$(agents::external_skills_dir)/$skill_id"
+
+  if [[ -f "$target_dir/SKILL.md" ]]; then
+    dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
+    dotfiles::log_info "Using cached external agent skill: $skill_id"
+    AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
+    return 0
+  fi
+
+  agents::sync_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"
+}
+
+agents::install_external_skills() {
+  local target_skills_dir="$1"
+  local skill_id repo_url ref skill_path source_path target_path
+
+  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
+    [[ -n "$skill_id" ]] || continue
+    [[ "$skill_id" == \#* ]] && continue
+    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
+
+    if agents::install_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"; then
+      source_path="$AGENTS_SYNCED_EXTERNAL_SKILL_PATH"
+    else
+      source_path=""
+    fi
+    [[ -n "$source_path" ]] || continue
+
+    target_path="$target_skills_dir/$skill_id"
+    agents::link_preserving_existing "$source_path" "$target_path"
+  done < <(catalog::external_skill_records)
+}
+
+agents::external_skill_selected() {
+  local skill_id="$1"
+  shift || true
+
+  if (( $# == 0 )); then
+    return 0
+  fi
+
+  local selected_id
+  for selected_id in "$@"; do
+    [[ "$selected_id" == "$skill_id" ]] && return 0
+  done
+
+  return 1
+}
+
+agents::sync_external_skills() {
+  local selected_ids=("$@")
+  local skill_id repo_url ref skill_path synced_any=0 failed=0
+
+  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
+    [[ -n "$skill_id" ]] || continue
+    [[ "$skill_id" == \#* ]] && continue
+    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
+    agents::external_skill_selected "$skill_id" "${selected_ids[@]}" || continue
+
+    synced_any=1
+    if ! agents::sync_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"; then
+      failed=1
+    fi
+  done < <(catalog::external_skill_records)
+
+  if (( synced_any == 0 )); then
+    dotfiles::log_warn "No matching external agent skills."
+    return 1
+  fi
+
+  return "$failed"
+}
+
+agents::external_skill_lock_revision() {
+  local skill_id="$1"
+  local lock_path
+
+  lock_path="$(agents::external_skills_lock_path)"
+  [[ -f "$lock_path" ]] || return 0
+  awk -F '\t' -v skill_id="$skill_id" '$1 == skill_id { print $2; exit }' "$lock_path"
+}
+
+agents::list_external_skills() {
+  local skill_id repo_url ref skill_path revision skill_status target_dir
+
+  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
+    [[ -n "$skill_id" ]] || continue
+    [[ "$skill_id" == \#* ]] && continue
+    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
+
+    target_dir="$(agents::external_skills_dir)/$skill_id"
+    revision="$(agents::external_skill_lock_revision "$skill_id")"
+    if [[ -f "$target_dir/SKILL.md" ]]; then
+      skill_status="installed"
+    else
+      skill_status="missing"
+    fi
+
+    print -r -- "${skill_id}	${skill_status}	${ref}	${revision:-unknown}	${repo_url}	${skill_path}"
+  done < <(catalog::external_skill_records)
+}
+
 agents::install_adapter() {
   local adapter_id="$1"
 
@@ -154,10 +365,12 @@ agents::install_adapter() {
     codex)
       agents::upsert_managed_block codex "$(agents::codex_path)"
       agents::install_skills "$(agents::codex_skills_dir)"
+      agents::install_external_skills "$(agents::codex_skills_dir)"
       ;;
     claude)
       agents::upsert_managed_block claude "$(agents::claude_path)"
       agents::install_skills "$(agents::claude_skills_dir)"
+      agents::install_external_skills "$(agents::claude_skills_dir)"
       ;;
     *)
       dotfiles::record_skipped "Unknown agent adapter: $adapter_id"

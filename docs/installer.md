@@ -98,6 +98,8 @@ You can skip the interactive flow and run a single target directly.
 dotfiles install neovim
 dotfiles install agents
 dotfiles install agents codex
+dotfiles agents list
+dotfiles agents sync
 dotfiles install packages taskwarrior
 dotfiles install packages fnm eza
 dotfiles install theme
@@ -111,6 +113,7 @@ Notes:
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`
 - direct `agents` installs shared AI agent rules for detected tools; pass `codex` to prepare Codex config even when the CLI is not installed
+- `dotfiles agents sync` updates external agent skills separately from install
 - `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/task` shim stays ahead in PATH and delegates to that binary
 
 ## Conditional Prompts
@@ -164,6 +167,7 @@ Machine-local overrides and generated config live outside the repository.
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
 AI agent setup is intentionally additive. `./install agents` keeps shared rule files in the repo-managed `agents/rules/` directory and shared skill sources in `agents/skills/`, then adds or updates a marked include block in `~/.codex/AGENTS.md`.
 For Codex, it also links the shared `caveman`, `git-commit`, `planning`, `review-loop`, and `taskwarrior` skills into `~/.codex/skills/<name>` when the target path does not already exist.
+External skills are declared in the installer catalog as `id`, Git repository URL, ref, and skill directory path. During `./install agents`, the installer downloads missing external skills into `~/.config/dotfiles/agents/external-skills/<name>`, records the resolved revision in `~/.config/dotfiles/agents/external-skills.lock`, and links them into each selected adapter's skills directory. Run `dotfiles agents sync [skill...]` to fetch the latest configured refs later.
 It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
 
 Taskwarrior project-local mode is opt-in per repository. When `.taskwarrior/taskrc` exists in the current directory or a parent, the repo-managed `cmd/task` shim sets `TASKRC` and `TASKDATA` to that project before delegating to the real Taskwarrior binary. If no project-local config is found, it falls back to the normal global Taskwarrior config.

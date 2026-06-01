@@ -8,6 +8,8 @@ dotfiles::usage() {
   cat <<EOF
 Usage:
   dotfiles install [target] [item...]
+  dotfiles agents list
+  dotfiles agents sync [skill...]
   dotfiles list
   dotfiles update
   dotfiles doctor
@@ -126,6 +128,7 @@ dotfiles::complete() {
     commands)
       cat <<'EOF'
 install:run the interactive installer or direct install target
+agents:manage external agent skills
 list:list direct install targets
 update:fast-forward this dotfiles repository
 doctor:check the local dotfiles setup
@@ -161,6 +164,9 @@ EOF
         desktop_apps|desktop-apps) catalog::desktop_app_records | dotfiles::complete_records ;;
       esac
       ;;
+    external-skills)
+      catalog::external_skill_records | awk -F '\t' '{ printf "%s:%s\n", $1, $2 }'
+      ;;
   esac
 }
 
@@ -171,6 +177,10 @@ case "${1:-help}" in
   install)
     shift
     exec "$DOTFILES_ROOT/install" "$@"
+    ;;
+  agents)
+    shift
+    exec "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" "$@"
     ;;
   list)
     exec "$DOTFILES_ROOT/install" list

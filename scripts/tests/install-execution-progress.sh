@@ -105,6 +105,11 @@ install_execution_test::simple_step() {
   dotfiles::record_reused "starship prompt binary"
 }
 
+install_execution_test::quiet_step() {
+  dotfiles::record_reused_quiet "Agent skill link already in place: ~/.codex/skills/git-commit"
+  dotfiles::record_skipped_quiet "Agent skill already exists: ~/.codex/skills/caveman"
+}
+
 install_execution_test::assert_successful_progress() {
   local output_file="$WORK_DIR/success.out"
   local output=""
@@ -211,6 +216,26 @@ install_execution_test::assert_plain_mode() {
   print -- "ok plain_mode"
 }
 
+install_execution_test::assert_quiet_events() {
+  local output_file="$WORK_DIR/quiet.out"
+  local output=""
+
+  install_execution_test::reset_state
+  DOTFILES_INSTALL_UI_MODE=compact
+
+  {
+    dotfiles::execution_run_step agents "AI Agents" install_execution_test::quiet_step
+  } >"$output_file" 2>&1
+
+  output="$(install_execution_test::normalize_file "$output_file")"
+
+  install_execution_test::assert_contains "$output" "◆  AI Agents" "missing quiet-event module header"
+  install_execution_test::assert_contains "$output" "completed  1 reused, 1 skipped" "quiet events should still affect summary counts"
+  install_execution_test::assert_not_contains "$output" "Agent skill link already in place" "quiet reused event should not be printed inline"
+  install_execution_test::assert_not_contains "$output" "Agent skill already exists" "quiet skipped event should not be printed inline"
+  print -- "ok quiet_events"
+}
+
 install_execution_test::assert_rich_spacing() {
   local compact_file="$WORK_DIR/compact-spacing.out"
   local rich_file="$WORK_DIR/rich-spacing.out"
@@ -244,6 +269,7 @@ install_execution_test::main() {
   install_execution_test::assert_failure_progress
   install_execution_test::assert_failure_progress_under_errexit
   install_execution_test::assert_plain_mode
+  install_execution_test::assert_quiet_events
   install_execution_test::assert_rich_spacing
   print -- "all install execution progress tests passed"
 }

@@ -12,6 +12,12 @@ if ! typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
   }
 fi
 
+if ! typeset -f dotfiles::execution_record_event_quiet >/dev/null 2>&1; then
+  dotfiles::execution_record_event_quiet() {
+    return 0
+  }
+fi
+
 typeset -g DOTFILES_CONFIG_DIR="${DOTFILES_CONFIG_DIR:-$(dotfiles::config_dir)}"
 typeset -g DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$(dotfiles::install_env_path)}"
 typeset -g DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$(dotfiles::env_zsh_path)}"
@@ -83,11 +89,27 @@ dotfiles::record_reused() {
   fi
 }
 
+dotfiles::record_reused_quiet() {
+  [[ -n "${1:-}" ]] || return 0
+  DOTFILES_RESULT_REUSED_ITEMS+=("$1")
+  if typeset -f dotfiles::execution_record_event_quiet >/dev/null 2>&1; then
+    dotfiles::execution_record_event_quiet reused "$1"
+  fi
+}
+
 dotfiles::record_skipped() {
   [[ -n "${1:-}" ]] || return 0
   DOTFILES_RESULT_SKIPPED_ITEMS+=("$1")
   if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
     dotfiles::execution_record_event skipped "$1"
+  fi
+}
+
+dotfiles::record_skipped_quiet() {
+  [[ -n "${1:-}" ]] || return 0
+  DOTFILES_RESULT_SKIPPED_ITEMS+=("$1")
+  if typeset -f dotfiles::execution_record_event_quiet >/dev/null 2>&1; then
+    dotfiles::execution_record_event_quiet skipped "$1"
   fi
 }
 
@@ -235,11 +257,32 @@ dotfiles::report_reused_items() {
   local line
   local -a lines=()
   local -a managed_links=()
+  local -a agent_skill_dirs=()
+  local -a external_skill_ids=()
+  local -a agent_instruction_blocks=()
+  local -A agent_skill_names_by_dir=()
+  local path_display path_dir path_name dir names_text
+  local -a names=()
 
   for line in "${DOTFILES_RESULT_REUSED_ITEMS[@]}"; do
     case "$line" in
       "Managed link already in place: "*)
         managed_links+=("${line#Managed link already in place: }")
+        ;;
+      "Agent skill link already in place: "*)
+        path_display="${line#Agent skill link already in place: }"
+        path_dir="${path_display:h}"
+        path_name="${path_display:t}"
+        if ! dotfiles::array_contains "$path_dir" "${agent_skill_dirs[@]}"; then
+          agent_skill_dirs+=("$path_dir")
+        fi
+        agent_skill_names_by_dir[$path_dir]="${agent_skill_names_by_dir[$path_dir]:-}${agent_skill_names_by_dir[$path_dir]:+ }$path_name"
+        ;;
+      "External agent skill cached copy: "*)
+        external_skill_ids+=("${line#External agent skill cached copy: }")
+        ;;
+      *" instruction block")
+        agent_instruction_blocks+=("${line% instruction block}")
         ;;
       "Machine-local Git identity")
         if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
@@ -255,6 +298,43 @@ dotfiles::report_reused_items() {
 
   if (( ${#managed_links[@]} > 0 )); then
     lines+=("Managed links already in place: $(dotfiles::report_join_items "${managed_links[@]}")")
+  fi
+
+  for dir in "${agent_skill_dirs[@]}"; do
+    names_text="${agent_skill_names_by_dir[$dir]}"
+    names=("${=names_text}")
+    lines+=("Agent skill links already in place: $dir ($(dotfiles::report_join_items "${names[@]}"))")
+  done
+
+  if (( ${#external_skill_ids[@]} > 0 )); then
+    lines+=("External agent skill cache: $(dotfiles::report_join_items "${external_skill_ids[@]}")")
+  fi
+
+  if (( ${#agent_instruction_blocks[@]} > 0 )); then
+    lines+=("Agent instruction blocks already current: $(dotfiles::report_join_items "${agent_instruction_blocks[@]}")")
+  fi
+
+  printf '%s\n' "${lines[@]}"
+}
+
+dotfiles::report_skipped_items() {
+  local line
+  local -a lines=()
+  local -a agent_skill_paths=()
+
+  for line in "${DOTFILES_RESULT_SKIPPED_ITEMS[@]}"; do
+    case "$line" in
+      "Agent skill already exists: "*)
+        agent_skill_paths+=("${line#Agent skill already exists: }")
+        ;;
+      *)
+        lines+=("$line")
+        ;;
+    esac
+  done
+
+  if (( ${#agent_skill_paths[@]} > 0 )); then
+    lines+=("Existing agent skills preserved: $(dotfiles::report_join_items "${agent_skill_paths[@]}")")
   fi
 
   printf '%s\n' "${lines[@]}"
@@ -318,7 +398,7 @@ dotfiles::print_install_report() {
   personal_file_display="$(dotfiles::display_path "$DOTFILES_CONFIG_DIR/git/personal.local.ini")"
 
   reused_items=("${(@f)$(dotfiles::report_reused_items)}")
-  skipped_items=("${DOTFILES_RESULT_SKIPPED_ITEMS[@]}")
+  skipped_items=("${(@f)$(dotfiles::report_skipped_items)}")
   file_change_items=("${(@f)$(dotfiles::report_file_change_items)}")
   completed_items=("${(@f)$(dotfiles::report_completed_items)}")
 

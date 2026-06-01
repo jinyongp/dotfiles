@@ -37,7 +37,7 @@ catalog_metadata_test::assert_package_ids() {
   local package_ids
 
   package_ids="$(catalog::package_ids | paste -sd' ' -)"
-  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza fzf zoxide tldr gnupg diff-so-fancy fnm taskwarrior" "unexpected visible package ids"
+  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza fzf zoxide tldr gnupg diff-so-fancy fnm taskwarrior prx" "unexpected visible package ids"
 
   if catalog::package_ids | grep -Fxq git; then
     catalog_metadata_test::fail "internal dependency package should not be visible in package_ids"
@@ -87,6 +87,7 @@ catalog_metadata_test::assert_package_records() {
   catalog_metadata_test::assert_contains "$brew_records" $'fnm\tfnm\tFast Node.js version manager via Homebrew.\t0\t0' "missing brew fnm record"
   catalog_metadata_test::assert_contains "$apt_records" $'fnm\tfnm\tFast Node.js version manager via the official install script.\t0\t0' "missing apt fnm record"
   catalog_metadata_test::assert_contains "$brew_records" $'taskwarrior\tTaskwarrior\tTaskwarrior CLI.\t0\t0' "missing brew taskwarrior record"
+  catalog_metadata_test::assert_contains "$brew_records" $'prx\tprx\tLocal HTTPS reverse proxy and port registry via bundled install script.\t0\t0' "missing brew prx record"
   printf 'ok package_records\n'
 }
 
@@ -113,13 +114,16 @@ catalog_metadata_test::assert_required_item_metadata() {
 
 catalog_metadata_test::assert_agent_metadata() {
   local agent_records
+  local external_skill_records
 
   agent_records="$(catalog::agent_records)"
+  external_skill_records="$(catalog::external_skill_records)"
 
   catalog_metadata_test::assert_contains "$agent_records" $'codex\tCodex\tUpdate ~/.codex/AGENTS.md with shared dotfiles agent rules.\t0\t0' "missing Codex agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label codex)" "Codex" "expected Codex agent label"
   catalog_metadata_test::assert_contains "$agent_records" $'claude\tClaude\tUpdate ~/.claude/CLAUDE.md with shared dotfiles agent rules.\t0\t0' "missing Claude agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label claude)" "Claude" "expected Claude agent label"
+  catalog_metadata_test::assert_contains "$external_skill_records" $'prx\thttps://github.com/jinyongp/prx.git\tmain\tskills/prx' "missing prx external skill record"
   printf 'ok agent_metadata\n'
 }
 
