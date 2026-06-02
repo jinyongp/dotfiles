@@ -5,5 +5,5 @@ install: |
   prefix.install Dir[".[!.]*"].reject { |path| File.basename(path) == ".git" }
   bin.write_exec_script opt_prefix/"cmd/dotfiles"
 test: |
-  assert_match "dotfiles install", shell_output("#{bin}/dotfiles help")
+  assert_match "COMMANDS", shell_output("#{bin}/dotfiles help")
   assert_match opt_prefix.to_s, shell_output("#{bin}/dotfiles path")
