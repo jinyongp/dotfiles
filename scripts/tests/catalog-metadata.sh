@@ -117,16 +117,21 @@ catalog_metadata_test::assert_required_item_metadata() {
 
 catalog_metadata_test::assert_agent_metadata() {
   local agent_records
-  local external_skill_records
+  local external_skill_source_records
+  local external_skill_artifact_records
 
   agent_records="$(catalog::agent_records)"
-  external_skill_records="$(catalog::external_skill_records)"
+  external_skill_source_records="$(catalog::external_skill_source_records)"
+  external_skill_artifact_records="$(catalog::external_skill_artifact_records)"
 
   catalog_metadata_test::assert_contains "$agent_records" $'codex\tCodex\tUpdate ~/.codex/AGENTS.md with shared dotfiles agent rules.\t0\t0' "missing Codex agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label codex)" "Codex" "expected Codex agent label"
   catalog_metadata_test::assert_contains "$agent_records" $'claude\tClaude\tUpdate ~/.claude/CLAUDE.md with shared dotfiles agent rules.\t0\t0' "missing Claude agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label claude)" "Claude" "expected Claude agent label"
-  catalog_metadata_test::assert_contains "$external_skill_records" $'gate\thttps://github.com/jinyongp/gate.git\tmain\tskills/gate' "missing gate external skill record"
+  catalog_metadata_test::assert_contains "$external_skill_source_records" $'gate\thttps://github.com/jinyongp/gate.git\tmain' "missing gate external skill source record"
+  catalog_metadata_test::assert_contains "$external_skill_source_records" $'im-not-ai\thttps://github.com/epoko77-ai/im-not-ai.git\tmain' "missing im-not-ai external skill source record"
+  catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'gate\tgate\tskills/gate\tgate\tcodex,claude\tskill\tpreserve' "missing gate external skill artifact record"
+  catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'humanize-korean\tim-not-ai\tcodex/skills/humanize-korean\thumanize-korean\tcodex\tskill\tmaterialize_repo_symlinks' "missing humanize-korean external skill artifact record"
   printf 'ok agent_metadata\n'
 }
 

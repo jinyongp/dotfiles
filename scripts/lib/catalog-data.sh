@@ -83,12 +83,27 @@ EOF
 }
 
 # Columns:
-# 1. id
+# 1. source id
 # 2. Git repository URL
 # 3. ref
-# 4. skill directory path
-catalog_data::external_skill_rows() {
+catalog_data::external_skill_source_rows() {
   cat <<'EOF'
-gate	https://github.com/jinyongp/gate.git	main	skills/gate
+gate	https://github.com/jinyongp/gate.git	main
+im-not-ai	https://github.com/epoko77-ai/im-not-ai.git	main
+EOF
+}
+
+# Columns:
+# 1. artifact id
+# 2. source id
+# 3. skill directory path
+# 4. install name
+# 5. adapters (comma-separated)
+# 6. kind
+# 7. copy policy (preserve | materialize_repo_symlinks)
+catalog_data::external_skill_artifact_rows() {
+  cat <<'EOF'
+gate	gate	skills/gate	gate	codex,claude	skill	preserve
+humanize-korean	im-not-ai	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks
 EOF
 }

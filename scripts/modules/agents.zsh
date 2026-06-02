@@ -60,21 +60,30 @@ agents::upsert_managed_block() {
   tmp_file="$(agents::tmpfile_for "$target_path")"
 
   if [[ -f "$target_path" ]]; then
-    awk \
+    if ! awk \
       -v start="$(agents::block_start "$adapter_id")" \
       -v end="$(agents::block_end "$adapter_id")" \
       '
         $0 == start { skipping = 1; next }
         $0 == end { skipping = 0; next }
         skipping != 1 { print }
-      ' "$target_path" >"$tmp_file"
+      ' "$target_path" >"$tmp_file"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
 
     if [[ -s "$tmp_file" ]]; then
-      print -r -- "" >>"$tmp_file"
+      if ! print -r -- "" >>"$tmp_file"; then
+        rm -f "$tmp_file"
+        return 1
+      fi
     fi
   fi
 
-  agents::managed_block "$adapter_id" >>"$tmp_file"
+  if ! agents::managed_block "$adapter_id" >>"$tmp_file"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
 
   if [[ -f "$target_path" ]] && cmp -s "$tmp_file" "$target_path"; then
     rm -f "$tmp_file"
@@ -84,10 +93,16 @@ agents::upsert_managed_block() {
   fi
 
   if [[ -f "$target_path" ]]; then
-    mv "$tmp_file" "$target_path"
+    if ! mv "$tmp_file" "$target_path"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
     dotfiles::record_file_updated "$target_path"
   else
-    mv "$tmp_file" "$target_path"
+    if ! mv "$tmp_file" "$target_path"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
     dotfiles::record_file_created "$target_path"
   fi
 
@@ -118,6 +133,44 @@ agents::external_skills_lock_path() {
   print -r -- "$DOTFILES_CONFIG_DIR/agents/external-skills.lock"
 }
 
+agents::external_token_valid() {
+  local token="$1"
+
+  [[ "$token" != "." && "$token" != ".." ]] || return 1
+  [[ "$token" =~ '^[A-Za-z0-9._-]+$' ]]
+}
+
+agents::external_relative_path_valid() {
+  local path="$1"
+
+  [[ -n "$path" && "$path" != /* && "$path" != "." && "$path" != ".." && "$path" != ../* && "$path" != */../* && "$path" != */.. ]]
+}
+
+agents::external_artifact_metadata_valid() {
+  local artifact_id="$1"
+  local source_id="$2"
+  local source_path="$3"
+  local install_name="$4"
+  local adapters="$5"
+  local kind="$6"
+  local copy_policy="$7"
+  local adapter
+
+  agents::external_token_valid "$artifact_id" || return 1
+  agents::external_token_valid "$source_id" || return 1
+  agents::external_relative_path_valid "$source_path" || return 1
+  agents::external_token_valid "$install_name" || return 1
+  [[ "$kind" == "skill" ]] || return 1
+  [[ "$copy_policy" == "preserve" || "$copy_policy" == "materialize_repo_symlinks" ]] || return 1
+  [[ -n "$adapters" && "$adapters" != *, && "$adapters" != ,* && "$adapters" != *,,* ]] || return 1
+  for adapter in ${(s:,:)adapters}; do
+    [[ -n "$adapter" ]] || return 1
+    [[ "$adapter" == "codex" || "$adapter" == "claude" ]] || return 1
+  done
+
+  return 0
+}
+
 agents::link_preserving_existing() {
   local source_path="$1"
   local target_path="$2"
@@ -136,7 +189,9 @@ agents::link_preserving_existing() {
     return 0
   fi
 
-  ln -s "$source_path" "$target_path"
+  if ! ln -s "$source_path" "$target_path"; then
+    return 1
+  fi
   dotfiles::record_file_linked "$target_path" "$source_path"
   dotfiles::log_success "Linked $target_path"
 }
@@ -144,152 +199,39 @@ agents::link_preserving_existing() {
 agents::install_skills() {
   local target_dir="$1"
   local source_path target_path skill_name
+  local failed=0
 
   dotfiles::ensure_dir "$target_dir"
 
   for source_path in "$DOTFILES_ROOT"/agents/skills/*(/N); do
     skill_name="${source_path:t}"
     target_path="$target_dir/$skill_name"
-    agents::link_preserving_existing "$source_path" "$target_path"
+    if ! agents::link_preserving_existing "$source_path" "$target_path"; then
+      failed=1
+    fi
   done
+
+  return "$failed"
 }
 
-agents::record_external_skill_version() {
-  local skill_id="$1"
-  local repo_url="$2"
-  local ref="$3"
-  local skill_path="$4"
-  local revision="$5"
-  local lock_path tmp_file timestamp
-
-  lock_path="$(agents::external_skills_lock_path)"
-  dotfiles::ensure_dir "${lock_path:h}"
-  tmp_file="$(agents::tmpfile_for "$lock_path")"
-  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-
-  if [[ -f "$lock_path" ]]; then
-    awk -F '\t' -v skill_id="$skill_id" '$1 != skill_id { print }' "$lock_path" >"$tmp_file"
-  fi
-
-  print -r -- "${skill_id}	${revision}	${ref}	${repo_url}	${skill_path}	${timestamp}" >>"$tmp_file"
-
-  if [[ -f "$lock_path" ]]; then
-    mv "$tmp_file" "$lock_path"
-    dotfiles::record_file_updated "$lock_path"
-  else
-    mv "$tmp_file" "$lock_path"
-    dotfiles::record_file_created "$lock_path"
-  fi
+agents::external_artifact_cache_dir() {
+  print -r -- "$(agents::external_skills_dir)/$1"
 }
 
-agents::sync_external_skill() {
-  local skill_id="$1"
-  local repo_url="$2"
-  local ref="$3"
-  local skill_path="$4"
-  local target_dir clone_root repo_dir stage_dir source_dir revision
+agents::external_artifact_adapter_enabled() {
+  local adapters="$1"
+  local adapter_id="$2"
+  local adapter
 
-  typeset -g AGENTS_SYNCED_EXTERNAL_SKILL_PATH=""
-  target_dir="$(agents::external_skills_dir)/$skill_id"
+  for adapter in ${(s:,:)adapters}; do
+    [[ "$adapter" == "$adapter_id" ]] && return 0
+  done
 
-  if ! command -v git >/dev/null 2>&1; then
-    if [[ -d "$target_dir" ]]; then
-      dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
-      dotfiles::log_warn "Using cached external agent skill because git is unavailable: $skill_id"
-      AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
-      return 0
-    fi
-
-    dotfiles::record_skipped "External agent skill $skill_id because git is unavailable"
-    dotfiles::log_warn "Skipping external agent skill because git is unavailable: $skill_id"
-    return 1
-  fi
-
-  dotfiles::ensure_dir "$(agents::external_skills_dir)"
-  clone_root="$(mktemp -d "$(agents::external_skills_dir)/.${skill_id}.clone.XXXXXX")"
-  repo_dir="$clone_root/repo"
-  stage_dir="$(agents::external_skills_dir)/.${skill_id}.stage.$$"
-
-  if ! git clone --quiet --depth 1 --branch "$ref" "$repo_url" "$repo_dir" >/dev/null 2>&1; then
-    rm -rf "$clone_root" "$stage_dir"
-
-    if [[ -d "$target_dir" ]]; then
-      dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
-      dotfiles::log_warn "Using cached external agent skill because update failed: $skill_id"
-      AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
-      return 0
-    fi
-
-    dotfiles::record_skipped "External agent skill $skill_id because download failed"
-    dotfiles::log_warn "Skipping external agent skill because download failed: $skill_id"
-    return 1
-  fi
-
-  revision="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || true)"
-  source_dir="$repo_dir/$skill_path"
-  if [[ -z "$revision" || ! -f "$source_dir/SKILL.md" ]]; then
-    rm -rf "$clone_root" "$stage_dir"
-    dotfiles::record_skipped "External agent skill $skill_id because source is invalid"
-    dotfiles::log_warn "Skipping external agent skill because source is invalid: $skill_id"
-    return 1
-  fi
-
-  rm -rf "$stage_dir"
-  dotfiles::ensure_dir "$stage_dir"
-  cp -R "$source_dir"/. "$stage_dir"/
-  rm -rf "$target_dir"
-  mv "$stage_dir" "$target_dir"
-  rm -rf "$clone_root"
-
-  agents::record_external_skill_version "$skill_id" "$repo_url" "$ref" "$skill_path" "$revision"
-  dotfiles::record_completed_work "Updated external agent skill $skill_id to $revision"
-  dotfiles::log_success "Updated external agent skill $skill_id to $revision"
-  AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
+  return 1
 }
 
-agents::install_external_skill() {
-  local skill_id="$1"
-  local repo_url="$2"
-  local ref="$3"
-  local skill_path="$4"
-  local target_dir
-
-  typeset -g AGENTS_SYNCED_EXTERNAL_SKILL_PATH=""
-  target_dir="$(agents::external_skills_dir)/$skill_id"
-
-  if [[ -f "$target_dir/SKILL.md" ]]; then
-    dotfiles::record_reused_quiet "External agent skill cached copy: $skill_id"
-    dotfiles::log_info "Using cached external agent skill: $skill_id"
-    AGENTS_SYNCED_EXTERNAL_SKILL_PATH="$target_dir"
-    return 0
-  fi
-
-  agents::sync_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"
-}
-
-agents::install_external_skills() {
-  local target_skills_dir="$1"
-  local skill_id repo_url ref skill_path source_path target_path
-
-  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
-    [[ -n "$skill_id" ]] || continue
-    [[ "$skill_id" == \#* ]] && continue
-    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
-
-    if agents::install_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"; then
-      source_path="$AGENTS_SYNCED_EXTERNAL_SKILL_PATH"
-    else
-      source_path=""
-    fi
-    [[ -n "$source_path" ]] || continue
-
-    target_path="$target_skills_dir/$skill_id"
-    agents::link_preserving_existing "$source_path" "$target_path"
-  done < <(catalog::external_skill_records)
-}
-
-agents::external_skill_selected() {
-  local skill_id="$1"
+agents::external_artifact_selected() {
+  local artifact_id="$1"
   shift || true
 
   if (( $# == 0 )); then
@@ -298,84 +240,609 @@ agents::external_skill_selected() {
 
   local selected_id
   for selected_id in "$@"; do
-    [[ "$selected_id" == "$skill_id" ]] && return 0
+    [[ "$selected_id" == "$artifact_id" ]] && return 0
   done
 
   return 1
 }
 
-agents::sync_external_skills() {
+agents::external_skill_lock_matches() {
+  local artifact_id="$1"
+  local source_id="$2"
+  local ref="$3"
+  local repo_url="$4"
+  local source_path="$5"
+  local install_name="$6"
+  local adapters="$7"
+  local kind="$8"
+  local copy_policy="$9"
+  local lock_path
+
+  lock_path="$(agents::external_skills_lock_path)"
+  [[ -f "$lock_path" ]] || return 1
+
+  awk -F '\t' \
+    -v artifact_id="$artifact_id" \
+    -v source_id="$source_id" \
+    -v ref="$ref" \
+    -v repo_url="$repo_url" \
+    -v source_path="$source_path" \
+    -v install_name="$install_name" \
+    -v adapters="$adapters" \
+    -v kind="$kind" \
+    -v copy_policy="$copy_policy" \
+    '
+      $1 == artifact_id {
+        found = 1
+        if ($3 == source_id && $4 == ref && $5 == repo_url && $6 == source_path && $7 == install_name && $8 == adapters && $9 == kind && $10 == copy_policy) {
+          ok = 1
+        }
+        if (NF == 6 && artifact_id == "gate" && source_id == "gate" && repo_url == "https://github.com/jinyongp/gate.git" && source_path == "skills/gate" && install_name == "gate" && adapters == "codex,claude" && kind == "skill" && copy_policy == "preserve" && $3 == ref && $4 == repo_url && $5 == source_path) {
+          ok = 1
+        }
+      }
+      END { exit(ok ? 0 : 1) }
+    ' "$lock_path"
+}
+
+agents::external_skill_lock_revision() {
+  local artifact_id="$1"
+  local lock_path
+
+  lock_path="$(agents::external_skills_lock_path)"
+  [[ -f "$lock_path" ]] || return 0
+  awk -F '\t' -v artifact_id="$artifact_id" '$1 == artifact_id { print $2; exit }' "$lock_path"
+}
+
+agents::external_skill_cache_has_broken_symlink() {
+  local target_dir="$1"
+  local link_path
+
+  while IFS= read -r link_path; do
+    [[ -e "$link_path" ]] || return 0
+  done < <(find "$target_dir" -type l -print 2>/dev/null)
+
+  return 1
+}
+
+agents::external_skill_cache_has_symlink() {
+  local target_dir="$1"
+  local link_path
+
+  while IFS= read -r link_path; do
+    return 0
+  done < <(find "$target_dir" -type l -print 2>/dev/null)
+
+  return 1
+}
+
+agents::external_skill_cache_valid() {
+  local artifact_id="$1"
+  local source_id="$2"
+  local ref="$3"
+  local repo_url="$4"
+  local source_path="$5"
+  local install_name="$6"
+  local adapters="$7"
+  local kind="$8"
+  local copy_policy="$9"
+  local target_dir
+
+  agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || return 1
+  target_dir="$(agents::external_artifact_cache_dir "$artifact_id")"
+  [[ -f "$target_dir/SKILL.md" ]] || return 1
+  agents::external_skill_lock_matches "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || return 1
+  if agents::external_skill_cache_has_symlink "$target_dir"; then
+    return 1
+  fi
+  agents::external_skill_cache_has_broken_symlink "$target_dir" && return 1
+  return 0
+}
+
+agents::record_external_skill_version() {
+  local artifact_id="$1"
+  local revision="$2"
+  local source_id="$3"
+  local ref="$4"
+  local repo_url="$5"
+  local source_path="$6"
+  local install_name="$7"
+  local adapters="$8"
+  local kind="$9"
+  local copy_policy="${10}"
+  local lock_path tmp_file timestamp
+
+  lock_path="$(agents::external_skills_lock_path)"
+  dotfiles::ensure_dir "${lock_path:h}"
+  tmp_file="$(agents::tmpfile_for "$lock_path")"
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  if [[ -f "$lock_path" ]]; then
+    if ! awk -F '\t' -v artifact_id="$artifact_id" '$1 != artifact_id { print }' "$lock_path" >"$tmp_file"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+  fi
+
+  if ! print -r -- "${artifact_id}	${revision}	${source_id}	${ref}	${repo_url}	${source_path}	${install_name}	${adapters}	${kind}	${copy_policy}	${timestamp}" >>"$tmp_file"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  if [[ -f "$lock_path" ]]; then
+    if ! mv "$tmp_file" "$lock_path"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+    dotfiles::record_file_updated "$lock_path"
+  else
+    if ! mv "$tmp_file" "$lock_path"; then
+      rm -f "$tmp_file"
+      return 1
+    fi
+    dotfiles::record_file_created "$lock_path"
+  fi
+}
+
+agents::external_source_has_selected_artifacts() {
+  local source_id="$1"
+  shift || true
+  local artifact_id row_source_id source_path install_name adapters kind copy_policy
+
+  while IFS=$'\t' read -r artifact_id row_source_id source_path install_name adapters kind copy_policy; do
+    [[ "$row_source_id" == "$source_id" ]] || continue
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$row_source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    agents::external_artifact_selected "$artifact_id" "$@" || continue
+    return 0
+  done < <(catalog::external_skill_artifact_records)
+
+  return 1
+}
+
+agents::external_artifact_contains_symlink() {
+  local source_dir="$1"
+  local symlink_path
+
+  while IFS= read -r symlink_path; do
+    return 0
+  done < <(find "$source_dir" -type l -print 2>/dev/null)
+
+  return 1
+}
+
+agents::external_path_inside() {
+  local root_path="$1"
+  local child_path="$2"
+
+  [[ "$child_path" == "$root_path" || "$child_path" == "$root_path"/* ]]
+}
+
+agents::validate_external_artifact_symlinks() {
+  local repo_dir="$1"
+  local source_dir="$2"
+  local copy_policy="$3"
+  local artifact_id="$4"
+  local repo_abs source_abs symlink_path resolved_path walk_file walk_path
+
+  repo_abs="$(realpath "$repo_dir")" || return 1
+  source_abs="$(realpath "$source_dir" 2>/dev/null || true)"
+  if [[ -z "$source_abs" ]] || ! agents::external_path_inside "$repo_abs" "$source_abs"; then
+    dotfiles::log_warn "External agent skill source path leaves repository: $artifact_id"
+    return 1
+  fi
+
+  if ! agents::external_artifact_contains_symlink "$source_dir"; then
+    return 0
+  fi
+
+  if [[ "$copy_policy" != "materialize_repo_symlinks" ]]; then
+    dotfiles::log_warn "External agent skill has symlinks but copy policy does not materialize them: $artifact_id"
+    return 1
+  fi
+
+  walk_file="$(mktemp "${TMPDIR:-/tmp}/agents-symlink-walk.XXXXXX")"
+  if ! find -L "$source_dir" -mindepth 1 -print >"$walk_file" 2>/dev/null; then
+    rm -f "$walk_file"
+    dotfiles::log_warn "External agent skill symlink graph cannot be walked safely: $artifact_id"
+    return 1
+  fi
+
+  while IFS= read -r walk_path; do
+    resolved_path="$(realpath "$walk_path" 2>/dev/null || true)"
+    if [[ -z "$resolved_path" ]] || ! agents::external_path_inside "$repo_abs" "$resolved_path"; then
+      rm -f "$walk_file"
+      dotfiles::log_warn "External agent skill symlink graph leaves repository: $artifact_id"
+      return 1
+    fi
+  done <"$walk_file"
+  rm -f "$walk_file"
+
+  while IFS= read -r symlink_path; do
+    resolved_path="$(realpath "$symlink_path" 2>/dev/null || true)"
+    if [[ -z "$resolved_path" ]] || ! agents::external_path_inside "$repo_abs" "$resolved_path"; then
+      dotfiles::log_warn "External agent skill symlink leaves repository: $artifact_id"
+      return 1
+    fi
+  done < <(find "$source_dir" -type l -print 2>/dev/null)
+
+  return 0
+}
+
+agents::copy_external_artifact() {
+  local repo_dir="$1"
+  local revision="$2"
+  local source_id="$3"
+  local repo_url="$4"
+  local ref="$5"
+  local artifact_id="$6"
+  local source_path="$7"
+  local install_name="$8"
+  local adapters="$9"
+  local kind="${10}"
+  local copy_policy="${11}"
+  local source_dir target_dir stage_dir backup_dir
+
+  if ! agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    dotfiles::record_skipped "External agent skill $artifact_id because metadata is invalid"
+    dotfiles::log_warn "Skipping external agent skill because metadata is invalid: $artifact_id"
+    return 1
+  fi
+
+  source_dir="$repo_dir/$source_path"
+  target_dir="$(agents::external_artifact_cache_dir "$artifact_id")"
+  stage_dir="$(agents::external_skills_dir)/.${artifact_id}.stage.$$"
+  backup_dir="$(agents::external_skills_dir)/.${artifact_id}.previous.$$"
+
+  if [[ -z "$revision" || "$kind" != "skill" || ! -f "$source_dir/SKILL.md" ]]; then
+    dotfiles::record_skipped "External agent skill $artifact_id because source is invalid"
+    dotfiles::log_warn "Skipping external agent skill because source is invalid: $artifact_id"
+    return 1
+  fi
+
+  if ! agents::validate_external_artifact_symlinks "$repo_dir" "$source_dir" "$copy_policy" "$artifact_id"; then
+    dotfiles::record_skipped "External agent skill $artifact_id because symlinks are invalid"
+    dotfiles::log_warn "Skipping external agent skill because symlinks are invalid: $artifact_id"
+    return 1
+  fi
+
+  rm -rf "$stage_dir"
+  dotfiles::ensure_dir "$stage_dir"
+  case "$copy_policy" in
+    preserve)
+      if ! cp -R "$source_dir"/. "$stage_dir"/; then
+        rm -rf "$stage_dir"
+        dotfiles::record_skipped "External agent skill $artifact_id because copy failed"
+        dotfiles::log_warn "Skipping external agent skill because copy failed: $artifact_id"
+        return 1
+      fi
+      ;;
+    materialize_repo_symlinks)
+      if ! cp -RL "$source_dir"/. "$stage_dir"/; then
+        rm -rf "$stage_dir"
+        dotfiles::record_skipped "External agent skill $artifact_id because copy failed"
+        dotfiles::log_warn "Skipping external agent skill because copy failed: $artifact_id"
+        return 1
+      fi
+      ;;
+    *)
+      rm -rf "$stage_dir"
+      dotfiles::record_skipped "External agent skill $artifact_id because copy policy is unknown"
+      dotfiles::log_warn "Skipping external agent skill because copy policy is unknown: $artifact_id"
+      return 1
+      ;;
+  esac
+
+  if agents::external_skill_cache_has_broken_symlink "$stage_dir"; then
+    rm -rf "$stage_dir"
+    dotfiles::record_skipped "External agent skill $artifact_id because copied cache has broken symlinks"
+    dotfiles::log_warn "Skipping external agent skill because copied cache has broken symlinks: $artifact_id"
+    return 1
+  fi
+
+  rm -rf "$backup_dir"
+  if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+    if ! mv "$target_dir" "$backup_dir"; then
+      rm -rf "$stage_dir" "$backup_dir"
+      dotfiles::record_skipped "External agent skill $artifact_id because existing cache backup failed"
+      dotfiles::log_warn "Skipping external agent skill because existing cache backup failed: $artifact_id"
+      return 1
+    fi
+  fi
+  if ! mv "$stage_dir" "$target_dir"; then
+    rm -rf "$stage_dir"
+    if [[ -e "$backup_dir" || -L "$backup_dir" ]]; then
+      mv "$backup_dir" "$target_dir" >/dev/null 2>&1 || true
+    fi
+    dotfiles::record_skipped "External agent skill $artifact_id because cache promotion failed"
+    dotfiles::log_warn "Skipping external agent skill because cache promotion failed: $artifact_id"
+    return 1
+  fi
+  if ! agents::record_external_skill_version "$artifact_id" "$revision" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    rm -rf "$target_dir"
+    if [[ -e "$backup_dir" || -L "$backup_dir" ]]; then
+      mv "$backup_dir" "$target_dir" >/dev/null 2>&1 || true
+    fi
+    dotfiles::record_skipped "External agent skill $artifact_id because lock update failed"
+    dotfiles::log_warn "External agent skill cache rollback after lock update failed: $artifact_id"
+    return 1
+  fi
+  rm -rf "$backup_dir"
+  dotfiles::record_completed_work "Updated external agent skill $artifact_id to $revision"
+  dotfiles::log_success "Updated external agent skill $artifact_id to $revision"
+}
+
+agents::clone_external_source() {
+  local source_id="$1"
+  local repo_url="$2"
+  local ref="$3"
+  local clone_root="$4"
+  local repo_dir="$clone_root/repo"
+
+  dotfiles::ensure_dir "$(agents::external_skills_dir)"
+
+  if ! git clone --quiet --depth 1 --branch "$ref" "$repo_url" "$repo_dir" >/dev/null 2>&1; then
+    dotfiles::record_skipped "External agent skill source $source_id because download failed"
+    dotfiles::log_warn "Skipping external agent skill source because download failed: $source_id"
+    return 1
+  fi
+
+  return 0
+}
+
+agents::sync_external_source_artifacts() {
+  local source_id="$1"
+  local repo_url="$2"
+  local ref="$3"
+  shift 3 || true
   local selected_ids=("$@")
-  local skill_id repo_url ref skill_path synced_any=0 failed=0
+  local artifact_id row_source_id source_path install_name adapters kind copy_policy
+  local clone_root repo_dir revision failed=0 synced_any=0
 
-  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
-    [[ -n "$skill_id" ]] || continue
-    [[ "$skill_id" == \#* ]] && continue
-    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
-    agents::external_skill_selected "$skill_id" "${selected_ids[@]}" || continue
+  agents::external_source_has_selected_artifacts "$source_id" "${selected_ids[@]}" || return 2
 
+  dotfiles::ensure_dir "$(agents::external_skills_dir)"
+  clone_root="$(mktemp -d "$(agents::external_skills_dir)/.${source_id}.clone.XXXXXX")"
+  repo_dir="$clone_root/repo"
+  if ! agents::clone_external_source "$source_id" "$repo_url" "$ref" "$clone_root"; then
+    rm -rf "$clone_root"
+    return 1
+  fi
+
+  revision="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || true)"
+  while IFS=$'\t' read -r artifact_id row_source_id source_path install_name adapters kind copy_policy; do
+    [[ "$row_source_id" == "$source_id" ]] || continue
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$row_source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    agents::external_artifact_selected "$artifact_id" "${selected_ids[@]}" || continue
     synced_any=1
-    if ! agents::sync_external_skill "$skill_id" "$repo_url" "$ref" "$skill_path"; then
+    if ! agents::copy_external_artifact "$repo_dir" "$revision" "$source_id" "$repo_url" "$ref" "$artifact_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       failed=1
     fi
-  done < <(catalog::external_skill_records)
+  done < <(catalog::external_skill_artifact_records)
+
+  rm -rf "$clone_root"
+
+  (( synced_any == 1 )) || return 2
+  return "$failed"
+}
+
+agents::install_external_source_artifacts() {
+  local adapter_id="$1"
+  local target_skills_dir="$2"
+  local source_id="$3"
+  local repo_url="$4"
+  local ref="$5"
+  local artifact_id row_source_id source_path install_name adapters kind copy_policy
+  local target_dir source_path_cached target_path clone_root repo_dir revision needs_sync=0 failed=0
+  local -a artifact_rows=()
+  local -a sync_rows=()
+  local row
+
+  while IFS=$'\t' read -r artifact_id row_source_id source_path install_name adapters kind copy_policy; do
+    [[ "$row_source_id" == "$source_id" ]] || continue
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$row_source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    agents::external_artifact_adapter_enabled "$adapters" "$adapter_id" || continue
+    row="${artifact_id}	${source_path}	${install_name}	${adapters}	${kind}	${copy_policy}"
+    artifact_rows+=("$row")
+
+    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+      dotfiles::record_reused_quiet "External agent skill cached copy: $artifact_id"
+      dotfiles::log_info "Using cached external agent skill: $artifact_id"
+    else
+      sync_rows+=("$row")
+      needs_sync=1
+    fi
+  done < <(catalog::external_skill_artifact_records)
+
+  (( ${#artifact_rows[@]} > 0 )) || return 0
+
+  if (( needs_sync == 1 )); then
+    if ! command -v git >/dev/null 2>&1; then
+      for row in "${sync_rows[@]}"; do
+        IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
+        dotfiles::record_skipped "External agent skill $artifact_id because git is unavailable"
+        dotfiles::log_warn "Skipping external agent skill because git is unavailable: $artifact_id"
+      done
+      failed=1
+    else
+      dotfiles::ensure_dir "$(agents::external_skills_dir)"
+      clone_root="$(mktemp -d "$(agents::external_skills_dir)/.${source_id}.clone.XXXXXX")"
+      repo_dir="$clone_root/repo"
+      if agents::clone_external_source "$source_id" "$repo_url" "$ref" "$clone_root"; then
+        revision="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || true)"
+        for row in "${sync_rows[@]}"; do
+          IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
+          if ! agents::copy_external_artifact "$repo_dir" "$revision" "$source_id" "$repo_url" "$ref" "$artifact_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+            failed=1
+          fi
+        done
+      else
+        failed=1
+      fi
+      rm -rf "$clone_root"
+    fi
+  fi
+
+  for row in "${artifact_rows[@]}"; do
+    IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
+    if ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+      failed=1
+      continue
+    fi
+    source_path_cached="$(agents::external_artifact_cache_dir "$artifact_id")"
+    target_path="$target_skills_dir/$install_name"
+    if ! agents::link_preserving_existing "$source_path_cached" "$target_path"; then
+      failed=1
+    fi
+  done
+
+  return "$failed"
+}
+
+agents::install_external_skills() {
+  local target_skills_dir="$1"
+  local adapter_id="$2"
+  local source_id repo_url ref failed=0
+
+  while IFS=$'\t' read -r source_id repo_url ref; do
+    [[ -n "$source_id" ]] || continue
+    [[ "$source_id" == \#* ]] && continue
+    [[ -n "$repo_url" && -n "$ref" ]] || continue
+
+    if ! agents::install_external_source_artifacts "$adapter_id" "$target_skills_dir" "$source_id" "$repo_url" "$ref"; then
+      failed=1
+    fi
+  done < <(catalog::external_skill_source_records)
+
+  return "$failed"
+}
+
+agents::sync_external_skills() {
+  local selected_ids=("$@")
+  local source_id repo_url ref synced_any=0 failed=0 sync_status
+
+  if ! agents::external_selected_ids_valid "${selected_ids[@]}"; then
+    return 1
+  fi
+
+  if ! command -v git >/dev/null 2>&1; then
+    dotfiles::log_warn "Cannot sync external agent skills because git is unavailable."
+    return 1
+  fi
+
+  while IFS=$'\t' read -r source_id repo_url ref; do
+    [[ -n "$source_id" ]] || continue
+    [[ "$source_id" == \#* ]] && continue
+    [[ -n "$repo_url" && -n "$ref" ]] || continue
+
+    sync_status=0
+    agents::sync_external_source_artifacts "$source_id" "$repo_url" "$ref" "${selected_ids[@]}" || sync_status=$?
+    case "$sync_status" in
+      0)
+        synced_any=1
+        ;;
+      1)
+        synced_any=1
+        failed=1
+        ;;
+      2)
+        ;;
+      *)
+        synced_any=1
+        failed=1
+        ;;
+    esac
+  done < <(catalog::external_skill_source_records)
 
   if (( synced_any == 0 )); then
-    dotfiles::log_warn "No matching external agent skills."
+    if (( ${#selected_ids[@]} == 0 )); then
+      dotfiles::log_warn "No external agent skills configured."
+    else
+      dotfiles::log_warn "No matching external agent skills."
+    fi
     return 1
   fi
 
   return "$failed"
 }
 
-agents::external_skill_lock_revision() {
-  local skill_id="$1"
-  local lock_path
+agents::external_selected_ids_valid() {
+  local selected_ids=("$@")
+  local selected_id artifact_id source_id source_path install_name adapters kind copy_policy found invalid=0
 
-  lock_path="$(agents::external_skills_lock_path)"
-  [[ -f "$lock_path" ]] || return 0
-  awk -F '\t' -v skill_id="$skill_id" '$1 == skill_id { print $2; exit }' "$lock_path"
+  for selected_id in "${selected_ids[@]}"; do
+    found=0
+    while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
+      [[ "$artifact_id" == "$selected_id" ]] || continue
+      agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+      found=1
+      break
+    done < <(catalog::external_skill_artifact_records)
+    if (( found == 0 )); then
+      dotfiles::log_warn "Unknown external agent skill: $selected_id"
+      invalid=1
+    fi
+  done
+
+  return "$invalid"
 }
 
 agents::list_external_skills() {
-  local skill_id repo_url ref skill_path revision skill_status target_dir
+  local artifact_id source_id source_path install_name adapters kind copy_policy revision skill_status target_dir
+  local row_source_id row_repo_url row_ref repo_url ref
 
-  while IFS=$'\t' read -r skill_id repo_url ref skill_path; do
-    [[ -n "$skill_id" ]] || continue
-    [[ "$skill_id" == \#* ]] && continue
-    [[ -n "$repo_url" && -n "$ref" && -n "$skill_path" ]] || continue
+  while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
+    [[ -n "$artifact_id" ]] || continue
+    [[ "$artifact_id" == \#* ]] && continue
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    repo_url=""
+    ref=""
+    while IFS=$'\t' read -r row_source_id row_repo_url row_ref; do
+      [[ "$row_source_id" == "$source_id" ]] || continue
+      repo_url="$row_repo_url"
+      ref="$row_ref"
+      break
+    done < <(catalog::external_skill_source_records)
+    [[ -n "$repo_url" && -n "$ref" ]] || continue
 
-    target_dir="$(agents::external_skills_dir)/$skill_id"
-    revision="$(agents::external_skill_lock_revision "$skill_id")"
-    if [[ -f "$target_dir/SKILL.md" ]]; then
+    target_dir="$(agents::external_artifact_cache_dir "$artifact_id")"
+    revision="$(agents::external_skill_lock_revision "$artifact_id")"
+    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       skill_status="installed"
     else
       skill_status="missing"
     fi
 
-    print -r -- "${skill_id}	${skill_status}	${ref}	${revision:-unknown}	${repo_url}	${skill_path}"
-  done < <(catalog::external_skill_records)
+    print -r -- "${artifact_id}	${skill_status}	${source_id}	${ref}	${revision:-unknown}	${install_name}	${adapters}	${copy_policy}	${repo_url}	${source_path}"
+  done < <(catalog::external_skill_artifact_records)
 }
 
 agents::install_adapter() {
   local adapter_id="$1"
+  local failed=0
 
   case "$adapter_id" in
     codex)
-      agents::upsert_managed_block codex "$(agents::codex_path)"
-      agents::install_skills "$(agents::codex_skills_dir)"
-      agents::install_external_skills "$(agents::codex_skills_dir)"
+      agents::upsert_managed_block codex "$(agents::codex_path)" || failed=1
+      agents::install_skills "$(agents::codex_skills_dir)" || failed=1
+      agents::install_external_skills "$(agents::codex_skills_dir)" codex || failed=1
       ;;
     claude)
-      agents::upsert_managed_block claude "$(agents::claude_path)"
-      agents::install_skills "$(agents::claude_skills_dir)"
-      agents::install_external_skills "$(agents::claude_skills_dir)"
+      agents::upsert_managed_block claude "$(agents::claude_path)" || failed=1
+      agents::install_skills "$(agents::claude_skills_dir)" || failed=1
+      agents::install_external_skills "$(agents::claude_skills_dir)" claude || failed=1
       ;;
     *)
       dotfiles::record_skipped "Unknown agent adapter: $adapter_id"
       dotfiles::log_warn "Skipping unknown agent adapter: $adapter_id"
+      failed=1
       ;;
   esac
+
+  return "$failed"
 }
 
 agents::detected_adapter_ids() {
@@ -409,6 +876,7 @@ module_agents_install_items() {
   local adapter_ids=("$@")
   local adapter_id
   local detected_ids
+  local failed=0
 
   dotfiles::log_step "Installing AI agent instructions"
 
@@ -426,6 +894,10 @@ module_agents_install_items() {
   fi
 
   for adapter_id in "${adapter_ids[@]}"; do
-    agents::install_adapter "$adapter_id"
+    if ! agents::install_adapter "$adapter_id"; then
+      failed=1
+    fi
   done
+
+  return "$failed"
 }

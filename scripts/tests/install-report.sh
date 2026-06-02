@@ -68,6 +68,7 @@ install_report_test::main() {
     "Agent skill link already in place: ~/.codex/skills/planning"
     "Agent skill link already in place: ~/.claude/skills/git-commit"
     "External agent skill cached copy: gate"
+    "External agent skill cached copy: humanize-korean"
     "Claude instruction block"
     "Machine-local Git identity"
   )
@@ -98,7 +99,7 @@ install_report_test::main() {
   install_report_test::assert_contains "$output" "Managed links already in place: ~/.vimrc, ~/.zprofile, ~/.gitconfig" "expected managed link aggregation"
   install_report_test::assert_contains "$output" "Agent skill links already in place: ~/.codex/skills (git-commit, planning)" "expected codex skill link aggregation"
   install_report_test::assert_contains "$output" "Agent skill links already in place: ~/.claude/skills (git-commit)" "expected claude skill link aggregation"
-  install_report_test::assert_contains "$output" "External agent skill cache: gate" "expected external skill cache aggregation"
+  install_report_test::assert_contains "$output" "External agent skill cache: gate, humanize-korean" "expected external skill cache aggregation"
   install_report_test::assert_contains "$output" "Agent instruction blocks already current: Claude" "expected agent instruction block aggregation"
   install_report_test::assert_contains "$output" "Skipped" "missing skipped section"
   install_report_test::assert_contains "$output" "TypeScript editor tooling" "expected skipped item in report"

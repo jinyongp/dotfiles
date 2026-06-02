@@ -165,7 +165,7 @@ EOF
       esac
       ;;
     external-skills)
-      catalog::external_skill_records | awk -F '\t' '{ printf "%s:%s\n", $1, $2 }'
+      catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
       ;;
   esac
 }

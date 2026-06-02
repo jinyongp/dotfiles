@@ -402,8 +402,12 @@ catalog::agent_label() {
   esac
 }
 
-catalog::external_skill_records() {
-  catalog_data::external_skill_rows
+catalog::external_skill_source_records() {
+  catalog_data::external_skill_source_rows
+}
+
+catalog::external_skill_artifact_records() {
+  catalog_data::external_skill_artifact_rows
 }
 
 catalog::font_ids() {

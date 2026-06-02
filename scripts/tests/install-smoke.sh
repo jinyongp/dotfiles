@@ -273,7 +273,11 @@ install_smoke_test::write_fake_commands() {
     'log_file="${SMOKE_STATE_DIR}/git.log"' \
     'printf "%s\n" "$*" >> "$log_file"' \
     'if [ "${1:-}" = "-C" ] && [ "${3:-}" = "rev-parse" ] && [ "${4:-}" = "HEAD" ]; then' \
-    '  printf "%s\n" "smoke-gate-skill-revision"' \
+    '  if [ -f "$2/.smoke-revision" ]; then' \
+    '    cat "$2/.smoke-revision"' \
+    '  else' \
+    '    printf "%s\n" "smoke-unknown-skill-revision"' \
+    '  fi' \
     '  exit 0' \
     'fi' \
     'if [ "${1:-}" = "clone" ]; then' \
@@ -291,8 +295,16 @@ install_smoke_test::write_fake_commands() {
     '  esac' \
     '  case "$source_url" in' \
     '    https://github.com/jinyongp/gate.git)' \
+    '      printf "%s\n" "smoke-gate-skill-revision" > "$target/.smoke-revision"' \
     '      mkdir -p "$target/skills/gate"' \
     '      printf "%s\n" "---" "name: gate" "description: smoke gate skill" "---" "" "# gate" > "$target/skills/gate/SKILL.md"' \
+    '      ;;' \
+    '    https://github.com/epoko77-ai/im-not-ai.git)' \
+    '      printf "%s\n" "smoke-im-not-ai-skill-revision" > "$target/.smoke-revision"' \
+    '      mkdir -p "$target/codex/skills/humanize-korean" "$target/.claude/skills/humanize-korean/references"' \
+    '      printf "%s\n" "---" "name: humanize-korean" "description: smoke humanize Korean skill" "---" "" "# humanize-korean" > "$target/codex/skills/humanize-korean/SKILL.md"' \
+    '      printf "%s\n" "smoke quick rules" > "$target/.claude/skills/humanize-korean/references/quick-rules.md"' \
+    '      ln -s "../../../.claude/skills/humanize-korean/references" "$target/codex/skills/humanize-korean/references"' \
     '      ;;' \
     '  esac' \
     '  exit 0' \
@@ -581,8 +593,13 @@ install_smoke_test::assert_direct_agents() {
     printf '%s\n' 'Use Browser Plugin for browser checks, not Playwright.'
   } >"$HOME_DIR/.codex/AGENTS.md"
   printf '%s\n' 'local-session' >"$HOME_DIR/.codex/sessions/session.jsonl"
+  mkdir -p "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references-store"
+  printf '%s\n' 'stale humanize Korean skill' >"$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/SKILL.md"
+  printf '%s\n' 'cached quick rules' >"$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references-store/quick-rules.md"
+  ln -s references-store "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references"
+  printf '%s\n' $'humanize-korean	smoke-im-not-ai-skill-revision	im-not-ai	main	https://github.com/epoko77-ai/im-not-ai.git	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks	2000-01-01T00:00:00Z' >"$DOTFILES_CONFIG_DIR/agents/external-skills.lock"
 
-  install_smoke_test::run_direct_install agents
+  install_smoke_test::run_direct_install agents codex claude
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
@@ -593,6 +610,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agents install should include BASE.md first for Codex"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$HOME_DIR/.codex/skills/caveman/SKILL.md" "agents install should preserve existing legacy includes"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "Use Browser Plugin for browser checks, not Playwright." "agents install should preserve existing legacy rules"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.claude/CLAUDE.md" "<!-- dotfiles:agents:claude:start -->" "agents install should add managed Claude block"
   if grep -Fq -- "$DOTFILES_ROOT/agents/rules/PLANNING.md" "$HOME_DIR/.codex/AGENTS.md"; then
     install_smoke_test::fail "codex install should not always-read planning rules"
   fi
@@ -601,14 +619,334 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/humanize-korean" "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
+  install_smoke_test::assert_not_exists "$HOME_DIR/.claude/skills/humanize-korean"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/gate/SKILL.md" "smoke gate skill" "agents install should download external gate skill"
-  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'gate	smoke-gate-skill-revision	main	https://github.com/jinyongp/gate.git	skills/gate' "agents install should record external gate skill revision"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/SKILL.md" "smoke humanize Korean skill" "agents install should download external humanize-korean skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references/quick-rules.md" "smoke quick rules" "agents install should materialize external humanize-korean references"
+  if [[ -L "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references" ]]; then
+    install_smoke_test::fail "humanize-korean references should be materialized, not symlinked"
+  fi
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'gate	smoke-gate-skill-revision	gate	main	https://github.com/jinyongp/gate.git	skills/gate	gate	codex,claude	skill	preserve' "agents install should record external gate skill revision"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'humanize-korean	smoke-im-not-ai-skill-revision	im-not-ai	main	https://github.com/epoko77-ai/im-not-ai.git	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks' "agents install should record external humanize-korean skill revision"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
   printf 'ok direct_agents\n'
+}
+
+install_smoke_test::assert_external_skill_symlink_guard() {
+  local repo_dir source_dir secret_file
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "external-skill-symlink-guard"
+
+  repo_dir="$TMP_DIR/symlink-repo"
+  source_dir="$repo_dir/codex/skills/malicious"
+  secret_file="$TMP_DIR/secret.txt"
+  mkdir -p "$source_dir" "$repo_dir/shared/references"
+  printf '%s\n' 'secret' >"$secret_file"
+  printf '%s\n' '---' 'name: malicious' '---' >"$source_dir/SKILL.md"
+  ln -s "$secret_file" "$repo_dir/shared/references/secret"
+  ln -s "../../../shared/references" "$source_dir/references"
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::validate_external_artifact_symlinks "$1" "$2" materialize_repo_symlinks malicious
+    ' -- "$repo_dir" "$source_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill symlink guard should reject nested outbound symlinks"
+  fi
+
+  printf 'ok external_skill_symlink_guard\n'
+}
+
+install_smoke_test::assert_external_skill_side_effect_guards() {
+  local repo_dir outside_dir
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "external-skill-side-effect-guards"
+
+  repo_dir="$TMP_DIR/repo"
+  outside_dir="$TMP_DIR/outside-skill"
+  mkdir -p "$repo_dir/skills/gate" "$outside_dir" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
+  printf '%s\n' '---' 'name: gate' '---' >"$repo_dir/skills/gate/SKILL.md"
+  printf '%s\n' '---' 'name: outside' '---' >"$outside_dir/SKILL.md"
+  printf '%s\n' 'cached gate skill' >"$DOTFILES_CONFIG_DIR/agents/external-skills/gate/SKILL.md"
+  printf '%s\n' $'gate	legacy-revision	main	https://github.com/jinyongp/gate.git	skills/gate	2000-01-01T00:00:00Z' >"$DOTFILES_CONFIG_DIR/agents/external-skills.lock"
+
+  if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::external_skill_cache_valid gate gate main https://github.com/jinyongp/gate.git skills/gate gate codex,claude skill preserve
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "legacy external skill lock should allow valid cached gate skill"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      mv() { return 1; }
+      agents::upsert_managed_block codex "$TMPDIR/AGENTS.md"
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "managed instruction block write failure should fail update"
+  fi
+
+  printf '%s\n' 'keep existing instructions' >"$TMP_DIR/AGENTS-existing.md"
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      awk() { return 1; }
+      agents::upsert_managed_block codex "$TMPDIR/AGENTS-existing.md"
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "managed instruction block rewrite failure should fail update"
+  fi
+  install_smoke_test::assert_file_contains "$TMP_DIR/AGENTS-existing.md" "keep existing instructions" "managed instruction rewrite failure should preserve existing content"
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::external_artifact_metadata_valid artifact source skills/artifact install codex, skill preserve
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "external artifact metadata should reject trailing adapter separators"
+  fi
+
+  ln -s "$TMP_DIR/secret.txt" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate/secret-link"
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::external_skill_cache_valid gate gate main https://github.com/jinyongp/gate.git skills/gate gate codex,claude skill preserve
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill cache should reject live symlinks before reuse"
+  fi
+  rm -f "$DOTFILES_CONFIG_DIR/agents/external-skills/gate/secret-link"
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::external_artifact_metadata_valid .. gate skills/gate gate codex skill preserve
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "dot-only external artifact ids should be rejected"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::copy_external_artifact "$1" test-revision gate https://github.com/example/gate.git main "../outside-skill" skills/gate gate codex skill preserve
+    ' -- "$repo_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill artifact id path traversal should be rejected"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::copy_external_artifact "$1" test-revision gate https://github.com/example/gate.git main gate "../outside-skill" gate codex skill preserve
+    ' -- "$repo_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill source path traversal should be rejected"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      cp() { return 1; }
+      agents::copy_external_artifact "$1" test-revision gate https://github.com/example/gate.git main copy-fail skills/gate copy-fail codex skill preserve
+    ' -- "$repo_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill copy failure should fail artifact sync"
+  fi
+  install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/agents/external-skills/copy-fail"
+
+  mkdir -p "$DOTFILES_CONFIG_DIR/agents/external-skills/mv-fail"
+  printf '%s\n' 'old mv cache' >"$DOTFILES_CONFIG_DIR/agents/external-skills/mv-fail/SKILL.md"
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      mv() {
+        [[ "$1" == *"/.mv-fail.stage."* ]] && return 1
+        command mv "$@"
+      }
+      agents::copy_external_artifact "$1" test-revision gate https://github.com/example/gate.git main mv-fail skills/gate mv-fail codex skill preserve
+    ' -- "$repo_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill cache promotion failure should fail artifact sync"
+  fi
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/mv-fail/SKILL.md" "old mv cache" "cache promotion failure should preserve previous cache"
+
+  mkdir -p "$DOTFILES_CONFIG_DIR/agents/external-skills/lock-fail"
+  printf '%s\n' 'old lock cache' >"$DOTFILES_CONFIG_DIR/agents/external-skills/lock-fail/SKILL.md"
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::record_external_skill_version() { return 1; }
+      agents::copy_external_artifact "$1" test-revision gate https://github.com/example/gate.git main lock-fail skills/gate lock-fail codex skill preserve
+    ' -- "$repo_dir" >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill lock update failure should fail artifact sync"
+  fi
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/lock-fail/SKILL.md" "old lock cache" "lock update failure should roll back previous cache"
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      mv() {
+        [[ "$1" == *"external-skills.lock.tmp."* ]] && return 1
+        command mv "$@"
+      }
+      agents::record_external_skill_version gate revision gate main https://github.com/example/gate.git skills/gate gate codex skill preserve
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill lock promotion failure should fail lock write"
+  fi
+  if find "$DOTFILES_CONFIG_DIR/agents" -name 'external-skills.lock.tmp.*' -print | grep -q .; then
+    install_smoke_test::fail "external skill lock promotion failure should clean temp lock files"
+  fi
+
+  install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/agents/escape"
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::external_skill_cache_valid() { return 0; }
+      agents::external_artifact_cache_dir() { print -r -- "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"; }
+      agents::link_preserving_existing() { return 1; }
+      agents::install_external_source_artifacts codex "$TMPDIR/skills" gate https://github.com/jinyongp/gate.git main
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "external skill link failure should fail adapter external install"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      ln() { return 1; }
+      agents::link_preserving_existing "$TMPDIR/source" "$TMPDIR/linked"
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "agent skill symlink creation failure should fail link operation"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::sync_external_skills gate typo
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "mixed known and unknown external skill sync ids should fail"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::upsert_managed_block() { return 1; }
+      agents::install_skills() { return 0; }
+      agents::install_external_skills() { return 0; }
+      module_agents_install_items codex
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "adapter install should fail when managed block update fails"
+  fi
+
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::install_adapter() {
+        [[ "$1" == "codex" ]] && return 1
+        return 0
+      }
+      module_agents_install_items codex claude
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "multi-adapter install should return failure if any selected adapter fails"
+  fi
+
+  printf 'ok external_skill_side_effect_guards\n'
 }
 
 install_smoke_test::assert_direct_packages() {
@@ -762,6 +1100,8 @@ install_smoke_test::main() {
   install_smoke_test::assert_direct_theme
   install_smoke_test::assert_direct_neovim
   install_smoke_test::assert_direct_agents
+  install_smoke_test::assert_external_skill_symlink_guard
+  install_smoke_test::assert_external_skill_side_effect_guards
   install_smoke_test::assert_direct_packages
   install_smoke_test::assert_direct_fonts
   install_smoke_test::assert_direct_desktop_apps

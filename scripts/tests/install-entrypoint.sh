@@ -133,6 +133,11 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_items.out" "taskwarrior:Taskwarrior"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_items"
 
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_external_skills" complete external-skills
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "gate:gate (gate)"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "humanize-korean:humanize-korean (im-not-ai)"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
+
   printf 'ok dotfiles_command\n'
 }
 
