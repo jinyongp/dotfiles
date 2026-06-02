@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
 
+if [[ -z "${UI_MODE_LIB_DIR:-}" ]]; then
+  if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    UI_MODE_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  elif [[ -n "${ZSH_VERSION:-}" ]]; then
+    UI_MODE_LIB_DIR="$(eval 'cd -- "$(dirname -- "${(%):-%x}")" && pwd')"
+  fi
+fi
+
+if ! typeset -f ui::env_mode >/dev/null 2>&1; then
+  # shellcheck disable=SC1090
+  source "$UI_MODE_LIB_DIR/environment.sh"
+fi
+
 ui::mode() {
-  case "${DOTFILES_INSTALL_UI_MODE:-auto}" in
-    auto|plain|json)
-      printf '%s' "${DOTFILES_INSTALL_UI_MODE:-auto}"
-      ;;
-    *)
-      printf 'auto'
-      ;;
-  esac
+  ui::env_mode
 }
 
 ui::is_json() {
@@ -16,7 +22,7 @@ ui::is_json() {
 }
 
 ui::is_plain() {
-  [[ "$(ui::mode)" == "plain" || "${TERM:-}" == "dumb" ]]
+  ui::env_plain_symbols_enabled
 }
 
 ui::terminal_lines() {
@@ -64,32 +70,7 @@ ui::terminal_columns() {
 }
 
 ui::terminal_background() {
-  local override="${DOTFILES_COLOR_SCHEME:-}"
-  local colorfgbg="${COLORFGBG:-}"
-  local background_code=""
-
-  case "$override" in
-    light|dark)
-      printf '%s' "$override"
-      return 0
-      ;;
-  esac
-
-  if [[ "$colorfgbg" == *";"* ]]; then
-    background_code="${colorfgbg##*;}"
-    if [[ "$background_code" =~ ^[0-9]+$ ]]; then
-      if (( background_code >= 0 && background_code <= 6 )); then
-        printf 'dark'
-        return 0
-      fi
-      if (( background_code >= 7 && background_code <= 15 )); then
-        printf 'light'
-        return 0
-      fi
-    fi
-  fi
-
-  printf 'unknown'
+  ui::env_terminal_background
 }
 
 ui::symbol() {

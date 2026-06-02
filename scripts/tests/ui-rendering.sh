@@ -47,6 +47,10 @@ ui_rendering_test::assert_color_controls() {
   output="$(NO_COLOR= CLICOLOR=1 TERM=xterm-256color FORCE_COLOR=1 ui::accent "accent" | sed -n l)"
   ui_rendering_test::assert_contains "$output" "\\033[" "FORCE_COLOR should force ANSI"
 
+  output="$(UI_ENV_STDOUT_IS_TTY=1 NO_COLOR= CLICOLOR=1 TERM=xterm-256color ui::code "target" | sed -n l)"
+  ui_rendering_test::assert_contains "$output" "\\033[" "cached TTY should preserve ANSI inside command substitution"
+  ui_rendering_test::assert_not_contains "$output" "\\033[1;" "code style should not use bold"
+
   output="$(CLICOLOR=1 TERM=xterm-256color FORCE_COLOR=1 NO_COLOR=1 ui::accent "accent" | sed -n l)"
   ui_rendering_test::assert_not_contains "$output" "\\033[" "NO_COLOR should override FORCE_COLOR"
 
@@ -114,13 +118,13 @@ ui_rendering_test::assert_help_and_reports() {
 
   output="$({ ui::help_start "Tool" "Summary."; ui::help_usage "tool run"; ui::help_commands $'run\trun\tRun it.'; ui::help_options; ui::help_examples "tool run"; } | ui_rendering_test::strip_ansi)"
   ui_rendering_test::assert_contains "$output" "Tool" "help should include title"
-  ui_rendering_test::assert_contains "$output" "Usage:" "help should include usage"
-  ui_rendering_test::assert_contains "$output" "Commands:" "help should include commands"
+  ui_rendering_test::assert_not_contains "$output" "Usage:" "help should omit usage"
+  ui_rendering_test::assert_contains "$output" "COMMANDS" "help should include dim section title"
   ui_rendering_test::assert_not_contains "$output" "Options:" "empty options should be omitted"
 
   output="$({ ui::report_section "Empty"; ui::report_section "Filled" "one"; } | ui_rendering_test::strip_ansi)"
   ui_rendering_test::assert_not_contains "$output" "Empty" "empty report section should be omitted"
-  ui_rendering_test::assert_contains "$output" "Filled" "non-empty report section should render"
+  ui_rendering_test::assert_contains "$output" "FILLED" "non-empty report section should render"
 
   printf 'ok help_and_reports\n'
 }
@@ -137,12 +141,22 @@ ui_rendering_test::assert_status_alignment() {
   printf 'ok status_alignment\n'
 }
 
+ui_rendering_test::assert_table_primitives() {
+  local output=""
+
+  output="$(NO_COLOR= CLICOLOR=1 TERM=xterm-256color FORCE_COLOR=1 ui::style table_header "target" | sed -n l)"
+  ui_rendering_test::assert_contains "$output" "\\033[2;4;39m" "table header should be dim and underlined"
+
+  printf 'ok table_primitives\n'
+}
+
 ui_rendering_test::main() {
   ui_rendering_test::assert_color_controls
   ui_rendering_test::assert_modes_and_symbols
   ui_rendering_test::assert_json_and_errors
   ui_rendering_test::assert_help_and_reports
   ui_rendering_test::assert_status_alignment
+  ui_rendering_test::assert_table_primitives
   printf 'all ui rendering tests passed\n'
 }
 

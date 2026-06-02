@@ -93,9 +93,9 @@ style_test::test_background_detection() {
 }
 
 style_test::test_palette_tokens() {
-  style_test::assert_eq "accent_dark" $'\033[1;96mx\033[0m' "$(style_test::render dark dotfiles_accent)"
-  style_test::assert_eq "accent_light" $'\033[1;34mx\033[0m' "$(style_test::render light dotfiles_accent)"
-  style_test::assert_eq "accent_unknown" $'\033[1;34mx\033[0m' "$(style_test::render - dotfiles_accent)"
+  style_test::assert_eq "accent_dark" $'\033[1;92mx\033[0m' "$(style_test::render dark dotfiles_accent)"
+  style_test::assert_eq "accent_light" $'\033[1;32mx\033[0m' "$(style_test::render light dotfiles_accent)"
+  style_test::assert_eq "accent_unknown" $'\033[1;32mx\033[0m' "$(style_test::render - dotfiles_accent)"
 
   style_test::assert_eq "success_dark" $'\033[1;92mx\033[0m' "$(style_test::render dark dotfiles_success)"
   style_test::assert_eq "success_light" $'\033[1;32mx\033[0m' "$(style_test::render light dotfiles_success)"
@@ -104,7 +104,7 @@ style_test::test_palette_tokens() {
   style_test::assert_eq "error_dark" $'\033[1;91mx\033[0m' "$(style_test::render dark dotfiles_error)"
   style_test::assert_eq "error_light" $'\033[1;31mx\033[0m' "$(style_test::render light dotfiles_error)"
 
-  style_test::assert_eq "body_default_foreground" $'\033[39mx\033[0m' "$(style_test::render - dotfiles_body)"
+  style_test::assert_eq "body_plain_text" "x" "$(style_test::render - dotfiles_body)"
   style_test::assert_eq "frame_default_foreground" $'\033[2;39mx\033[0m' "$(style_test::render - dotfiles_frame)"
   style_test::assert_eq "description_default_foreground" $'\033[2;39mx\033[0m' "$(style_test::render - dotfiles_description)"
 }
@@ -113,13 +113,13 @@ style_test::test_ansi_enablement() {
   style_test::assert_eq "no_color_disables_ansi" "x" "$(style_test::render_with_env no_color)"
   style_test::assert_eq "term_dumb_disables_ansi" "x" "$(style_test::render_with_env term_dumb)"
   style_test::assert_eq "clicolor_zero_disables_ansi" "x" "$(style_test::render_with_env clicolor_off)"
-  style_test::assert_eq "captured_tty_enables_ansi" $'\033[1;34mx\033[0m' "$(style_test::render_with_env captured_tty)"
+  style_test::assert_eq "captured_tty_enables_ansi" $'\033[1;32mx\033[0m' "$(style_test::render_with_env captured_tty)"
   style_test::assert_eq "no_color_overrides_captured_tty" "x" "$(style_test::render_with_env no_color_over_captured_tty)"
   style_test::assert_eq "term_dumb_overrides_captured_tty" "x" "$(style_test::render_with_env term_dumb_over_captured_tty)"
   style_test::assert_eq "clicolor_zero_overrides_captured_tty" "x" "$(style_test::render_with_env clicolor_off_over_captured_tty)"
   style_test::assert_eq "no_color_overrides_force_color" "x" "$(style_test::render_with_env force_color_under_no_color)"
-  style_test::assert_eq "force_color_overrides_term_dumb" $'\033[1;34mx\033[0m' "$(style_test::render_with_env force_color_over_term_dumb)"
-  style_test::assert_eq "clicolor_force_overrides_clicolor_zero" $'\033[1;34mx\033[0m' "$(style_test::render_with_env clicolor_force_over_clicolor_off)"
+  style_test::assert_eq "force_color_overrides_term_dumb" $'\033[1;32mx\033[0m' "$(style_test::render_with_env force_color_over_term_dumb)"
+  style_test::assert_eq "clicolor_force_overrides_clicolor_zero" $'\033[1;32mx\033[0m' "$(style_test::render_with_env clicolor_force_over_clicolor_off)"
 }
 
 style_test::test_background_detection

@@ -539,6 +539,51 @@ PY
   printf 'ok json/confirm_propagates_failure\n'
 }
 
+prompt_test::assert_incremental_render_block() {
+  local work_dir="$1"
+  local output_file="$work_dir/incremental-render.out"
+  local status=0
+
+  DOTFILES_ROOT="$DOTFILES_ROOT" bash -s >"$output_file" <<'BASH' || status=$?
+set -euo pipefail
+source "$DOTFILES_ROOT/scripts/lib/prompt.bash"
+
+prompt::render_block "one" "two" "three"
+prompt::render_block "one" "TWO" "three"
+prompt::render_block "one" "TWO" "three" "four"
+prompt::render_block "one"
+prompt::render_block "head" "tail"
+prompt::render_block "head" "middle" "tail"
+prompt::render_block "head" "tail"
+BASH
+
+  [[ "$status" -eq 0 ]] || prompt_test::fail "incremental render script failed"
+
+  python3 - "$output_file" <<'PY'
+import sys
+
+data = open(sys.argv[1], "rb").read()
+
+first = b"one\ntwo\nthree\n"
+assert data.startswith(first), data
+
+after_first = data[len(first):]
+assert b"\r\x1b[KTWO" in after_first
+assert b"\r\x1b[Kfour" in after_first
+assert b"\r\x1b[Kone" not in after_first
+assert b"\r\x1b[Kthree" not in after_first
+assert b"\x1b[0" not in after_first
+
+after_head_tail = after_first.split(b"\r\x1b[Ktail\x1b[1B\r", 1)[1]
+assert b"\r\x1b[Kmiddle" in after_head_tail
+assert b"\r\x1b[Ktail" not in after_head_tail
+assert b"\x1b[1L" in after_first
+assert b"\x1b[1M" in after_first
+PY
+
+  printf 'ok incremental_render_block\n'
+}
+
 prompt_test::main() {
   local work_dir=""
   local mode=""
@@ -568,6 +613,7 @@ prompt_test::main() {
 
   prompt_test::assert_json_refuses_interactive "$work_dir"
   prompt_test::assert_json_confirm_propagates_failure "$work_dir"
+  prompt_test::assert_incremental_render_block "$work_dir"
 
   if [[ "${UPDATE:-0}" == "1" ]]; then
     printf 'updated %s snapshot(s)\n' "$(( $(prompt_test::case_names | wc -l | tr -d ' ') * $(prompt_test::mode_names | wc -l | tr -d ' ') ))"

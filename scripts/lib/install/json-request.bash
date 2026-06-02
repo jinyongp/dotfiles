@@ -155,7 +155,9 @@ install::json_parse_request() {
 
   if ! command -v python3 >/dev/null 2>&1; then
     rm -f "$request_file"
-    ui::validation_error "missing required command" $'command\tpython3' $'usage\tDOTFILES_INSTALL_UI_MODE=json install < request.json'
+    ui::validation_error "missing required command" \
+      $'command\tpython3' \
+      $'usage\tinstall < request.json'
     return 1
   fi
 

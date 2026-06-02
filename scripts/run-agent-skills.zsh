@@ -4,7 +4,9 @@ set -euo pipefail
 
 DOTFILES_ROOT="${0:A:h:h}"
 command_name="${1:-help}"
-shift || true
+if (( $# > 0 )); then
+  shift
+fi
 
 source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"
 source "$DOTFILES_ROOT/scripts/lib/style.sh"
@@ -22,8 +24,6 @@ agent_skills::usage() {
   ui::help_commands \
     $'list\tlist\tList internal and external skills with adapter install state.' \
     $'sync\tsync\tFetch latest configured refs and update the local cache.'
-  ui::help_environment \
-    $'DOTFILES_INSTALL_UI_MODE\tDOTFILES_INSTALL_UI_MODE\tauto, plain, or json.'
 }
 
 case "$command_name" in

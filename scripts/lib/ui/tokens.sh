@@ -32,8 +32,8 @@ fi
 
 ui::__palette_accent_token() {
   case "$(ui::terminal_background)" in
-    dark) printf 'bright-cyan' ;;
-    *) printf 'blue' ;;
+    dark) printf 'bright-green' ;;
+    *) printf 'green' ;;
   esac
 }
 
@@ -60,15 +60,15 @@ ui::__palette_error_token() {
 
 ui::__palette_link_token() {
   case "$(ui::terminal_background)" in
-    dark) printf 'cyan' ;;
-    *) printf 'blue' ;;
+    dark) printf 'green' ;;
+    *) printf 'green' ;;
   esac
 }
 
 ui::__palette_code_token() {
   case "$(ui::terminal_background)" in
-    dark) printf 'bright-blue' ;;
-    *) printf 'blue' ;;
+    dark) printf 'bright-green' ;;
+    *) printf 'green' ;;
   esac
 }
 
@@ -79,23 +79,24 @@ ui::style() {
 
   case "$token" in
     heading) ui::apply "$text" bold default ;;
-    body) ui::apply "$text" default ;;
+    body) printf '%s' "$text" ;;
     muted) ui::apply "$text" dim default ;;
-    subtle) ui::apply "$text" default ;;
+    subtle) printf '%s' "$text" ;;
     accent) ui::apply "$text" bold "$(ui::__palette_accent_token)" ;;
     success) ui::apply "$text" bold "$(ui::__palette_success_token)" ;;
     warning) ui::apply "$text" bold "$(ui::__palette_warning_token)" ;;
     error) ui::apply "$text" bold "$(ui::__palette_error_token)" ;;
-    code) ui::apply "$text" bold "$(ui::__palette_code_token)" ;;
+    code) ui::apply "$text" "$(ui::__palette_code_token)" ;;
     path) ui::apply "$text" underline default ;;
     link)
       ui::link "$text" "${1:-$text}"
       ;;
+    table_header) ui::apply "$text" dim underline default ;;
     frame) ui::apply "$text" dim default ;;
     hint) ui::apply "$text" dim italic default ;;
     description) ui::apply "$text" dim default ;;
     disabled) ui::apply "$text" dim default ;;
-    active) ui::apply "$text" default ;;
+    active) printf '%s' "$text" ;;
     selected) ui::apply "$text" "$(ui::__palette_success_token)" ;;
     selected_active) ui::apply "$text" "$(ui::__palette_success_token)" ;;
     value) ui::apply "$text" bold default ;;

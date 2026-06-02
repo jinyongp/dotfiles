@@ -24,7 +24,7 @@ ui::help_start() {
 }
 
 ui::help_usage() {
-  ui::report_section "Usage:" "$@"
+  return 0
 }
 
 ui::help_records() {

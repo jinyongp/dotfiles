@@ -210,11 +210,54 @@ install::print_direct_target_list() {
     return 0
   fi
 
-  printf '%s\n' "$(ui::section "Available direct install targets:")"
+  printf '%s\n' "$(ui::heading "Install targets")"
+  printf '%s\n' "$(ui::line "$(ui::field usage "dfx install <target> [item...]")")"
+  printf '\n'
+  printf '%s\n' "$(ui::line "$(ui::align_pair "$(ui::style table_header "target")" "$(ui::align_pair "$(ui::style table_header "installs")" "$(ui::style table_header "example")" 31)" 17)")"
   while IFS=$'\t' read -r module_id _ module_description _; do
-    printf '%s\n' "$(ui::list_item "$(ui::align_pair "$(ui::code "${module_id}:")" "$module_description" 18)")"
+    install::print_direct_target_row "$module_id"
   done < <(catalog::module_records "$DOTFILES_PLATFORM")
-  printf '%s\n' "$(ui::list_item "$(ui::align_pair "$(ui::code "theme:")" "Install dependencies for the current shell theme (${DOTFILES_THEME:-starship})." 18)")"
+  install::print_direct_target_row "theme"
+}
+
+install::print_direct_target_row() {
+  local target_id="$1"
+  local summary example
+
+  summary="$(install::direct_target_summary "$target_id")"
+  example="$(install::direct_target_example "$target_id")"
+
+  printf '%s\n' "$(ui::line "$(ui::align_pair "$(ui::body "$target_id")" "$(ui::align_pair "$(ui::body "$summary")" "$(ui::description "$example")" 31)" 17)")"
+}
+
+install::direct_target_summary() {
+  case "$1" in
+    dotfiles) printf 'shell, Git, Vim, Neovim links' ;;
+    packages) printf 'CLI packages' ;;
+    agents) printf 'Codex/Claude rules and skills' ;;
+    oh_my_zsh) printf 'oh-my-zsh and plugins' ;;
+    neovim) printf 'Neovim config and tooling' ;;
+    fonts) printf 'terminal fonts' ;;
+    desktop_apps) printf 'macOS desktop apps' ;;
+    macos_defaults) printf 'macOS keybindings/defaults' ;;
+    theme) printf 'current shell theme deps' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+install::direct_target_example() {
+  case "$1" in
+    dotfiles) printf 'dfx install dotfiles' ;;
+    packages) printf 'dfx install packages' ;;
+    agents) printf 'dfx install agents codex' ;;
+    oh_my_zsh) printf 'dfx install omz' ;;
+    neovim) printf 'dfx install neovim' ;;
+    fonts) printf 'dfx install fonts' ;;
+    desktop_apps) printf 'dfx install desktop_apps' ;;
+    macos_defaults) printf 'dfx install macos_defaults' ;;
+    theme) printf 'dfx install theme' ;;
+    *) printf 'dfx install %s' "$1" ;;
+  esac
 }
 
 install::configure_direct_install() {

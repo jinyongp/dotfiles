@@ -19,14 +19,12 @@ dotfiles::usage() {
     "dotfiles path"
   ui::help_commands \
     $'install\tinstall\tRun the interactive installer or a direct install target.' \
-    $'agents\tagents\tManage external agent skills.' \
     $'list\tlist\tList direct install targets.' \
+    $'agents\tagents\tManage external agent skills.' \
     $'update\tupdate\tFast-forward this dotfiles repository.' \
-    $'doctor\tdoctor\tCheck the local dotfiles setup.' \
     $'path\tpath\tPrint the dotfiles repository path.' \
-    $'complete\tcomplete\tPrint shell completion records.'
-  ui::help_environment \
-    $'DOTFILES_INSTALL_UI_MODE\tDOTFILES_INSTALL_UI_MODE\tauto, plain, or json.'
+    $'doctor\tdoctor\tCheck the local dotfiles setup.' \
+    $'help\thelp\tShow help.'
   ui::help_records "Aliases:" \
     $'dfx\tdfx\tAlias for dotfiles when no existing dfx command is installed.'
 }
@@ -167,11 +165,11 @@ dotfiles::complete() {
     commands)
       cat <<'EOF'
 install:run the interactive installer or direct install target
-agents:manage external agent skills
 list:list direct install targets
+agents:manage external agent skills
 update:fast-forward this dotfiles repository
-doctor:check the local dotfiles setup
 path:print the dotfiles repository path
+doctor:check the local dotfiles setup
 help:show help
 EOF
       ;;
@@ -235,6 +233,14 @@ case "${1:-help}" in
     ;;
   complete)
     shift
+    if [[ $# -eq 0 ]]; then
+      ui::validation_error "completion context required" \
+        $'input\tcomplete' \
+        $'usage\tdfx complete <context> [target]' \
+        $'expected\tcommands, targets, items, external-skills' \
+        $'next\tThis command is used by shell completion integration.'
+      exit 2
+    fi
     dotfiles::complete "$@"
     ;;
   *)

@@ -66,9 +66,19 @@ install_entrypoint_test::assert_contains() {
   local file="$1"
   local expected="$2"
 
-  if ! grep -Fq "$expected" "$file"; then
+  if ! grep -Fq -- "$expected" "$file"; then
     sed -n '1,120p' "$file" >&2
     install_entrypoint_test::fail "expected '$expected' in $file"
+  fi
+}
+
+install_entrypoint_test::assert_not_contains() {
+  local file="$1"
+  local unexpected="$2"
+
+  if grep -Fq -- "$unexpected" "$file"; then
+    sed -n '1,120p' "$file" >&2
+    install_entrypoint_test::fail "did not expect '$unexpected' in $file"
   fi
 }
 
@@ -134,22 +144,28 @@ install_entrypoint_test::run_dotfiles_command_json() {
 
 install_entrypoint_test::assert_help() {
   install_entrypoint_test::run_install "help" --help
-  install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "Usage:"
-  install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "$DOTFILES_ROOT/install <module>"
+  install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "COMMANDS"
+  install_entrypoint_test::assert_contains "$WORK_DIR/help.out" "EXAMPLES"
+  install_entrypoint_test::assert_not_contains "$WORK_DIR/help.out" "Usage:"
   install_entrypoint_test::assert_no_stderr "help"
 
   install_entrypoint_test::run_install_with_home "$REPO_HOME_DIR" "help_home" help
-  install_entrypoint_test::assert_contains "$WORK_DIR/help_home.out" "~/.dotfiles/install <module>"
+  install_entrypoint_test::assert_contains "$WORK_DIR/help_home.out" "~/.dotfiles/install neovim"
+  install_entrypoint_test::assert_not_contains "$WORK_DIR/help_home.out" "Usage:"
   install_entrypoint_test::assert_no_stderr "help_home"
   printf 'ok help\n'
 }
 
 install_entrypoint_test::assert_list() {
   install_entrypoint_test::run_install "list" list
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "Available direct install targets:"
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "dotfiles:"
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "agents:"
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "theme:"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "Install targets"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "usage: dfx install <target> [item...]"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "target"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "installs"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "example"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "dotfiles          shell, Git, Vim, Neovim links"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "agents            Codex/Claude rules and skills"
+  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "theme             current shell theme deps"
   install_entrypoint_test::assert_no_stderr "list"
   printf 'ok list\n'
 }
@@ -159,8 +175,14 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_path.out" "$DOTFILES_ROOT"
   install_entrypoint_test::assert_no_stderr "dotfiles_path"
 
+  install_entrypoint_test::run_dotfiles_command "dotfiles_agents_help" agents
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_help.out" "COMMANDS"
+  install_entrypoint_test::assert_not_contains "$WORK_DIR/dotfiles_agents_help.out" "DOTFILES_INSTALL_UI_MODE"
+  install_entrypoint_test::assert_no_stderr "dotfiles_agents_help"
+
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_commands" complete commands
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_commands.out" "install:run the interactive installer or direct install target"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_commands.out" "list:list direct install targets"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_commands"
 
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_targets" complete targets
@@ -177,7 +199,7 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
 
   install_entrypoint_test::run_dotfiles_command "dotfiles_agents_list" agents list
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "Agent skills:"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "AGENT SKILLS"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "planning"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "internal; available"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "gate"

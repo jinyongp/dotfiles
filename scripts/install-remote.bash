@@ -17,12 +17,25 @@ install_remote::json_escape() {
   printf '%s' "$value"
 }
 
+install_remote::ui_mode() {
+  install_remote::load_ui
+  if declare -F ui::mode >/dev/null 2>&1; then
+    ui::mode
+    return 0
+  fi
+
+  case "${DOTFILES_INSTALL_UI_MODE:-auto}" in
+    auto|plain|json) printf '%s' "${DOTFILES_INSTALL_UI_MODE:-auto}" ;;
+    *) printf 'auto' ;;
+  esac
+}
+
 install_remote::fallback_validation_error() {
   local message="$1"
   shift || true
   local record label value json_fields="" escaped_label escaped_value
 
-  if [[ "${DOTFILES_INSTALL_UI_MODE:-auto}" == "json" ]]; then
+  if [[ "$(install_remote::ui_mode)" == "json" ]]; then
     for record in "$@"; do
       IFS=$'\t' read -r label value <<<"$record"
       [[ -n "$label" ]] || continue
@@ -84,7 +97,7 @@ install_remote::ensure_clean_worktree() {
       $'path\t'"$DOTFILES_DIR" \
       $'status\t'"$status" \
       $'next\tcommit, stash, or discard local changes before update'
-    if [[ "${DOTFILES_INSTALL_UI_MODE:-auto}" != "json" ]]; then
+    if [[ "$(install_remote::ui_mode)" != "json" ]]; then
       printf '%s\n' "$status" >&2
     fi
     return 1

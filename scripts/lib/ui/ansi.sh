@@ -8,32 +8,25 @@ dotfiles_color_reset="$ui_ansi_reset"
 # shellcheck disable=SC2034
 reset="$ui_ansi_reset"
 
+if [[ -z "${UI_ANSI_LIB_DIR:-}" ]]; then
+  if [[ -n "${BASH_SOURCE[0]:-}" ]]; then
+    UI_ANSI_LIB_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+  elif [[ -n "${ZSH_VERSION:-}" ]]; then
+    UI_ANSI_LIB_DIR="$(eval 'cd -- "$(dirname -- "${(%):-%x}")" && pwd')"
+  fi
+fi
+
+if ! typeset -f ui::env_color_enabled >/dev/null 2>&1; then
+  # shellcheck disable=SC1090
+  source "$UI_ANSI_LIB_DIR/environment.sh"
+fi
+
 ui::ansi_enabled() {
-  case "${DOTFILES_INSTALL_UI_MODE:-auto}" in
-    plain|json) return 1 ;;
-  esac
-
-  if [[ -n "${NO_COLOR:-}" ]]; then
-    return 1
-  fi
-
-  if [[ "${FORCE_COLOR:-0}" != "0" || "${CLICOLOR_FORCE:-0}" != "0" ]]; then
-    return 0
-  fi
-
-  if [[ "${CLICOLOR:-1}" == "0" || "${TERM:-}" == "dumb" ]]; then
-    return 1
-  fi
-
-  if [[ "${DOTFILES_COLOR_OUTPUT_IS_TTY:-0}" == "1" ]]; then
-    return 0
-  fi
-
-  [[ -t 1 ]]
+  ui::env_color_enabled
 }
 
 ui::link_enabled() {
-  ui::ansi_enabled && [[ "${DOTFILES_DISABLE_OSC8:-0}" != "1" ]]
+  ui::env_osc8_enabled
 }
 
 ui::ansi_code() {

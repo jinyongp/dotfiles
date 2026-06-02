@@ -22,7 +22,11 @@ ui::blank() {
 }
 
 ui::section() {
-  ui::heading "$1"
+  local title="$1"
+
+  title="${title%:}"
+  title="$(printf '%s' "$title" | tr '[:lower:]' '[:upper:]')"
+  ui::muted "$title"
 }
 
 ui::title() {

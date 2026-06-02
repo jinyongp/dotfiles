@@ -21,17 +21,23 @@ PROMPT__SESSION_OPEN=0
 PROMPT__RAW_MODE=0
 PROMPT__CURSOR_HIDDEN=0
 PROMPT__RENDERED_LINES=0
+PROMPT__RENDERED_BLOCK_LINES=()
 PROMPT__STTY_STATE=""
 PROMPT__CANCELLED=0
-PROMPT__UI_MODE="${DOTFILES_INSTALL_UI_MODE:-auto}"
+PROMPT__UI_MODE="auto"
 
 if declare -F ui::mode >/dev/null 2>&1; then
   PROMPT__UI_MODE="$(ui::mode)"
+elif [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/ui/environment.sh" ]]; then
+  # shellcheck disable=SC1090
+  source "$DOTFILES_ROOT/scripts/lib/ui/environment.sh"
+  PROMPT__UI_MODE="$(ui::env_mode)"
+elif [[ -f "$PROMPT__LIB_DIR/ui/environment.sh" ]]; then
+  # shellcheck disable=SC1090
+  source "$PROMPT__LIB_DIR/ui/environment.sh"
+  PROMPT__UI_MODE="$(ui::env_mode)"
 else
-  case "$PROMPT__UI_MODE" in
-    auto|plain|json) ;;
-    *) PROMPT__UI_MODE="auto" ;;
-  esac
+  PROMPT__UI_MODE="auto"
 fi
 
 prompt::ui_mode() {
@@ -41,8 +47,10 @@ prompt::ui_mode() {
 prompt::is_plain_mode() {
   if declare -F ui::is_plain >/dev/null 2>&1; then
     ui::is_plain
+  elif declare -F ui::env_plain_symbols_enabled >/dev/null 2>&1; then
+    ui::env_plain_symbols_enabled
   else
-    [[ "$PROMPT__UI_MODE" == "plain" || "${TERM:-}" == "dumb" ]]
+    [[ "$PROMPT__UI_MODE" == "plain" ]]
   fi
 }
 
@@ -53,6 +61,8 @@ prompt::uses_inline_status() {
 prompt::is_json_mode() {
   if declare -F ui::is_json >/dev/null 2>&1; then
     ui::is_json
+  elif declare -F ui::env_mode >/dev/null 2>&1; then
+    [[ "$(ui::env_mode)" == "json" ]]
   else
     [[ "$PROMPT__UI_MODE" == "json" ]]
   fi
@@ -206,19 +216,130 @@ prompt::clear_rendered_block() {
     fi
     printf '\r'
     PROMPT__RENDERED_LINES=0
+    PROMPT__RENDERED_BLOCK_LINES=()
   fi
 }
 
 prompt::render_block() {
-  local line
+  local next_lines=("$@")
+  local previous_count="${PROMPT__RENDERED_LINES:-0}"
+  local next_count="$#"
+  local max_count=0
+  local index=0
+  local previous_line=""
+  local next_line=""
+  local cursor_delta=0
+  local common_prefix=0
+  local common_suffix=0
+  local previous_middle_count=0
+  local next_middle_count=0
 
-  prompt::clear_rendered_block
+  if [[ "$previous_count" -le 0 ]]; then
+    for next_line in "${next_lines[@]}"; do
+      printf '%s\n' "$next_line"
+    done
 
-  for line in "$@"; do
-    printf '%s\n' "$line"
+    PROMPT__RENDERED_BLOCK_LINES=("${next_lines[@]}")
+    PROMPT__RENDERED_LINES="$next_count"
+    return 0
+  fi
+
+  max_count="$previous_count"
+  if [[ "$next_count" -gt "$max_count" ]]; then
+    max_count="$next_count"
+  fi
+
+  if [[ "$max_count" -le 0 ]]; then
+    PROMPT__RENDERED_BLOCK_LINES=()
+    PROMPT__RENDERED_LINES=0
+    return 0
+  fi
+
+  while [[ "$common_prefix" -lt "$previous_count" && "$common_prefix" -lt "$next_count" ]]; do
+    if [[ "${PROMPT__RENDERED_BLOCK_LINES[$common_prefix]-}" != "${next_lines[$common_prefix]-}" ]]; then
+      break
+    fi
+    common_prefix=$((common_prefix + 1))
   done
 
-  PROMPT__RENDERED_LINES=$#
+  while [[ $((common_prefix + common_suffix)) -lt "$previous_count" && $((common_prefix + common_suffix)) -lt "$next_count" ]]; do
+    if [[ "${PROMPT__RENDERED_BLOCK_LINES[$((previous_count - common_suffix - 1))]-}" != "${next_lines[$((next_count - common_suffix - 1))]-}" ]]; then
+      break
+    fi
+    common_suffix=$((common_suffix + 1))
+  done
+
+  previous_middle_count=$((previous_count - common_prefix - common_suffix))
+  next_middle_count=$((next_count - common_prefix - common_suffix))
+
+  if [[ "$previous_middle_count" -eq 0 && "$next_middle_count" -gt 0 ]]; then
+    if [[ $((previous_count - common_prefix)) -gt 0 ]]; then
+      printf '\033[%dA' "$((previous_count - common_prefix))"
+    fi
+    if [[ "$common_prefix" -lt "$previous_count" ]]; then
+      printf '\033[%dL' "$next_middle_count"
+    fi
+
+    index=0
+    while [[ "$index" -lt "$next_middle_count" ]]; do
+      printf '\r\033[K%s' "${next_lines[$((common_prefix + index))]}"
+      index=$((index + 1))
+      if [[ "$index" -lt "$next_middle_count" ]]; then
+        printf '\033[B'
+      fi
+    done
+
+    if [[ "$common_suffix" -ge 0 ]]; then
+      printf '\033[%dB' "$((common_suffix + 1))"
+    fi
+    printf '\r'
+    PROMPT__RENDERED_BLOCK_LINES=("${next_lines[@]}")
+    PROMPT__RENDERED_LINES="$next_count"
+    return 0
+  fi
+
+  if [[ "$previous_middle_count" -gt 0 && "$next_middle_count" -eq 0 ]]; then
+    if [[ $((previous_count - common_prefix)) -gt 0 ]]; then
+      printf '\033[%dA' "$((previous_count - common_prefix))"
+    fi
+    printf '\033[%dM' "$previous_middle_count"
+    if [[ "$common_suffix" -gt 0 ]]; then
+      printf '\033[%dB' "$common_suffix"
+    fi
+    printf '\r'
+    PROMPT__RENDERED_BLOCK_LINES=("${next_lines[@]}")
+    PROMPT__RENDERED_LINES="$next_count"
+    return 0
+  fi
+
+  printf '\033[%dA' "$previous_count"
+
+  while [[ "$index" -lt "$max_count" ]]; do
+    previous_line="${PROMPT__RENDERED_BLOCK_LINES[$index]-}"
+    next_line="${next_lines[$index]-}"
+
+    if [[ "$index" -ge "$next_count" ]]; then
+      printf '\r\033[K'
+    elif [[ "$index" -ge "$previous_count" || "$previous_line" != "$next_line" ]]; then
+      printf '\r\033[K%s' "$next_line"
+    fi
+
+    index=$((index + 1))
+    if [[ "$index" -lt "$max_count" ]]; then
+      printf '\033[B'
+    fi
+  done
+
+  cursor_delta=$((next_count - max_count + 1))
+  if [[ "$cursor_delta" -gt 0 ]]; then
+    printf '\033[%dB' "$cursor_delta"
+  elif [[ "$cursor_delta" -lt 0 ]]; then
+    printf '\033[%dA' "$((-cursor_delta))"
+  fi
+  printf '\r'
+
+  PROMPT__RENDERED_BLOCK_LINES=("${next_lines[@]}")
+  PROMPT__RENDERED_LINES="$next_count"
 }
 
 prompt::set_result() {

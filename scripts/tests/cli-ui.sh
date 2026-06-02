@@ -21,10 +21,20 @@ cli_ui_test::assert_contains() {
   local file="$1"
   local expected="$2"
 
-  grep -Fq "$expected" "$file" || {
+  grep -Fq -- "$expected" "$file" || {
     sed -n '1,120p' "$file" >&2
     cli_ui_test::fail "expected '$expected' in $file"
   }
+}
+
+cli_ui_test::assert_not_contains() {
+  local file="$1"
+  local unexpected="$2"
+
+  if grep -Fq -- "$unexpected" "$file"; then
+    sed -n '1,120p' "$file" >&2
+    cli_ui_test::fail "did not expect '$unexpected' in $file"
+  fi
 }
 
 cli_ui_test::run_cmd() {
@@ -139,7 +149,7 @@ PY
     PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     zsh -f -c 'dfx() { dotfiles "$@"; }; dfx agents list' >"$WORK_DIR/dfx_agents_list.out" 2>"$WORK_DIR/dfx_agents_list.err"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "Agent skills:"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "AGENT SKILLS"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "planning"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "codex:linked"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "claude:unavailable"
@@ -149,8 +159,10 @@ PY
 
 cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_help dotfiles help
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_help.out" "Usage:"
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_help.out" "Commands:"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_help.out" "Usage:"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_help.out" "COMMANDS"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_help.out" "complete"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_help.out" "DOTFILES_INSTALL_UI_MODE"
 
   cli_ui_test::run_cmd dotfiles_path dotfiles path
   [[ "$(cat "$WORK_DIR/dotfiles_path.out")" == "$DOTFILES_ROOT" ]] || cli_ui_test::fail "dotfiles path output changed"
@@ -158,20 +170,32 @@ cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_complete_commands dotfiles complete commands
   diff -u "$WORK_DIR/dotfiles_complete_commands.out" - <<'EOF'
 install:run the interactive installer or direct install target
-agents:manage external agent skills
 list:list direct install targets
+agents:manage external agent skills
 update:fast-forward this dotfiles repository
-doctor:check the local dotfiles setup
 path:print the dotfiles repository path
+doctor:check the local dotfiles setup
 help:show help
 EOF
 
   cli_ui_test::run_cmd_json dotfiles_complete_json dotfiles complete commands
   diff -u "$WORK_DIR/dotfiles_complete_commands.out" "$WORK_DIR/dotfiles_complete_json.out"
 
+  if cli_ui_test::run_cmd dotfiles_complete_no_context dotfiles complete; then
+    cli_ui_test::fail "dotfiles complete without context unexpectedly succeeded"
+  fi
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_no_context.err" "completion context required"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_no_context.err" "usage"
+
   cli_ui_test::run_cmd dotfiles_complete_targets dotfiles complete targets
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "dotfiles:Dotfiles"
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "theme:Install dependencies for the current shell theme."
+  cli_ui_test::assert_contains "$DOTFILES_ROOT/zsh/completions/_dotfiles" "_describe -V -t commands"
+
+  cli_ui_test::run_cmd dotfiles_agents_help dotfiles agents
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_help.out" "COMMANDS"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_agents_help.out" "DOTFILES_INSTALL_UI_MODE"
+  [[ ! -s "$WORK_DIR/dotfiles_agents_help.err" ]] || cli_ui_test::fail "dotfiles agents emitted stderr"
 
   env -i \
     HOME="$HOME_DIR" \
@@ -182,10 +206,11 @@ EOF
     DOTFILES_PLATFORM="macos" \
     PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
-    zsh -f -c 'source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"; source "$DOTFILES_ROOT/zsh/alias.zsh"; type dfx; eval "dfx --help"; eval "dfx list"' >"$WORK_DIR/dfx_help_list.out" 2>"$WORK_DIR/dfx_help_list.err"
+  zsh -f -c 'source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"; source "$DOTFILES_ROOT/zsh/alias.zsh"; type dfx; eval "dfx --help"; eval "dfx list"' >"$WORK_DIR/dfx_help_list.out" 2>"$WORK_DIR/dfx_help_list.err"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "dfx is an alias"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Usage:"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Available direct install targets:"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dfx_help_list.out" "Usage:"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Install targets"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "usage: dfx install <target> [item...]"
 
   cli_ui_test::run_cmd_json dotfiles_agents_json dotfiles agents list
   cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_agents_json.out"
@@ -226,8 +251,8 @@ EOF
 
 cli_ui_test::assert_small_commands() {
   cli_ui_test::run_cmd text_help text --help
-  cli_ui_test::assert_contains "$WORK_DIR/text_help.out" "Usage:"
-  cli_ui_test::assert_contains "$WORK_DIR/text_help.out" "Options:"
+  cli_ui_test::assert_not_contains "$WORK_DIR/text_help.out" "Usage:"
+  cli_ui_test::assert_contains "$WORK_DIR/text_help.out" "OPTIONS"
 
   if cli_ui_test::run_cmd_json text_invalid text --bad; then
     cli_ui_test::fail "text invalid option unexpectedly succeeded"
@@ -239,14 +264,14 @@ cli_ui_test::assert_small_commands() {
     || cli_ui_test::fail "text payload changed"
 
   cli_ui_test::run_cmd colorls_help colorls --help
-  cli_ui_test::assert_contains "$WORK_DIR/colorls_help.out" "Usage:"
+  cli_ui_test::assert_not_contains "$WORK_DIR/colorls_help.out" "Usage:"
   if cli_ui_test::run_cmd_json colorls_invalid colorls --bad; then
     cli_ui_test::fail "colorls invalid option unexpectedly succeeded"
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/colorls_invalid.err"
 
   cli_ui_test::run_cmd cloc_help cloc-git --help
-  cli_ui_test::assert_contains "$WORK_DIR/cloc_help.out" "Usage:"
+  cli_ui_test::assert_not_contains "$WORK_DIR/cloc_help.out" "Usage:"
   tmp_path="$WORK_DIR/path"
   mkdir -p "$tmp_path"
   ln -s "$(command -v git)" "$tmp_path/git"
