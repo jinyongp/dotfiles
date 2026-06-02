@@ -24,6 +24,10 @@ case "$CURRENT" in
         )
         _describe -V -t agents-commands 'agents command' entries
         ;;
+      themes)
+        entries=("${(@f)$(dotfiles complete theme-commands 2>/dev/null)}")
+        _describe -V -t themes-commands 'themes command' entries
+        ;;
     esac
     ;;
   *)
@@ -39,6 +43,14 @@ case "$CURRENT" in
           sync)
             entries=("${(@f)$(dotfiles complete external-skills 2>/dev/null)}")
             _describe -V -t external-skills 'external agent skill' entries
+            ;;
+        esac
+        ;;
+      themes)
+        case "$target" in
+          use)
+            entries=("${(@f)$(dotfiles complete items themes 2>/dev/null)}")
+            _describe -V -t shell-themes 'shell theme' entries
             ;;
         esac
         ;;

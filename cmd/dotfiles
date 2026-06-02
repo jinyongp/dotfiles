@@ -20,6 +20,7 @@ dotfiles::usage() {
   ui::help_commands \
     $'install\tinstall\tRun the interactive installer or a direct install target.' \
     $'list\tlist\tList direct install targets.' \
+    $'themes\tthemes\tManage shell theme selection and dependencies.' \
     $'agents\tagents\tManage external agent skills.' \
     $'update\tupdate\tFast-forward this dotfiles repository.' \
     $'path\tpath\tPrint the dotfiles repository path.' \
@@ -166,6 +167,7 @@ dotfiles::complete() {
       cat <<'EOF'
 install:run the interactive installer or direct install target
 list:list direct install targets
+themes:manage shell theme selection and dependencies
 agents:manage external agent skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
@@ -176,7 +178,6 @@ EOF
     targets)
       catalog::module_records "$platform" | dotfiles::complete_records
       cat <<'EOF'
-theme:Install dependencies for the current shell theme.
 vim:alias for neovim
 nvim:alias for neovim
 omz:alias for oh_my_zsh
@@ -199,7 +200,15 @@ EOF
         oh_my_zsh|omz) catalog::omz_plugin_records | dotfiles::complete_records ;;
         fonts) catalog::font_records | dotfiles::complete_records ;;
         desktop_apps|desktop-apps) catalog::desktop_app_records | dotfiles::complete_records ;;
+        themes) catalog::theme_records | dotfiles::complete_records ;;
       esac
+      ;;
+    theme-commands)
+      cat <<'EOF'
+list:list available shell themes
+use:set the saved shell theme and install dependencies
+install:install dependencies for the saved shell theme
+EOF
       ;;
     external-skills)
       catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
@@ -218,6 +227,10 @@ case "${1:-help}" in
   agents)
     shift
     exec "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" "$@"
+    ;;
+  themes)
+    shift
+    exec "$DOTFILES_ROOT/scripts/run-themes.bash" "$@"
     ;;
   list)
     exec "$DOTFILES_ROOT/install" list

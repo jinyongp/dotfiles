@@ -16,10 +16,6 @@ install::direct_target_exists() {
   local target="$1"
   local module_id
 
-  if [[ "$target" == "theme" ]]; then
-    return 0
-  fi
-
   while IFS=$'\t' read -r module_id _; do
     [[ "$module_id" == "$target" ]] && return 0
   done < <(catalog::module_records "$DOTFILES_PLATFORM")
@@ -68,7 +64,6 @@ install::direct_target_ids() {
   while IFS=$'\t' read -r module_id _; do
     ids[${#ids[@]}]="$module_id"
   done < <(catalog::module_records "$DOTFILES_PLATFORM")
-  ids[${#ids[@]}]="theme"
 
   prompt::join_by ", " "${ids[@]}"
 }
@@ -144,11 +139,6 @@ install::validate_direct_items() {
 install::direct_target_label() {
   local target="$1"
 
-  if [[ "$target" == "theme" ]]; then
-    printf 'Theme'
-    return 0
-  fi
-
   catalog::module_label "$target"
 }
 
@@ -171,8 +161,7 @@ install::print_direct_usage() {
     $'neovim\tneovim\tInstall Neovim and editor dependencies.' \
     $'fonts\tfonts\tInstall selected fonts.' \
     $'desktop_apps\tdesktop_apps\tInstall selected desktop apps.' \
-    $'macos_defaults\tmacos_defaults\tApply macOS defaults.' \
-    $'theme\ttheme\tInstall dependencies for the current shell theme.'
+    $'macos_defaults\tmacos_defaults\tApply macOS defaults.'
   ui::help_records "Aliases" \
     $'vim\tvim\tAlias for neovim.' \
     $'nvim\tnvim\tAlias for neovim.' \
@@ -185,8 +174,7 @@ install::print_direct_usage() {
     "$install_path_display agents codex" \
     "$install_path_display packages taskwarrior" \
     "$install_path_display packages fnm eza" \
-    "$install_path_display desktop_apps iterm2 raycast" \
-    "$install_path_display theme"
+    "$install_path_display desktop_apps iterm2 raycast"
 }
 
 install::print_direct_target_list() {
@@ -202,10 +190,6 @@ install::print_direct_target_list() {
       printf '{"id":"%s","description":"%s"}' "$(ui::json_escape "$module_id")" "$(ui::json_escape "$module_description")"
       first=0
     done < <(catalog::module_records "$DOTFILES_PLATFORM")
-    if [[ "$first" -eq 0 ]]; then
-      printf ','
-    fi
-    printf '{"id":"theme","description":"%s"}' "$(ui::json_escape "Install dependencies for the current shell theme (${DOTFILES_THEME:-starship}).")"
     printf ']\n'
     return 0
   fi
@@ -217,7 +201,6 @@ install::print_direct_target_list() {
   while IFS=$'\t' read -r module_id _ module_description _; do
     install::print_direct_target_row "$module_id"
   done < <(catalog::module_records "$DOTFILES_PLATFORM")
-  install::print_direct_target_row "theme"
 }
 
 install::print_direct_target_row() {
@@ -240,7 +223,6 @@ install::direct_target_summary() {
     fonts) printf 'terminal fonts' ;;
     desktop_apps) printf 'macOS desktop apps' ;;
     macos_defaults) printf 'macOS keybindings/defaults' ;;
-    theme) printf 'current shell theme deps' ;;
     *) printf '%s' "$1" ;;
   esac
 }
@@ -255,7 +237,6 @@ install::direct_target_example() {
     fonts) printf 'dfx install fonts' ;;
     desktop_apps) printf 'dfx install desktop_apps' ;;
     macos_defaults) printf 'dfx install macos_defaults' ;;
-    theme) printf 'dfx install theme' ;;
     *) printf 'dfx install %s' "$1" ;;
   esac
 }
@@ -283,27 +264,6 @@ install::configure_direct_install() {
       $'usage\t'"$(install::display_path "$DOTFILES_ROOT/install") <module> [item...]" \
       $'next\t'"$(install::display_path "$DOTFILES_ROOT/install") list"
     return 1
-  fi
-
-  if [[ "$target" == "theme" ]]; then
-    if (( $# > 0 )); then
-      ui::validation_error "theme target does not accept item arguments" \
-        $'target\ttheme' \
-        $'input\t'"$*" \
-        $'expected\tno item arguments' \
-        $'usage\t'"$(install::display_path "$DOTFILES_ROOT/install") theme" \
-        $'next\t'"$(install::display_path "$DOTFILES_ROOT/install") list"
-      return 1
-    fi
-
-    DOTFILES_RUN_THEME_INSTALL="1"
-    DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="1"
-
-    case "$DOTFILES_THEME" in
-      powerlevel10k|default) DOTFILES_ENABLE_OH_MY_ZSH="1" ;;
-    esac
-
-    return 0
   fi
 
   install::validate_direct_items "$target" "$@" || return 1
@@ -341,11 +301,9 @@ install::run_direct_install() {
   printf '%s\n' "$(ui::line "$(ui::field "package manager" "$DOTFILES_PACKAGE_MANAGER")")"
   printf '%s\n' "$(ui::line "$(ui::field theme "$DOTFILES_THEME")")"
 
-  if [[ "$target" != "theme" ]]; then
-    item_labels="$(install::get_module_item_labels "$target")"
-    if [[ -n "$item_labels" ]]; then
-      printf '%s\n' "$(ui::line "$(ui::field items "$item_labels")")"
-    fi
+  item_labels="$(install::get_module_item_labels "$target")"
+  if [[ -n "$item_labels" ]]; then
+    printf '%s\n' "$(ui::line "$(ui::field items "$item_labels")")"
   fi
 
   install::run_install_plan_or_exit "Direct install failed."

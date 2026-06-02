@@ -975,23 +975,25 @@ install_smoke_test::assert_direct_packages() {
   printf 'ok direct_packages\n'
 }
 
-install_smoke_test::assert_direct_theme() {
+install_smoke_test::assert_themes_use() {
   local normalized_output
 
   install_smoke_test::reset_case_config
-  install_smoke_test::setup_case "direct-theme"
+  install_smoke_test::setup_case "themes-use"
 
   ln -s "$DOTFILES_ROOT/zsh/.zshrc" "$HOME_DIR/.zshrc"
 
-  install_smoke_test::run_direct_install theme
+  install_smoke_test::with_env \
+    "$DOTFILES_ROOT/cmd/dotfiles" themes use starship >"$OUTPUT_FILE" 2>"$ERROR_FILE"
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "theme direct install should complete"
-  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install starship" "theme direct install should install starship"
+  install_smoke_test::assert_contains "$normalized_output" "completed  theme update complete" "themes use should complete"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install starship" "themes use should install starship"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/install.env" "DOTFILES_THEME=starship" "themes use should persist starship theme"
   install_smoke_test::assert_login_zsh_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
-  printf 'ok direct_theme\n'
+  printf 'ok themes_use\n'
 }
 
 install_smoke_test::assert_direct_fonts() {
@@ -1097,7 +1099,7 @@ install_smoke_test::assert_interactive_recommended() {
 install_smoke_test::main() {
   [[ -x "$REAL_ZSH_BIN" ]] || install_smoke_test::fail "zsh not found: $REAL_ZSH_BIN"
   install_smoke_test::assert_direct_dotfiles
-  install_smoke_test::assert_direct_theme
+  install_smoke_test::assert_themes_use
   install_smoke_test::assert_direct_neovim
   install_smoke_test::assert_direct_agents
   install_smoke_test::assert_external_skill_symlink_guard

@@ -171,6 +171,7 @@ cli_ui_test::assert_dotfiles() {
   diff -u "$WORK_DIR/dotfiles_complete_commands.out" - <<'EOF'
 install:run the interactive installer or direct install target
 list:list direct install targets
+themes:manage shell theme selection and dependencies
 agents:manage external agent skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
@@ -189,13 +190,27 @@ EOF
 
   cli_ui_test::run_cmd dotfiles_complete_targets dotfiles complete targets
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "dotfiles:Dotfiles"
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "theme:Install dependencies for the current shell theme."
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_complete_targets.out" "theme:"
+  cli_ui_test::run_cmd dotfiles_complete_theme_commands dotfiles complete theme-commands
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_commands.out" "use:set the saved shell theme and install dependencies"
+  cli_ui_test::run_cmd dotfiles_complete_theme_items dotfiles complete items themes
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_items.out" "starship:starship"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_items.out" "none:none"
   cli_ui_test::assert_contains "$DOTFILES_ROOT/zsh/completions/_dotfiles" "_describe -V -t commands"
 
   cli_ui_test::run_cmd dotfiles_agents_help dotfiles agents
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_help.out" "COMMANDS"
   cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_agents_help.out" "DOTFILES_INSTALL_UI_MODE"
   [[ ! -s "$WORK_DIR/dotfiles_agents_help.err" ]] || cli_ui_test::fail "dotfiles agents emitted stderr"
+
+  cli_ui_test::run_cmd dotfiles_themes_help dotfiles themes
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_themes_help.out" "COMMANDS"
+  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_themes_help.out" "DOTFILES_INSTALL_UI_MODE"
+  [[ ! -s "$WORK_DIR/dotfiles_themes_help.err" ]] || cli_ui_test::fail "dotfiles themes emitted stderr"
+
+  cli_ui_test::run_cmd dotfiles_themes_list dotfiles themes list
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_themes_list.out" "Shell themes"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_themes_list.out" "starship"
 
   env -i \
     HOME="$HOME_DIR" \

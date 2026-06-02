@@ -136,27 +136,20 @@ install_direct_test::assert_direct_item_dependencies_configured() {
   printf 'ok direct_item_dependencies_configured\n'
 }
 
-install_direct_test::assert_theme_target_configured() {
+install_direct_test::assert_theme_target_removed() {
   install_direct_test::reset_case
 
-  install::configure_direct_install theme
-
-  install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "" "did not expect module selection for theme target"
-  install_direct_test::assert_equal "$DOTFILES_RUN_THEME_INSTALL" "1" "expected theme install enabled"
-  install_direct_test::assert_equal "$DOTFILES_ALLOW_AUTO_LAUNCH_ZSH" "1" "expected zsh launch allowed for theme target"
-
-  if install::configure_direct_install theme extra >/dev/null 2>"$WORK_DIR/theme-extra.err"; then
-    install_direct_test::fail "theme target accepted extra item arguments"
+  if install::configure_direct_install theme >/dev/null 2>"$WORK_DIR/theme-target.err"; then
+    install_direct_test::fail "theme target unexpectedly succeeded"
   fi
 
-  if ! grep -Fq "Error: theme target does not accept item arguments" "$WORK_DIR/theme-extra.err" \
-    || ! grep -Fq "target: theme" "$WORK_DIR/theme-extra.err" \
-    || ! grep -Fq "input: extra" "$WORK_DIR/theme-extra.err"; then
-    sed -n '1,120p' "$WORK_DIR/theme-extra.err" >&2
-    install_direct_test::fail "expected theme extra args rejection"
+  if ! grep -Fq "Error: unknown install target" "$WORK_DIR/theme-target.err" \
+    || ! grep -Fq "input: theme" "$WORK_DIR/theme-target.err"; then
+    sed -n '1,120p' "$WORK_DIR/theme-target.err" >&2
+    install_direct_test::fail "expected theme target rejection"
   fi
 
-  printf 'ok theme_target_configured\n'
+  printf 'ok theme_target_removed\n'
 }
 
 install_direct_test::main() {
@@ -166,7 +159,7 @@ install_direct_test::main() {
   install_direct_test::assert_packages_items_configured
   install_direct_test::assert_agents_items_configured
   install_direct_test::assert_direct_item_dependencies_configured
-  install_direct_test::assert_theme_target_configured
+  install_direct_test::assert_theme_target_removed
   printf 'all install direct tests passed\n'
 }
 

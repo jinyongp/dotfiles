@@ -165,7 +165,8 @@ install_entrypoint_test::assert_list() {
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "example"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "dotfiles          shell, Git, Vim, Neovim links"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "agents            Codex/Claude rules and skills"
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "theme             current shell theme deps"
+  install_entrypoint_test::assert_not_contains "$WORK_DIR/list.out" "theme             current shell theme deps"
+  install_entrypoint_test::assert_not_contains "$WORK_DIR/list.out" "dfx install theme"
   install_entrypoint_test::assert_no_stderr "list"
   printf 'ok list\n'
 }
@@ -192,6 +193,20 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_items" complete items packages
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_items.out" "taskwarrior:Taskwarrior"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_items"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_theme_items" complete items themes
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_items.out" "starship:starship"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_items.out" "none:none"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_theme_items"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_themes_help" themes
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_themes_help.out" "COMMANDS"
+  install_entrypoint_test::assert_no_stderr "dotfiles_themes_help"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_themes_list" themes list
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_themes_list.out" "Shell themes"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_themes_list.out" "starship"
+  install_entrypoint_test::assert_no_stderr "dotfiles_themes_list"
 
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_external_skills" complete external-skills
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "gate:gate (gate)"
@@ -245,7 +260,7 @@ install_entrypoint_test::assert_invalid_target() {
 
   install_entrypoint_test::assert_contains "$error_file" "Error: unknown install target"
   install_entrypoint_test::assert_contains "$error_file" "input: definitely-not-a-target"
-  install_entrypoint_test::assert_contains "$error_file" "expected: dotfiles, packages, agents, oh_my_zsh, neovim, fonts, desktop_apps, macos_defaults, theme"
+  install_entrypoint_test::assert_contains "$error_file" "expected: dotfiles, packages, agents, oh_my_zsh, neovim, fonts, desktop_apps, macos_defaults"
   install_entrypoint_test::assert_contains "$error_file" "usage: $DOTFILES_ROOT/install <module> [item...]"
   install_entrypoint_test::assert_contains "$error_file" "next: $DOTFILES_ROOT/install list"
   printf 'ok invalid_target\n'
