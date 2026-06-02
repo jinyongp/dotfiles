@@ -32,6 +32,8 @@ Keep unresolved items visible in conversation:
 - owner decision needed
 
 Never move open decisions into docs as settled facts.
+When an open decision exists, print it in the conversation with a recommendation and why.
+If the user's answer is vague, wrong, unsafe, inconsistent, or still underspecified, keep discussing it in the conversation until it becomes testable.
 
 ## Gates
 
@@ -54,15 +56,17 @@ Never move open decisions into docs as settled facts.
 ## Decisions
 
 - Open decisions stay in conversation, not docs.
-- Options useful? include options + required recommendation.
+- Options useful? include options + required recommendation in the conversation.
 - Mark optional choices optional.
 - Do not let docs hide unresolved choices.
 - User answer vague? Convert to testable wording and confirm.
 - User answer risky? Present guardrail, default recommendation, and consequence.
+- User answer wrong/inconsistent? Stop and reconcile before docs or execution.
 
 ## Docs
 
 If user asks docs, write settled facts only: behavior, commands, constraints, current state. No undecided item as decided.
+Do not add "Open Decisions", "TODO Decisions", "Questions", or recommendation sections to docs unless the user explicitly asks for a decision log; even then, label them unresolved and mirror them in conversation.
 
 ## Keep Small
 
