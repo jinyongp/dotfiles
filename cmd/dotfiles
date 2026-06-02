@@ -8,7 +8,7 @@ dotfiles::usage() {
   cat <<EOF
 Usage:
   dotfiles install [target] [item...]
-  dotfiles agents list
+  dotfiles agents list [--json]
   dotfiles agents sync [skill...]
   dotfiles list
   dotfiles update

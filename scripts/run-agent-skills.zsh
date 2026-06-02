@@ -15,11 +15,12 @@ source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
 agent_skills::usage() {
   cat <<'EOF'
 Usage:
-  dotfiles agents list
+  dotfiles agents list [--json]
   dotfiles agents sync [skill...]
 
 Commands:
   list            List external agent skills and installed revisions.
+  list --json     Print external agent skill records as JSON.
   sync [skill...] Fetch latest configured refs and update the local cache.
 EOF
 }
@@ -29,7 +30,7 @@ case "$command_name" in
     agent_skills::usage
     ;;
   list)
-    agents::list_external_skills
+    agents::list_external_skills "$@"
     ;;
   sync)
     agents::sync_external_skills "$@"

@@ -789,9 +789,53 @@ agents::external_selected_ids_valid() {
   return "$invalid"
 }
 
+agents::print_json_string() {
+  local value="$1"
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  print -rn -- "\"$value\""
+}
+
+agents::print_json_string_array() {
+  local values="$1"
+  local item first=1
+
+  print -rn -- "["
+  for item in ${(s:,:)values}; do
+    if (( first == 0 )); then
+      print -rn -- ","
+    fi
+    agents::print_json_string "$item"
+    first=0
+  done
+  print -rn -- "]"
+}
+
 agents::list_external_skills() {
   local artifact_id source_id source_path install_name adapters kind copy_policy revision skill_status target_dir
   local row_source_id row_repo_url row_ref repo_url ref
+  local mode="${1:-}" display_adapters listed=0 first_json=1
+
+  if (( $# > 1 )); then
+    dotfiles::log_warn "Too many agents list options."
+    return 2
+  fi
+
+  case "$mode" in
+    ""|--json) ;;
+    *)
+      dotfiles::log_warn "Unknown agents list option: $mode"
+      return 2
+      ;;
+  esac
+
+  if [[ "$mode" == "--json" ]]; then
+    print -r -- "["
+  fi
 
   while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
     [[ -n "$artifact_id" ]] || continue
@@ -813,11 +857,72 @@ agents::list_external_skills() {
     if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       skill_status="installed"
     else
-      skill_status="missing"
+      skill_status="not_installed"
     fi
 
-    print -r -- "${artifact_id}	${skill_status}	${source_id}	${ref}	${revision:-unknown}	${install_name}	${adapters}	${copy_policy}	${repo_url}	${source_path}"
+    listed=1
+    if [[ "$mode" == "--json" ]]; then
+      if (( first_json == 0 )); then
+        print -r -- ","
+      fi
+      print -r -- "  {"
+      print -n -- '    "id": '
+      agents::print_json_string "$artifact_id"
+      print -r -- ","
+      print -n -- '    "status": '
+      agents::print_json_string "$skill_status"
+      print -r -- ","
+      print -n -- '    "sourceId": '
+      agents::print_json_string "$source_id"
+      print -r -- ","
+      print -n -- '    "ref": '
+      agents::print_json_string "$ref"
+      print -r -- ","
+      print -n -- '    "revision": '
+      agents::print_json_string "${revision:-unknown}"
+      print -r -- ","
+      print -n -- '    "installName": '
+      agents::print_json_string "$install_name"
+      print -r -- ","
+      print -n -- '    "adapters": '
+      agents::print_json_string_array "$adapters"
+      print -r -- ","
+      print -n -- '    "copyPolicy": '
+      agents::print_json_string "$copy_policy"
+      print -r -- ","
+      print -n -- '    "repoUrl": '
+      agents::print_json_string "$repo_url"
+      print -r -- ","
+      print -n -- '    "sourcePath": '
+      agents::print_json_string "$source_path"
+      print -r -- ""
+      print -n -- "  }"
+      first_json=0
+      continue
+    fi
+
+    display_adapters="${adapters//,/, }"
+    print -r -- "$artifact_id  ${skill_status//_/ }"
+    print -r -- "  source:  $source_id @ $ref"
+    print -r -- "  revision: ${revision:-unknown}"
+    print -r -- "  install: $install_name -> $display_adapters"
+    print -r -- "  policy:  $copy_policy"
+    print -r -- "  path:    $source_path"
+    print -r -- "  repo:    $repo_url"
+    print -r -- ""
   done < <(catalog::external_skill_artifact_records)
+
+  if [[ "$mode" == "--json" ]]; then
+    if (( first_json == 0 )); then
+      print -r -- ""
+    fi
+    print -r -- "]"
+  fi
+
+  if (( listed == 0 )); then
+    dotfiles::log_warn "No external agent skills configured."
+    return 1
+  fi
 }
 
 agents::install_adapter() {

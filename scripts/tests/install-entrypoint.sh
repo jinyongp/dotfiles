@@ -138,6 +138,21 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "humanize-korean:humanize-korean (im-not-ai)"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
 
+  install_entrypoint_test::run_dotfiles_command "dotfiles_agents_list" agents list
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "gate  not installed"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "  install: gate -> codex, claude"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "humanize-korean  not installed"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "  policy:  materialize_repo_symlinks"
+  install_entrypoint_test::assert_no_stderr "dotfiles_agents_list"
+
+  install_entrypoint_test::run_dotfiles_command "dotfiles_agents_list_json" agents list --json
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "gate"'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"status": "not_installed"'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"adapters": ["codex","claude"]'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "humanize-korean"'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"copyPolicy": "materialize_repo_symlinks"'
+  install_entrypoint_test::assert_no_stderr "dotfiles_agents_list_json"
+
   printf 'ok dotfiles_command\n'
 }
 
