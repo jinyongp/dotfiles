@@ -1,0 +1,20 @@
+class <%= class_name %> < Formula
+  desc "Personal dotfiles and installer"
+  homepage <%= "https://github.com/#{repository}".dump %>
+  url <%= archive_url.dump %>
+  sha256 <%= sha256.dump %>
+  version <%= version.dump %>
+  license :cannot_represent
+
+  def install
+    prefix.install Dir["*"]
+    prefix.install Dir[".[!.]*"].reject { |path| File.basename(path) == ".git" }
+    bin.write_exec_script opt_prefix/"cmd/dotfiles"
+  end
+
+  test do
+    ENV.prepend_path "PATH", bin
+    assert_match "dotfiles install", shell_output("dotfiles help")
+    assert_match opt_prefix.to_s, shell_output("dotfiles path")
+  end
+end

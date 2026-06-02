@@ -1,4 +1,4 @@
-name: publish homebrew dotfiles
+name: publish
 
 on:
   push:
@@ -16,135 +16,9 @@ concurrency:
 jobs:
   homebrew:
     if: github.repository == 'jinyongp/dotfiles' && github.ref == 'refs/heads/main'
-    runs-on: macos-latest
-    steps:
-      - name: select credential
-        id: credential
-        run: |
-          if [ -n "$TOKEN" ] && [ -n "$DEPLOY_KEY" ]; then
-            echo "::error::Provide either HOMEBREW_TAP_TOKEN or HOMEBREW_TAP_DEPLOY_KEY, not both."
-            exit 1
-          fi
-          if [ -n "$DEPLOY_KEY" ]; then
-            echo "mode=deploy_key" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          if [ -n "$TOKEN" ]; then
-            echo "mode=token" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "::error::Set HOMEBREW_TAP_TOKEN or HOMEBREW_TAP_DEPLOY_KEY to publish the formula."
-          exit 1
-        env:
-          TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 0
-          path: dotfiles
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: steps.credential.outputs.mode == 'token'
-        with:
-          repository: jinyongp/homebrew-tap
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          fetch-depth: 0
-          path: tap
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        if: steps.credential.outputs.mode == 'deploy_key'
-        with:
-          repository: jinyongp/homebrew-tap
-          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-          fetch-depth: 0
-          path: tap
-
-      - name: resolve version
-        id: version
-        working-directory: dotfiles
-        run: |
-          full_sha="$(git rev-parse HEAD)"
-          short_sha="$(git rev-parse --short=12 HEAD)"
-          archive_url="https://github.com/jinyongp/dotfiles/archive/${full_sha}.tar.gz"
-          archive="$(mktemp)"
-          curl -fsSL "$archive_url" -o "$archive"
-          sha256="$(shasum -a 256 "$archive" | awk '{print $1}')"
-          rm -f "$archive"
-          echo "full-sha=${full_sha}" >> "$GITHUB_OUTPUT"
-          echo "short-sha=${short_sha}" >> "$GITHUB_OUTPUT"
-          echo "archive-url=${archive_url}" >> "$GITHUB_OUTPUT"
-          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
-
-      - name: write formula
-        working-directory: tap
-        env:
-          ARCHIVE_URL: ${{ steps.version.outputs.archive-url }}
-          SHORT_SHA: ${{ steps.version.outputs.short-sha }}
-          SHA256: ${{ steps.version.outputs.sha256 }}
-        run: |
-          mkdir -p Formula
-          ruby <<'RUBY'
-          archive_url = ENV.fetch("ARCHIVE_URL")
-          short_sha = ENV.fetch("SHORT_SHA")
-          sha256 = ENV.fetch("SHA256")
-
-          formula = <<~FORMULA
-            class Dotfiles < Formula
-              desc "Personal dotfiles and installer"
-              homepage "https://github.com/jinyongp/dotfiles"
-              url "#{archive_url}"
-              sha256 "#{sha256}"
-              version "#{short_sha}"
-              license :cannot_represent
-
-              def install
-                prefix.install Dir["*"]
-                prefix.install Dir[".[!.]*"].reject { |path| File.basename(path) == ".git" }
-                bin.write_exec_script opt_prefix/"cmd/dotfiles"
-              end
-
-              test do
-                ENV.prepend_path "PATH", bin
-                assert_match "dotfiles install", shell_output("dotfiles help")
-                assert_match opt_prefix.to_s, shell_output("dotfiles path")
-              end
-            end
-          FORMULA
-
-          File.write("Formula/dotfiles.rb", formula)
-          RUBY
-          ruby -c Formula/dotfiles.rb
-
-      - name: commit formula
-        id: commit_formula
-        working-directory: tap
-        env:
-          SHORT_SHA: ${{ steps.version.outputs.short-sha }}
-        run: |
-          if [ -z "$(git status --porcelain -- Formula/dotfiles.rb)" ]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/dotfiles.rb
-          git commit -m "chore: update dotfiles to ${SHORT_SHA}"
-          echo "changed=true" >> "$GITHUB_OUTPUT"
-
-      - name: tap formula
-        run: brew tap jinyongp/tap "$GITHUB_WORKSPACE/tap"
-
-      - name: audit formula
-        run: brew audit --strict jinyongp/tap/dotfiles
-
-      - name: install formula
-        run: brew install --build-from-source jinyongp/tap/dotfiles
-
-      - name: test formula
-        run: brew test jinyongp/tap/dotfiles
-
-      - name: push formula
-        if: steps.commit_formula.outputs.changed == 'true'
-        working-directory: tap
-        run: git push
+    uses: jinyongp/homebrew-tap/.github/workflows/publish-formula.yml@main
+    with:
+      formula: dotfiles
+      ref: ${{ github.sha }}
+    secrets:
+      deploy_key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
