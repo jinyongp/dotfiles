@@ -216,6 +216,7 @@ install_smoke_test::write_fake_commands() {
     '}' \
     'install_formula() {' \
     '  formula_name="$1"' \
+    '  mkdir -p "$(dirname "$formula_dir/$formula_name")"' \
     '  : > "$formula_dir/$formula_name"' \
     '  case "$formula_name" in' \
     '    starship) make_cmd starship ;;' \
@@ -229,6 +230,7 @@ install_smoke_test::write_fake_commands() {
     '    jq) make_cmd jq ;;' \
     '    gh) make_cmd gh ;;' \
     '    task) make_cmd task ;;' \
+    '    gate|jinyongp/tap/gate) make_cmd gate ;;' \
     '    zsh) make_cmd zsh ;;' \
     '  esac' \
     '}' \
@@ -271,7 +273,7 @@ install_smoke_test::write_fake_commands() {
     'log_file="${SMOKE_STATE_DIR}/git.log"' \
     'printf "%s\n" "$*" >> "$log_file"' \
     'if [ "${1:-}" = "-C" ] && [ "${3:-}" = "rev-parse" ] && [ "${4:-}" = "HEAD" ]; then' \
-    '  printf "%s\n" "smoke-prx-skill-revision"' \
+    '  printf "%s\n" "smoke-gate-skill-revision"' \
     '  exit 0' \
     'fi' \
     'if [ "${1:-}" = "clone" ]; then' \
@@ -288,9 +290,9 @@ install_smoke_test::write_fake_commands() {
     '      ;;' \
     '  esac' \
     '  case "$source_url" in' \
-    '    https://github.com/jinyongp/prx.git)' \
-    '      mkdir -p "$target/skills/prx"' \
-    '      printf "%s\n" "---" "name: prx" "description: smoke prx skill" "---" "" "# prx" > "$target/skills/prx/SKILL.md"' \
+    '    https://github.com/jinyongp/gate.git)' \
+    '      mkdir -p "$target/skills/gate"' \
+    '      printf "%s\n" "---" "name: gate" "description: smoke gate skill" "---" "" "# gate" > "$target/skills/gate/SKILL.md"' \
     '      ;;' \
     '  esac' \
     '  exit 0' \
@@ -598,9 +600,9 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/planning" "$DOTFILES_ROOT/agents/skills/planning"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
-  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/prx" "$DOTFILES_CONFIG_DIR/agents/external-skills/prx"
-  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/prx/SKILL.md" "smoke prx skill" "agents install should download external prx skill"
-  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'prx	smoke-prx-skill-revision	main	https://github.com/jinyongp/prx.git	skills/prx' "agents install should record external prx skill revision"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/gate/SKILL.md" "smoke gate skill" "agents install should download external gate skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'gate	smoke-gate-skill-revision	main	https://github.com/jinyongp/gate.git	skills/gate' "agents install should record external gate skill revision"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"
@@ -614,7 +616,7 @@ install_smoke_test::assert_direct_packages() {
 
   install_smoke_test::reset_case_config
   install_smoke_test::setup_case "direct-packages"
-  install_smoke_test::run_direct_install packages fnm eza taskwarrior
+  install_smoke_test::run_direct_install packages fnm eza taskwarrior gate
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
@@ -623,9 +625,11 @@ install_smoke_test::assert_direct_packages() {
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fnm" "expected brew install for fnm"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install eza" "expected brew install for eza"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install task" "expected brew install for taskwarrior"
+  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install jinyongp/tap/gate" "expected brew tap install for gate"
   install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/fnm"
   install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/eza"
   install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/task"
+  install_smoke_test::assert_file_exists "$FAKE_BREW_PREFIX/bin/gate"
   install_smoke_test::assert_not_exists "$HOME_DIR/.zshenv"
   install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/git"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"

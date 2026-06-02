@@ -1,22 +1,27 @@
 #!/bin/zsh
 
-package_recipe::prx_install() {
-  local logical_name="${1:-prx}"
+package_recipe::gate_install() {
+  local logical_name="${1:-gate}"
   local required="${2:-0}"
   local installer_url installer_path rc
 
-  if command -v prx >/dev/null 2>&1; then
-    dotfiles::record_reused "prx command"
-    dotfiles::log_info "Using existing prx command."
+  if command -v gate >/dev/null 2>&1; then
+    dotfiles::record_reused "gate command"
+    dotfiles::log_info "Using existing gate command."
     return 0
+  fi
+
+  if [[ "$DOTFILES_PACKAGE_MANAGER" == "brew" ]]; then
+    package_manager::install_native_logical "$logical_name" "$required"
+    return $?
   fi
 
   package_manager::ensure_command curl curl 1
 
   dotfiles::execution_record_event installing "$logical_name via install script"
-  dotfiles::log_info "Installing prx with the official install script..."
+  dotfiles::log_info "Installing gate with the official install script..."
 
-  installer_url="https://raw.githubusercontent.com/jinyongp/prx/main/scripts/install.sh"
+  installer_url="https://raw.githubusercontent.com/jinyongp/gate/main/scripts/install.sh"
   installer_path="$(mktemp)"
   dotfiles::download_script "$installer_url" "$installer_path"
 

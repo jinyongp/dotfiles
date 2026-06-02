@@ -246,7 +246,7 @@ catalog::module_records() {
 
 cat <<'EOF'
 dotfiles	Dotfiles	Link ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config files.	0	0
-packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, fzf, zoxide, tldr, gnupg, diff-so-fancy, fnm, prx, and Taskwarrior.	0	0
+packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, fzf, zoxide, tldr, gnupg, diff-so-fancy, fnm, gate, and Taskwarrior.	0	0
 agents	AI Agents	Install shared AI agent rules for selected Codex/Claude adapters while preserving local state.	0	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	0	0
 neovim	Neovim	Install Neovim with search tooling and optional TypeScript editor extras.	0	0

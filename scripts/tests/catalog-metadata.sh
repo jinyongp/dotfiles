@@ -37,7 +37,7 @@ catalog_metadata_test::assert_package_ids() {
   local package_ids
 
   package_ids="$(catalog::package_ids | paste -sd' ' -)"
-  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza fzf zoxide tldr gnupg diff-so-fancy fnm taskwarrior prx" "unexpected visible package ids"
+  catalog_metadata_test::assert_equal "$package_ids" "jq gh fd eza fzf zoxide tldr gnupg diff-so-fancy fnm taskwarrior gate" "unexpected visible package ids"
 
   if catalog::package_ids | grep -Fxq git; then
     catalog_metadata_test::fail "internal dependency package should not be visible in package_ids"
@@ -59,6 +59,8 @@ catalog_metadata_test::assert_package_native_names() {
   catalog_metadata_test::assert_equal "$(catalog::package_native_name apt starship)" "starship" "expected apt starship mapping"
   catalog_metadata_test::assert_equal "$(catalog::package_native_name brew taskwarrior)" "task" "expected brew taskwarrior mapping"
   catalog_metadata_test::assert_equal "$(catalog::package_native_name apt taskwarrior)" "taskwarrior" "expected apt taskwarrior mapping"
+  catalog_metadata_test::assert_equal "$(catalog::package_native_name brew gate)" "jinyongp/tap/gate" "expected brew gate tap mapping"
+  catalog_metadata_test::assert_equal "$(catalog::package_native_name apt gate)" "" "expected apt gate script fallback"
   printf 'ok package_native_names\n'
 }
 
@@ -69,6 +71,7 @@ catalog_metadata_test::assert_package_command_names() {
   catalog_metadata_test::assert_equal "$(catalog::package_command_name apt tldr)" "tldr" "expected apt tldr command name"
   catalog_metadata_test::assert_equal "$(catalog::package_command_name brew neovim)" "nvim" "expected neovim command name"
   catalog_metadata_test::assert_equal "$(catalog::package_command_name brew taskwarrior)" "task" "expected taskwarrior command name"
+  catalog_metadata_test::assert_equal "$(catalog::package_command_name brew gate)" "gate" "expected gate command name"
   printf 'ok package_command_names\n'
 }
 
@@ -87,7 +90,7 @@ catalog_metadata_test::assert_package_records() {
   catalog_metadata_test::assert_contains "$brew_records" $'fnm\tfnm\tFast Node.js version manager via Homebrew.\t0\t0' "missing brew fnm record"
   catalog_metadata_test::assert_contains "$apt_records" $'fnm\tfnm\tFast Node.js version manager via the official install script.\t0\t0' "missing apt fnm record"
   catalog_metadata_test::assert_contains "$brew_records" $'taskwarrior\tTaskwarrior\tTaskwarrior CLI.\t0\t0' "missing brew taskwarrior record"
-  catalog_metadata_test::assert_contains "$brew_records" $'prx\tprx\tLocal HTTPS reverse proxy and port registry via bundled install script.\t0\t0' "missing brew prx record"
+  catalog_metadata_test::assert_contains "$brew_records" $'gate\tgate\tLocal HTTPS reverse proxy and port registry via Homebrew.\t0\t0' "missing brew gate record"
   printf 'ok package_records\n'
 }
 
@@ -123,7 +126,7 @@ catalog_metadata_test::assert_agent_metadata() {
   catalog_metadata_test::assert_equal "$(catalog::agent_label codex)" "Codex" "expected Codex agent label"
   catalog_metadata_test::assert_contains "$agent_records" $'claude\tClaude\tUpdate ~/.claude/CLAUDE.md with shared dotfiles agent rules.\t0\t0' "missing Claude agent record"
   catalog_metadata_test::assert_equal "$(catalog::agent_label claude)" "Claude" "expected Claude agent label"
-  catalog_metadata_test::assert_contains "$external_skill_records" $'prx\thttps://github.com/jinyongp/prx.git\tmain\tskills/prx' "missing prx external skill record"
+  catalog_metadata_test::assert_contains "$external_skill_records" $'gate\thttps://github.com/jinyongp/gate.git\tmain\tskills/gate' "missing gate external skill record"
   printf 'ok agent_metadata\n'
 }
 
