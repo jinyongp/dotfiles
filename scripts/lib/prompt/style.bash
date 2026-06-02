@@ -12,6 +12,11 @@ prompt::style() {
 }
 
 prompt::frame() {
+  if declare -F ui::style >/dev/null 2>&1; then
+    ui::style frame "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_frame >/dev/null 2>&1; then
     dotfiles_frame "$1"
   else
@@ -20,6 +25,11 @@ prompt::frame() {
 }
 
 prompt::title() {
+  if declare -F ui::heading >/dev/null 2>&1; then
+    ui::heading "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_heading >/dev/null 2>&1; then
     dotfiles_heading "$1"
   else
@@ -28,6 +38,24 @@ prompt::title() {
 }
 
 prompt::intro_meta() {
+  if prompt::is_plain_mode; then
+    if declare -F ui::muted >/dev/null 2>&1; then
+      ui::muted "$1"
+    else
+      if declare -F dotfiles_muted >/dev/null 2>&1; then
+        dotfiles_muted "$1"
+      else
+        prompt::style "$1" dim default
+      fi
+    fi
+    return 0
+  fi
+
+  if declare -F ui::subtle >/dev/null 2>&1; then
+    ui::subtle "$1"
+    return 0
+  fi
+
   if prompt::is_plain_mode; then
     if declare -F dotfiles_muted >/dev/null 2>&1; then
       dotfiles_muted "$1"
@@ -45,6 +73,11 @@ prompt::intro_meta() {
 }
 
 prompt::body() {
+  if declare -F ui::body >/dev/null 2>&1; then
+    ui::body "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_body >/dev/null 2>&1; then
     dotfiles_body "$1"
   else
@@ -53,6 +86,11 @@ prompt::body() {
 }
 
 prompt::value() {
+  if declare -F ui::style >/dev/null 2>&1; then
+    ui::style value "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_value >/dev/null 2>&1; then
     dotfiles_value "$1"
   else
@@ -61,6 +99,11 @@ prompt::value() {
 }
 
 prompt::accent() {
+  if declare -F ui::accent >/dev/null 2>&1; then
+    ui::accent "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_accent >/dev/null 2>&1; then
     dotfiles_accent "$1"
   else
@@ -69,6 +112,11 @@ prompt::accent() {
 }
 
 prompt::success() {
+  if declare -F ui::success >/dev/null 2>&1; then
+    ui::success "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_success >/dev/null 2>&1; then
     dotfiles_success "$1"
   else
@@ -77,6 +125,11 @@ prompt::success() {
 }
 
 prompt::warning() {
+  if declare -F ui::warning >/dev/null 2>&1; then
+    ui::warning "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_warning >/dev/null 2>&1; then
     dotfiles_warning "$1"
   else
@@ -85,6 +138,11 @@ prompt::warning() {
 }
 
 prompt::danger() {
+  if declare -F ui::error >/dev/null 2>&1; then
+    ui::error "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_error >/dev/null 2>&1; then
     dotfiles_error "$1"
   else
@@ -93,6 +151,11 @@ prompt::danger() {
 }
 
 prompt::muted() {
+  if declare -F ui::muted >/dev/null 2>&1; then
+    ui::muted "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_muted >/dev/null 2>&1; then
     dotfiles_muted "$1"
   else
@@ -101,6 +164,11 @@ prompt::muted() {
 }
 
 prompt::subtle() {
+  if declare -F ui::subtle >/dev/null 2>&1; then
+    ui::subtle "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_subtle >/dev/null 2>&1; then
     dotfiles_subtle "$1"
   else
@@ -109,6 +177,24 @@ prompt::subtle() {
 }
 
 prompt::hint() {
+  if prompt::is_plain_mode; then
+    if declare -F ui::muted >/dev/null 2>&1; then
+      ui::muted "$1"
+    else
+      if declare -F dotfiles_muted >/dev/null 2>&1; then
+        dotfiles_muted "$1"
+      else
+        prompt::style "$1" dim default
+      fi
+    fi
+    return 0
+  fi
+
+  if declare -F ui::hint >/dev/null 2>&1; then
+    ui::hint "$1"
+    return 0
+  fi
+
   if prompt::is_plain_mode; then
     if declare -F dotfiles_muted >/dev/null 2>&1; then
       dotfiles_muted "$1"
@@ -126,6 +212,11 @@ prompt::hint() {
 }
 
 prompt::description() {
+  if declare -F ui::description >/dev/null 2>&1; then
+    ui::description "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_description >/dev/null 2>&1; then
     dotfiles_description "$1"
   else
@@ -134,6 +225,11 @@ prompt::description() {
 }
 
 prompt::disabled() {
+  if declare -F ui::disabled >/dev/null 2>&1; then
+    ui::disabled "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_disabled >/dev/null 2>&1; then
     dotfiles_disabled "$1"
   else
@@ -143,6 +239,11 @@ prompt::disabled() {
 
 prompt::active_label() {
   if prompt::is_plain_mode; then
+    if declare -F ui::style >/dev/null 2>&1; then
+      ui::style active "$1"
+      return 0
+    fi
+
     if declare -F dotfiles_style >/dev/null 2>&1; then
       dotfiles_style "$1" bold default
     else
@@ -159,6 +260,11 @@ prompt::active_label() {
 }
 
 prompt::selected_label() {
+  if declare -F ui::selected >/dev/null 2>&1; then
+    ui::selected "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_selected >/dev/null 2>&1; then
     dotfiles_selected "$1"
   else
@@ -168,6 +274,11 @@ prompt::selected_label() {
 
 prompt::selected_active_label() {
   if prompt::is_plain_mode; then
+    if declare -F ui::style >/dev/null 2>&1; then
+      ui::style selected_active "$1"
+      return 0
+    fi
+
     if declare -F dotfiles_selected >/dev/null 2>&1; then
       dotfiles_selected "$1"
     else
@@ -184,6 +295,11 @@ prompt::selected_active_label() {
 }
 
 prompt::keycap() {
+  if declare -F ui::code >/dev/null 2>&1; then
+    ui::code "$1"
+    return 0
+  fi
+
   if declare -F dotfiles_code >/dev/null 2>&1; then
     dotfiles_code "$1"
   else
@@ -198,6 +314,11 @@ prompt::badge_text() {
 prompt::badge() {
   local text="$1"
   local badge_text=""
+
+  if declare -F ui::badge >/dev/null 2>&1; then
+    ui::badge "$text"
+    return 0
+  fi
 
   badge_text="$(prompt::badge_text "$text")"
 

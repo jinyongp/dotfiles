@@ -147,7 +147,7 @@ Background detection uses this order:
 
 Set `DOTFILES_COLOR_SCHEME=light` or `DOTFILES_COLOR_SCHEME=dark` if your terminal does not expose useful `COLORFGBG` data.
 Set `NO_COLOR=1`, `TERM=dumb`, or `CLICOLOR=0` to disable ANSI styling.
-Use `DOTFILES_FORCE_COLOR=1`, `FORCE_COLOR=1`, or `CLICOLOR_FORCE=1` when you need ANSI styling in a non-TTY or otherwise restricted shell.
+Use `FORCE_COLOR=1` or `CLICOLOR_FORCE=1` when you need ANSI styling in a non-TTY or otherwise restricted shell.
 
 ## Platform Notes
 

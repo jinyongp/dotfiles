@@ -3,33 +3,19 @@
 set -euo pipefail
 
 base="$(basename "$0")"
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
+source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
 
 usage() {
-  cat <<EOF
-Usage: $base [options] [label]
-
-Print the 256-color ANSI palette. If label is provided, use it instead of the
-color number in every swatch.
-
-Available options:
-  -h, --help    Print this help and exit
-
-Examples:
-EOF
-  printf '  %s\n' "$base"
-  printf '    '
-  printf '\x1b[48;5;000m 000 \x1b[0m '
-  printf '\x1b[38;5;000m000\x1b[0m '
-  printf '\x1b[48;5;001m 001 \x1b[0m '
-  printf '\x1b[38;5;001m001\x1b[0m '
-  printf '...\n\n'
-  printf '  %s %s\n' "$base" "'OK'"
-  printf '    '
-  printf '\x1b[48;5;000m OK \x1b[0m '
-  printf '\x1b[38;5;000mOK\x1b[0m '
-  printf '\x1b[48;5;001m OK \x1b[0m '
-  printf '\x1b[38;5;001mOK\x1b[0m '
-  printf '...\n'
+  ui::help_start "$base" "Print the 256-color ANSI palette."
+  ui::help_usage "$base [options] [label]"
+  ui::help_options \
+    $'-h, --help\t-h, --help\tPrint this help and exit.'
+  ui::help_examples \
+    "$base" \
+    "$base 'OK'"
 }
 
 label_text=""
@@ -45,7 +31,9 @@ while (($# > 0)); do
     break
     ;;
   -*)
-    echo "$base: unknown option: $1" >&2
+    ui::validation_error "unknown option" \
+      $'option\t'"$1" \
+      $'usage\t'"$base [options] [label]"
     exit 1
     ;;
   *)

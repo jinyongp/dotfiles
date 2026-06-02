@@ -3,6 +3,10 @@
 set -euo pipefail
 
 base=$(basename "$0")
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
+source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
 
 input=""
 fg_color=""
@@ -11,41 +15,31 @@ newline=1
 styles=""
 
 usage() {
-  cat <<EOF
-Usage: $base [options] [text]
-
-Available options:
-  -h, --help             Print this help and exit
-  -t, --text TEXT        Text to print
-  -f, --fg COLOR         Foreground color, 0-255
-  -b, --bg COLOR         Background color, 0-255
-  -s, --style STYLE      Style to apply; repeatable
-  -n, --no-newline       Do not print the trailing newline
-
-Available styles:
-  bold
-  dim
-  italic
-  underline
-  curly-underline
-  blink
-  reverse
-  strikethrough
-
-Examples:
-EOF
-  printf '  %s %s\n' "$base" "'Hello, World!'"
-  printf '    Hello, World!\n\n'
-  printf '  %s %s\n' "$base" "'Hello, World!' -f 42"
-  printf '    \033[38;5;42mHello, World!\033[0m\n\n'
-  printf '  %s %s\n' "$base" "'Warning' --fg=196 --style=bold"
-  printf '    \033[38;5;196;1mWarning\033[0m\n\n'
-  printf '  %s %s\n' "$base" "'Selected' -f 15 -b 24 -s bold -s underline"
-  printf '    \033[38;5;15;48;5;24;1;4mSelected\033[0m\n\n'
-  printf '  %s\n' "printf 'No newline' | $base -f 70 --no-newline"
-  printf '    \033[38;5;70mNo newline\033[0m\n\n'
-  printf '  %s %s\n' "$base" "-- -f 1"
-  printf '    -f 1\n\n'
+  ui::help_start "$base" "Apply SGR styling to text."
+  ui::help_usage "$base [options] [text]"
+  ui::help_options \
+    $'-h, --help\t-h, --help\tPrint this help and exit.' \
+    $'-t, --text TEXT\t-t, --text TEXT\tText to print.' \
+    $'-f, --fg COLOR\t-f, --fg COLOR\tForeground color, 0-255.' \
+    $'-b, --bg COLOR\t-b, --bg COLOR\tBackground color, 0-255.' \
+    $'-s, --style STYLE\t-s, --style STYLE\tStyle to apply; repeatable.' \
+    $'-n, --no-newline\t-n, --no-newline\tDo not print the trailing newline.'
+  ui::help_records "Styles:" \
+    $'bold\tbold\tBold text.' \
+    $'dim\tdim\tDim text.' \
+    $'italic\titalic\tItalic text.' \
+    $'underline\tunderline\tUnderlined text.' \
+    $'curly-underline\tcurly-underline\tCurly underline.' \
+    $'blink\tblink\tBlinking text.' \
+    $'reverse\treverse\tReverse video.' \
+    $'strikethrough\tstrikethrough\tStruck-through text.'
+  ui::help_examples \
+    "$base 'Hello, World!'" \
+    "$base 'Hello, World!' -f 42" \
+    "$base 'Warning' --fg=196 --style=bold" \
+    "$base 'Selected' -f 15 -b 24 -s bold -s underline" \
+    "printf 'No newline' | $base -f 70 --no-newline" \
+    "$base -- -f 1"
 }
 
 debug() {
@@ -58,7 +52,14 @@ debug() {
 read_stdin() { [ -t 0 ] || cat; }
 
 die() {
-  echo "$base: $1" >&2
+  local message="$1"
+  local field="${2:-}"
+
+  if [[ -n "$field" ]]; then
+    ui::validation_error "$message" "$field" $'usage\t'"$base [options] [text]"
+  else
+    ui::validation_error "$message" $'usage\t'"$base [options] [text]"
+  fi
   exit 1
 }
 
@@ -89,7 +90,7 @@ need_value() {
   local option="$1"
   local value="${2:-}"
 
-  [[ -n "$value" ]] || die "$option requires an argument"
+  [[ -n "$value" ]] || die "$option requires an argument" $'option\t'"$option"
   printf '%s' "$value"
 }
 
@@ -139,7 +140,7 @@ parse_args() {
       ;;
     --style=*)
       value="${1#--style=}"
-      [[ -n "$value" ]] || die "--style requires an argument"
+      [[ -n "$value" ]] || die "--style requires an argument" $'option\t--style'
       styles+="${value}"$'\n'
       shift
       ;;
@@ -149,11 +150,11 @@ parse_args() {
       break
       ;;
     --*)
-      die "invalid option: $1"
+      die "invalid option" $'option\t'"$1"
       ;;
     -*)
       option="$1"
-      die "invalid option: $option"
+      die "invalid option" $'option\t'"$option"
       ;;
     *)
       text_parts+=("$1")
@@ -176,25 +177,25 @@ main() {
   "
 
   [ -n "$input" ] || input="$(read_stdin)"
-  [ -n "$input" ] || die "missing text"
+  [ -n "$input" ] || die "missing text" $'input\t'
 
   local -a sgr=()
   local style_code=""
 
   if [ -n "$fg_color" ]; then
-    is_color_code "$fg_color" || die "foreground color must be between 0 and 255"
+    is_color_code "$fg_color" || die "foreground color must be between 0 and 255" $'fg\t'"$fg_color"
     sgr+=("38;5;$fg_color")
   fi
 
   if [ -n "$bg_color" ]; then
-    is_color_code "$bg_color" || die "background color must be between 0 and 255"
+    is_color_code "$bg_color" || die "background color must be between 0 and 255" $'bg\t'"$bg_color"
     sgr+=("48;5;$bg_color")
   fi
 
   if [ -n "$styles" ]; then
     while IFS= read -r style; do
       [ -n "$style" ] || continue
-      style_code="$(style_sgr "$style")" || die "unknown style: $style"
+      style_code="$(style_sgr "$style")" || die "unknown style" $'style\t'"$style"
       sgr+=("$style_code")
     done <<< "$styles"
   fi

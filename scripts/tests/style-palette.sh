@@ -35,7 +35,7 @@ style_test::render() (
   local function_name="$2"
 
   unset DOTFILES_COLOR_SCHEME COLORFGBG NO_COLOR TERM CLICOLOR FORCE_COLOR CLICOLOR_FORCE
-  export DOTFILES_FORCE_COLOR=1
+  export FORCE_COLOR=1
   [[ "$scheme" == "-" ]] || export DOTFILES_COLOR_SCHEME="$scheme"
 
   "$function_name" "x"
@@ -44,7 +44,7 @@ style_test::render() (
 style_test::render_with_env() (
   local mode="$1"
 
-  unset DOTFILES_COLOR_SCHEME COLORFGBG NO_COLOR TERM CLICOLOR DOTFILES_FORCE_COLOR FORCE_COLOR CLICOLOR_FORCE DOTFILES_COLOR_OUTPUT_IS_TTY
+  unset DOTFILES_COLOR_SCHEME COLORFGBG NO_COLOR TERM CLICOLOR FORCE_COLOR CLICOLOR_FORCE DOTFILES_COLOR_OUTPUT_IS_TTY
 
   case "$mode" in
     no_color) export NO_COLOR=1 ;;
@@ -63,9 +63,9 @@ style_test::render_with_env() (
       export CLICOLOR=0
       export DOTFILES_COLOR_OUTPUT_IS_TTY=1
       ;;
-    dotfiles_force_over_no_color)
+    force_color_under_no_color)
       export NO_COLOR=1
-      export DOTFILES_FORCE_COLOR=1
+      export FORCE_COLOR=1
       ;;
     force_color_over_term_dumb)
       export TERM=dumb
@@ -117,7 +117,7 @@ style_test::test_ansi_enablement() {
   style_test::assert_eq "no_color_overrides_captured_tty" "x" "$(style_test::render_with_env no_color_over_captured_tty)"
   style_test::assert_eq "term_dumb_overrides_captured_tty" "x" "$(style_test::render_with_env term_dumb_over_captured_tty)"
   style_test::assert_eq "clicolor_zero_overrides_captured_tty" "x" "$(style_test::render_with_env clicolor_off_over_captured_tty)"
-  style_test::assert_eq "dotfiles_force_overrides_no_color" $'\033[1;34mx\033[0m' "$(style_test::render_with_env dotfiles_force_over_no_color)"
+  style_test::assert_eq "no_color_overrides_force_color" "x" "$(style_test::render_with_env force_color_under_no_color)"
   style_test::assert_eq "force_color_overrides_term_dumb" $'\033[1;34mx\033[0m' "$(style_test::render_with_env force_color_over_term_dumb)"
   style_test::assert_eq "clicolor_force_overrides_clicolor_zero" $'\033[1;34mx\033[0m' "$(style_test::render_with_env clicolor_force_over_clicolor_off)"
 }

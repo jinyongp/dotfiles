@@ -116,7 +116,8 @@ install_execution_test::assert_successful_progress() {
   local expected_link_line=""
 
   install_execution_test::reset_state
-  DOTFILES_INSTALL_UI_MODE=compact
+  DOTFILES_INSTALL_UI_MODE=auto
+  TERM=xterm-256color
 
   {
     dotfiles::execution_run_step demo "Demo Module" install_execution_test::successful_step
@@ -147,7 +148,8 @@ install_execution_test::assert_failure_progress() {
   local raw_log=""
 
   install_execution_test::reset_state
-  DOTFILES_INSTALL_UI_MODE=compact
+  DOTFILES_INSTALL_UI_MODE=auto
+  TERM=xterm-256color
 
   if {
     dotfiles::execution_run_step theme "Theme dependencies" install_execution_test::failing_step
@@ -221,7 +223,8 @@ install_execution_test::assert_quiet_events() {
   local output=""
 
   install_execution_test::reset_state
-  DOTFILES_INSTALL_UI_MODE=compact
+  DOTFILES_INSTALL_UI_MODE=auto
+  TERM=xterm-256color
 
   {
     dotfiles::execution_run_step agents "AI Agents" install_execution_test::quiet_step
@@ -236,32 +239,150 @@ install_execution_test::assert_quiet_events() {
   print -- "ok quiet_events"
 }
 
-install_execution_test::assert_rich_spacing() {
-  local compact_file="$WORK_DIR/compact-spacing.out"
-  local rich_file="$WORK_DIR/rich-spacing.out"
-  local compact_output=""
-  local rich_output=""
+install_execution_test::assert_invalid_mode_falls_back_to_auto() {
+  local output_file="$WORK_DIR/invalid-mode.out"
+  local output=""
 
   install_execution_test::reset_state
-  DOTFILES_INSTALL_UI_MODE=compact
+  DOTFILES_INSTALL_UI_MODE=invalid
+  TERM=xterm-256color
   {
     dotfiles::execution_run_step prompt "Prompt" install_execution_test::simple_step
-  } >"$compact_file" 2>&1
+  } >"$output_file" 2>&1
+
+  output="$(install_execution_test::normalize_file "$output_file")"
+
+  install_execution_test::assert_contains "$output" "◆  Prompt" "invalid UI mode should fall back to auto marker"
+  install_execution_test::assert_contains "$output" "reused     starship prompt binary" "invalid UI mode should still render progress"
+  print -- "ok invalid_mode_falls_back_to_auto"
+}
+
+install_execution_test::assert_json_mode() {
+  local output_file="$WORK_DIR/json.out"
+  local output=""
+  local type_list=""
 
   install_execution_test::reset_state
-  DOTFILES_INSTALL_UI_MODE=rich
+  DOTFILES_INSTALL_UI_MODE=json
   {
-    dotfiles::execution_run_step prompt "Prompt" install_execution_test::simple_step
-  } >"$rich_file" 2>&1
+    dotfiles::execution_run_step demo "Demo Module" install_execution_test::successful_step
+  } >"$output_file" 2>&1
 
-  compact_output="$(install_execution_test::normalize_file "$compact_file")"
-  rich_output="$(install_execution_test::normalize_file "$rich_file")"
+  output="$(cat "$output_file")"
+  type_list="$(python3 - "$output_file" <<'PY'
+import json
+import sys
 
-  print -r -- "$compact_output" | perl -0ne 'exit(!/reused\s+starship prompt binary\n   completed/s)' \
-    || install_execution_test::fail "compact mode should stay dense"
-  print -r -- "$rich_output" | perl -0ne 'exit(!/reused\s+starship prompt binary\n\n   completed/s)' \
-    || install_execution_test::fail "rich mode should keep stronger separation"
-  print -- "ok rich_spacing"
+with open(sys.argv[1], encoding="utf-8") as handle:
+    events = [json.loads(line) for line in handle if line.strip()]
+
+print(",".join(event["type"] for event in events))
+
+assert events[0]["schema"] == "dotfiles.ui.v1"
+assert events[0]["type"] == "progress_start"
+assert events[0]["surface"] == "install"
+assert events[0]["mode"] == "json"
+assert events[0]["data"]["stepId"] == "demo"
+assert events[0]["data"]["label"] == "Demo Module"
+
+assert any(event["type"] == "progress_event" and event["data"]["kind"] == "installed" for event in events)
+assert any(event["type"] == "progress_event" and event["data"]["kind"] == "warning" for event in events)
+
+finish = events[-1]
+assert finish["type"] == "progress_finish"
+assert finish["data"]["status"] == "completed"
+assert finish["data"]["counts"]["installed"] == 1
+assert finish["data"]["counts"]["reused"] == 1
+assert finish["data"]["counts"]["skipped"] == 1
+assert finish["data"]["counts"]["fileChanges"] == 1
+assert finish["data"]["counts"]["extraActions"] == 1
+assert finish["data"]["counts"]["warnings"] == 1
+PY
+)"
+
+  install_execution_test::assert_contains "$type_list" "progress_start" "json mode should emit start event"
+  install_execution_test::assert_contains "$type_list" "progress_event" "json mode should emit progress events"
+  install_execution_test::assert_contains "$type_list" "progress_finish" "json mode should emit finish event"
+  install_execution_test::assert_not_contains "$output" "◆  Demo Module" "json mode should not render human header"
+  install_execution_test::assert_not_contains "$output" "hidden stdout" "json success should hide raw stdout"
+  install_execution_test::assert_not_contains "$output" "hidden stderr" "json success should hide raw stderr"
+  print -- "ok json_mode"
+}
+
+install_execution_test::assert_json_failure_mode() {
+  local output_file="$WORK_DIR/json-failure.out"
+  local output=""
+  local raw_log=""
+
+  install_execution_test::reset_state
+  DOTFILES_INSTALL_UI_MODE=json
+  if {
+    dotfiles::execution_run_step theme "Theme dependencies" install_execution_test::failing_step
+  } >"$output_file" 2>&1; then
+    install_execution_test::fail "json failing step unexpectedly succeeded"
+  fi
+
+  output="$(cat "$output_file")"
+  raw_log="$(python3 - "$output_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    events = [json.loads(line) for line in handle if line.strip()]
+
+finish = events[-1]
+assert finish["type"] == "progress_finish"
+assert finish["data"]["status"] == "failed"
+assert finish["data"]["exitStatus"] == 17
+print(finish["data"]["rawLog"])
+PY
+)"
+
+  [[ -n "$raw_log" ]] || install_execution_test::fail "json failure did not expose raw log path"
+  [[ -f "$raw_log" ]] || install_execution_test::fail "json failure should retain raw log file"
+  install_execution_test::assert_contains "$(cat "$raw_log")" "before failure stdout" "json raw log should keep stdout"
+  install_execution_test::assert_contains "$(cat "$raw_log")" "before failure stderr" "json raw log should keep stderr"
+  install_execution_test::assert_not_contains "$output" "failed     raw log:" "json failure should not render human raw log line"
+  print -- "ok json_failure_mode"
+}
+
+install_execution_test::assert_runner_json_completion() {
+  local plan_file="$WORK_DIR/empty-plan.env"
+  local output_file="$WORK_DIR/runner-json.out"
+  local error_file="$WORK_DIR/runner-json.err"
+
+  cat >"$plan_file" <<EOF
+DOTFILES_INSTALL_UI_MODE=json
+DOTFILES_PLATFORM=macos
+DOTFILES_PACKAGE_MANAGER=brew
+DOTFILES_THEME=starship
+DOTFILES_ENABLE_OH_MY_ZSH=0
+DOTFILES_RUN_THEME_INSTALL=0
+DOTFILES_ALLOW_AUTO_LAUNCH_ZSH=0
+DOTFILES_SELECTED_MODULES=''
+DOTFILES_BOOTSTRAP_ZSH_STATUS=none
+DOTFILES_BOOTSTRAP_ZSH_PACKAGE_MANAGER=''
+DOTFILES_CONFIG_DIR='$DOTFILES_CONFIG_DIR'
+EOF
+
+  env -i HOME="$HOME" XDG_CONFIG_HOME="$XDG_CONFIG_HOME" DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" PATH="$PATH" zsh -f "$DOTFILES_ROOT/scripts/run-install-plan.zsh" "$plan_file" >"$output_file" 2>"$error_file"
+  python3 - "$output_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    events = [json.loads(line) for line in handle if line.strip()]
+
+assert events
+assert events[-1]["type"] == "install_complete"
+assert all(event["schema"] == "dotfiles.ui.v1" for event in events)
+PY
+
+  if grep -Fq "Post-install Report" "$output_file"; then
+    install_execution_test::fail "runner json mode should not print human install report"
+  fi
+  [[ ! -s "$error_file" ]] || install_execution_test::fail "runner json mode should not write stderr for empty plan"
+  print -- "ok runner_json_completion"
 }
 
 install_execution_test::main() {
@@ -270,7 +391,10 @@ install_execution_test::main() {
   install_execution_test::assert_failure_progress_under_errexit
   install_execution_test::assert_plain_mode
   install_execution_test::assert_quiet_events
-  install_execution_test::assert_rich_spacing
+  install_execution_test::assert_invalid_mode_falls_back_to_auto
+  install_execution_test::assert_json_mode
+  install_execution_test::assert_json_failure_mode
+  install_execution_test::assert_runner_json_completion
   print -- "all install execution progress tests passed"
 }
 

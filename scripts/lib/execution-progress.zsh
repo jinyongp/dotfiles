@@ -1,5 +1,11 @@
 #!/bin/zsh
 
+if ! typeset -f ui::status >/dev/null 2>&1; then
+  if [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/ui/message.sh" ]]; then
+    source "$DOTFILES_ROOT/scripts/lib/ui/message.sh"
+  fi
+fi
+
 typeset -g DOTFILES_EXECUTION_TTY_FD="${DOTFILES_EXECUTION_TTY_FD:-}"
 typeset -g DOTFILES_EXECUTION_TTY_ERR_FD="${DOTFILES_EXECUTION_TTY_ERR_FD:-}"
 typeset -g DOTFILES_EXECUTION_STEP_ID=""
@@ -15,22 +21,15 @@ typeset -gi DOTFILES_EXECUTION_STEP_EXTRA_COUNT=0
 typeset -gi DOTFILES_EXECUTION_STEP_WARNING_COUNT=0
 
 dotfiles::execution_ui_mode() {
-  case "${DOTFILES_INSTALL_UI_MODE:-compact}" in
-    plain|compact|rich)
-      print -r -- "${DOTFILES_INSTALL_UI_MODE:-compact}"
-      ;;
-    *)
-      print -r -- "compact"
-      ;;
-  esac
+  ui::mode
 }
 
 dotfiles::execution_is_plain_mode() {
-  [[ "$(dotfiles::execution_ui_mode)" == "plain" ]]
+  ui::is_plain
 }
 
-dotfiles::execution_is_rich_mode() {
-  [[ "$(dotfiles::execution_ui_mode)" == "rich" ]]
+dotfiles::execution_is_json_mode() {
+  ui::is_json
 }
 
 dotfiles::execution_init_output() {
@@ -60,11 +59,7 @@ dotfiles::execution_write() {
 }
 
 dotfiles::execution_header_marker() {
-  if dotfiles::execution_is_plain_mode; then
-    print -r -- ">"
-  else
-    print -r -- "◆"
-  fi
+  ui::symbol question
 }
 
 dotfiles::execution_path_text() {
@@ -79,39 +74,31 @@ dotfiles::execution_path_text() {
 }
 
 dotfiles::execution_status_label() {
-  local state="$1"
-  local label=""
-  local padded=""
-
-  case "$state" in
-    installing) label="installing" ;;
-    installed) label="installed" ;;
-    reused) label="reused" ;;
-    skipped) label="skipped" ;;
-    warning) label="warning" ;;
-    failed) label="failed" ;;
-    completed) label="completed" ;;
-    *) label="$state" ;;
-  esac
-
-  printf -v padded '%-10s' "$label"
-
-  case "$state" in
-    installing) dotfiles_accent "$padded" ;;
-    installed|completed) dotfiles_success "$padded" ;;
-    reused) dotfiles_accent "$padded" ;;
-    skipped) dotfiles_muted "$padded" ;;
-    warning) dotfiles_warning "$padded" ;;
-    failed) dotfiles_error "$padded" ;;
-    *) dotfiles_body "$padded" ;;
-  esac
+  ui::status_label "$1"
 }
 
 dotfiles::execution_status_line() {
-  local state="$1"
-  local message="$2"
+  ui::status "$1" "$2"
+}
 
-  print -r -- "   $(dotfiles::execution_status_label "$state") $message"
+dotfiles::execution_json_counts_data() {
+  printf '"installed":%d,"reused":%d,"skipped":%d,"fileChanges":%d,"extraActions":%d,"warnings":%d' \
+    "$DOTFILES_EXECUTION_STEP_INSTALLED_COUNT" \
+    "$DOTFILES_EXECUTION_STEP_REUSED_COUNT" \
+    "$DOTFILES_EXECUTION_STEP_SKIPPED_COUNT" \
+    "$DOTFILES_EXECUTION_STEP_FILE_CHANGE_COUNT" \
+    "$DOTFILES_EXECUTION_STEP_EXTRA_COUNT" \
+    "$DOTFILES_EXECUTION_STEP_WARNING_COUNT"
+}
+
+dotfiles::execution_json_event() {
+  local type="$1"
+  local stream="${2:-stdout}"
+  local data="$3"
+  local event=""
+
+  event="$(ui::json_event "$type" install "$data")"
+  dotfiles::execution_write "$stream" "$event"
 }
 
 dotfiles::execution_reset_step_counts() {
@@ -143,16 +130,17 @@ dotfiles::execution_start_step() {
 
   dotfiles::execution_init_output
 
-  if dotfiles::execution_is_rich_mode && [[ "$DOTFILES_EXECUTION_STEP_INDEX" -gt 0 ]]; then
-    dotfiles::execution_write stdout ""
-  fi
-
   DOTFILES_EXECUTION_STEP_ID="$step_id"
   DOTFILES_EXECUTION_STEP_LABEL="$step_label"
   DOTFILES_EXECUTION_STEP_LOG_FILE="$(dotfiles::execution_step_log_file "$step_id")"
   DOTFILES_EXECUTION_STEP_ACTIVE=1
   DOTFILES_EXECUTION_STEP_INDEX=$((DOTFILES_EXECUTION_STEP_INDEX + 1))
   dotfiles::execution_reset_step_counts
+
+  if dotfiles::execution_is_json_mode; then
+    dotfiles::execution_json_event progress_start stdout "{\"stepId\":\"$(ui::json_escape "$step_id")\",\"label\":\"$(ui::json_escape "$step_label")\"}"
+    return 0
+  fi
 
   dotfiles::execution_write stdout "$(dotfiles_accent "$(dotfiles::execution_header_marker)")  $(dotfiles_heading "$step_label")"
 }
@@ -196,18 +184,24 @@ dotfiles::execution_finish_step() {
   local exit_status="$1"
   local log_file="$DOTFILES_EXECUTION_STEP_LOG_FILE"
   local log_path_display=""
-
-  if dotfiles::execution_is_rich_mode; then
-    dotfiles::execution_write stdout ""
-  fi
+  local summary_text=""
 
   if [[ "$exit_status" -eq 0 ]]; then
-    dotfiles::execution_write stdout "$(dotfiles::execution_status_line "completed" "$(dotfiles::execution_summary_text)")"
+    summary_text="$(dotfiles::execution_summary_text)"
+    if dotfiles::execution_is_json_mode; then
+      dotfiles::execution_json_event progress_finish stdout "{\"stepId\":\"$(ui::json_escape "$DOTFILES_EXECUTION_STEP_ID")\",\"status\":\"completed\",\"summary\":\"$(ui::json_escape "$summary_text")\",\"counts\":{$(dotfiles::execution_json_counts_data)}}"
+    else
+      dotfiles::execution_write stdout "$(dotfiles::execution_status_line "completed" "$summary_text")"
+    fi
     rm -f "$log_file"
   else
     log_path_display="$(dotfiles::display_path "$log_file")"
-    dotfiles::execution_write stderr "$(dotfiles::execution_status_line "failed" "exited with status $exit_status")"
-    dotfiles::execution_write stderr "$(dotfiles::execution_status_line "failed" "raw log: $(dotfiles::execution_path_text "$log_path_display")")"
+    if dotfiles::execution_is_json_mode; then
+      dotfiles::execution_json_event progress_finish stderr "{\"stepId\":\"$(ui::json_escape "$DOTFILES_EXECUTION_STEP_ID")\",\"status\":\"failed\",\"exitStatus\":$exit_status,\"rawLog\":\"$(ui::json_escape "$log_path_display")\",\"counts\":{$(dotfiles::execution_json_counts_data)}}"
+    else
+      dotfiles::execution_write stderr "$(dotfiles::execution_status_line "failed" "exited with status $exit_status")"
+      dotfiles::execution_write stderr "$(dotfiles::execution_status_line "failed" "raw log: $(dotfiles::execution_path_text "$log_path_display")")"
+    fi
   fi
 
   DOTFILES_EXECUTION_STEP_ID=""
@@ -244,6 +238,11 @@ dotfiles::execution_record_event() {
     *)
       ;;
   esac
+
+  if dotfiles::execution_is_json_mode; then
+    dotfiles::execution_json_event progress_event "$stream" "{\"stepId\":\"$(ui::json_escape "$DOTFILES_EXECUTION_STEP_ID")\",\"kind\":\"$(ui::json_escape "$kind")\",\"state\":\"$(ui::json_escape "$state")\",\"message\":\"$(ui::json_escape "$message")\"}"
+    return 0
+  fi
 
   dotfiles::execution_write "$stream" "$(dotfiles::execution_status_line "$state" "$message")"
 }

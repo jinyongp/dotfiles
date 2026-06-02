@@ -13,6 +13,7 @@ fi
 source "$PLAN_FILE"
 source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"
 source "$DOTFILES_ROOT/scripts/lib/style.sh"
+source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
 source "$DOTFILES_ROOT/scripts/lib/common.zsh"
 source "$DOTFILES_ROOT/scripts/lib/execution-progress.zsh"
 source "$DOTFILES_ROOT/scripts/lib/install-env.zsh"
@@ -100,7 +101,11 @@ main() {
     runner::run_module "$module"
   done
 
-  dotfiles::print_install_report
+  if ui::is_json; then
+    ui::json_event install_complete install '{"status":"completed"}'
+  else
+    dotfiles::print_install_report
+  fi
 }
 
 main "$@"

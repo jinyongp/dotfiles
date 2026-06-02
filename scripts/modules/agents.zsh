@@ -818,22 +818,27 @@ agents::print_json_string_array() {
 agents::list_external_skills() {
   local artifact_id source_id source_path install_name adapters kind copy_policy revision skill_status target_dir
   local row_source_id row_repo_url row_ref repo_url ref
-  local mode="${1:-}" display_adapters listed=0 first_json=1
+  local display_adapters listed=0 first_json=1 output_json=0
+  local input_field="" usage_field=""
 
-  if (( $# > 1 )); then
-    dotfiles::log_warn "Too many agents list options."
+  if (( $# > 0 )); then
+    if typeset -f ui::validation_error >/dev/null 2>&1; then
+      input_field=$'input\t'"$*"
+      usage_field=$'usage\tdotfiles agents list'
+      ui::validation_error "dotfiles agents list does not accept options" \
+        "$input_field" \
+        "$usage_field"
+    else
+      dotfiles::log_warn "dotfiles agents list does not accept options."
+    fi
     return 2
   fi
 
-  case "$mode" in
-    ""|--json) ;;
-    *)
-      dotfiles::log_warn "Unknown agents list option: $mode"
-      return 2
-      ;;
-  esac
+  if typeset -f ui::is_json >/dev/null 2>&1 && ui::is_json; then
+    output_json=1
+  fi
 
-  if [[ "$mode" == "--json" ]]; then
+  if [[ "$output_json" -eq 1 ]]; then
     print -r -- "["
   fi
 
@@ -861,7 +866,7 @@ agents::list_external_skills() {
     fi
 
     listed=1
-    if [[ "$mode" == "--json" ]]; then
+    if [[ "$output_json" -eq 1 ]]; then
       if (( first_json == 0 )); then
         print -r -- ","
       fi
@@ -912,7 +917,7 @@ agents::list_external_skills() {
     print -r -- ""
   done < <(catalog::external_skill_artifact_records)
 
-  if [[ "$mode" == "--json" ]]; then
+  if [[ "$output_json" -eq 1 ]]; then
     if (( first_json == 0 )); then
       print -r -- ""
     fi

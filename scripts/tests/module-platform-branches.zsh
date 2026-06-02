@@ -251,7 +251,7 @@ platform_module_test::assert_default_shell_failure_warns() {
   platform_module_test::reset_state
   SMOKE_CHSH_SHOULD_FAIL="1"
 
-  shell::ensure_default_shell >"$output_file"
+  shell::ensure_default_shell >"$output_file" 2>&1
   output="$(platform_module_test::normalize_file "$output_file")"
 
   platform_module_test::assert_contains "$output" "Failed to change the default shell automatically." "missing chsh failure warning"

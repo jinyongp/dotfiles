@@ -66,7 +66,8 @@ install_direct_test::assert_invalid_target_fails() {
     install_direct_test::fail "invalid direct target unexpectedly succeeded"
   fi
 
-  if ! grep -Fq "Unknown install target: definitely-not-a-target" "$WORK_DIR/invalid-target.err"; then
+  if ! grep -Fq "Error: unknown install target" "$WORK_DIR/invalid-target.err" \
+    || ! grep -Fq "input: definitely-not-a-target" "$WORK_DIR/invalid-target.err"; then
     sed -n '1,120p' "$WORK_DIR/invalid-target.err" >&2
     install_direct_test::fail "expected invalid target error"
   fi
@@ -81,7 +82,8 @@ install_direct_test::assert_item_args_rejected_for_non_leaf_module() {
     install_direct_test::fail "non-leaf module accepted item arguments"
   fi
 
-  if ! grep -Fq "Module 'neovim' does not accept item arguments." "$WORK_DIR/non-leaf-items.err"; then
+  if ! grep -Fq "Error: module does not accept item arguments" "$WORK_DIR/non-leaf-items.err" \
+    || ! grep -Fq "target: neovim" "$WORK_DIR/non-leaf-items.err"; then
     sed -n '1,120p' "$WORK_DIR/non-leaf-items.err" >&2
     install_direct_test::fail "expected non-leaf item rejection"
   fi
@@ -147,7 +149,9 @@ install_direct_test::assert_theme_target_configured() {
     install_direct_test::fail "theme target accepted extra item arguments"
   fi
 
-  if ! grep -Fq "The theme target does not accept extra item arguments." "$WORK_DIR/theme-extra.err"; then
+  if ! grep -Fq "Error: theme target does not accept item arguments" "$WORK_DIR/theme-extra.err" \
+    || ! grep -Fq "target: theme" "$WORK_DIR/theme-extra.err" \
+    || ! grep -Fq "input: extra" "$WORK_DIR/theme-extra.err"; then
     sed -n '1,120p' "$WORK_DIR/theme-extra.err" >&2
     install_direct_test::fail "expected theme extra args rejection"
   fi

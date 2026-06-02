@@ -4,6 +4,10 @@ if ! typeset -f dotfiles_style >/dev/null 2>&1 && [[ -n "${DOTFILES_ROOT:-}" && 
   source "$DOTFILES_ROOT/scripts/lib/style.sh"
 fi
 
+if ! typeset -f ui::report_section >/dev/null 2>&1 && [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/ui/message.sh" ]]; then
+  source "$DOTFILES_ROOT/scripts/lib/ui/message.sh"
+fi
+
 source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
 
 if ! typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
@@ -228,24 +232,8 @@ dotfiles::style_link() {
 dotfiles::print_report_section() {
   local title="$1"
   shift || true
-  local line
-  local -a lines=()
 
-  for line in "$@"; do
-    [[ -n "$line" ]] || continue
-    lines+=("$line")
-  done
-
-  if (( ${#lines[@]} == 0 )); then
-    return 0
-  fi
-
-  echo
-  echo "$(dotfiles_heading "$title")"
-
-  for line in "${lines[@]}"; do
-    echo "  $(dotfiles_muted •) $line"
-  done
+  ui::report_section "$title" "$@"
 }
 
 dotfiles::report_join_items() {
@@ -379,11 +367,11 @@ dotfiles::report_completed_items() {
   done
 
   for line in "${DOTFILES_RESULT_NOTES[@]}"; do
-    lines+=("$(dotfiles_warning Note:) $line")
+    lines+=("$(ui::warning Note:) $line")
   done
 
   for line in "${DOTFILES_RESULT_WARNINGS[@]}"; do
-    lines+=("$(dotfiles_error Warning:) $line")
+    lines+=("$(ui::error Warning:) $line")
   done
 
   printf '%s\n' "${lines[@]}"
@@ -434,12 +422,11 @@ dotfiles::print_install_report() {
 }
 
 dotfiles::log_step() {
-  echo
-  echo "$(dotfiles_accent "$1")"
+  ui::step "$1"
 }
 
 dotfiles::log_info() {
-  echo "$(dotfiles_muted "$1")"
+  ui::info "$1"
 }
 
 dotfiles::log_warn() {
@@ -447,18 +434,23 @@ dotfiles::log_warn() {
   if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
     dotfiles::execution_record_event warning "$1"
   fi
-  echo "$(dotfiles_warning "$1")"
+  ui::warn "$1"
 }
 
 dotfiles::log_success() {
-  echo "$(dotfiles_success "$1")"
+  if ui::is_json; then
+    ui::json_event success install "{\"message\":\"$(ui::json_escape "$1")\"}"
+    return 0
+  fi
+
+  ui::write stdout "$(ui::success "$1")"
 }
 
 dotfiles::log_error() {
   if typeset -f dotfiles::execution_record_event >/dev/null 2>&1; then
     dotfiles::execution_record_event error "$1"
   fi
-  echo "$(dotfiles_error "$1")" >&2
+  ui::fail "$1"
 }
 
 dotfiles::run_as_root() {

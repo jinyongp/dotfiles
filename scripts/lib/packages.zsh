@@ -132,7 +132,14 @@ package_manager::logical_to_native() {
   case "$DOTFILES_PACKAGE_MANAGER" in
     brew|apt) catalog::package_native_name "$DOTFILES_PACKAGE_MANAGER" "$logical_name" ;;
     *)
-      dotfiles::log_error "Unsupported package manager: $DOTFILES_PACKAGE_MANAGER"
+      if typeset -f ui::validation_error >/dev/null 2>&1; then
+        ui::validation_error "unsupported package manager" \
+          $'field\tDOTFILES_PACKAGE_MANAGER' \
+          $'value\t'"$DOTFILES_PACKAGE_MANAGER" \
+          $'expected\tbrew or apt'
+      else
+        dotfiles::log_error "Unsupported package manager: $DOTFILES_PACKAGE_MANAGER"
+      fi
       return 1
       ;;
   esac
@@ -228,7 +235,12 @@ package_manager::install_brew_cask() {
   local cask_name="$1"
 
   if [[ -z "$cask_name" ]]; then
-    dotfiles::log_error "Missing Homebrew cask name."
+    if typeset -f ui::validation_error >/dev/null 2>&1; then
+      ui::validation_error "missing Homebrew cask name" \
+        $'field\tcask_name'
+    else
+      dotfiles::log_error "Missing Homebrew cask name."
+    fi
     return 1
   fi
 

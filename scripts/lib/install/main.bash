@@ -8,7 +8,10 @@ install::main() {
   install::detect_platform
 
   if [[ "$DOTFILES_PLATFORM" == "unknown" ]]; then
-    install::color_red "Unsupported platform: ${OSTYPE:-unknown}"
+    ui::validation_error "unsupported platform" \
+      $'input\t'"${OSTYPE:-unknown}" \
+      $'expected\tmacos, linux, or wsl' \
+      $'next\tUse a supported macOS, Linux, or WSL environment.'
     exit 1
   fi
 
@@ -35,14 +38,22 @@ install::main() {
     esac
   fi
 
-  if [[ ! -t 0 ]]; then
-    install::color_red "This installer is interactive and must be run from a TTY."
-    exit 1
-  fi
-
   install::load_saved_runtime_defaults
   install::select_default_package_manager
   install::remember_saved_runtime_defaults
+
+  if ui::is_json; then
+    install::run_json_request
+    exit $?
+  fi
+
+  if [[ ! -t 0 ]]; then
+    ui::validation_error "interactive terminal required" \
+      $'input\tstdin is not a TTY' \
+      $'expected\trun from an interactive terminal' \
+      $'next\t'"Use direct install syntax: $(install::display_path "$DOTFILES_ROOT/install") <module> [item...]"
+    exit 1
+  fi
 
   prompt::intro "Dotfiles Installer" "$DOTFILES_PLATFORM_LABEL"
   install::select_profile

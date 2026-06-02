@@ -6,9 +6,71 @@ DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/jinyongp/dotfiles.git}"
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 DOTFILES_REF="${DOTFILES_REF:-main}"
 
+install_remote::json_escape() {
+  local value="$1"
+
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//$'\n'/\\n}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\t'/\\t}"
+  printf '%s' "$value"
+}
+
+install_remote::fallback_validation_error() {
+  local message="$1"
+  shift || true
+  local record label value json_fields="" escaped_label escaped_value
+
+  if [[ "${DOTFILES_INSTALL_UI_MODE:-auto}" == "json" ]]; then
+    for record in "$@"; do
+      IFS=$'\t' read -r label value <<<"$record"
+      [[ -n "$label" ]] || continue
+      escaped_label="$(install_remote::json_escape "$label")"
+      escaped_value="$(install_remote::json_escape "$value")"
+      json_fields="${json_fields}${json_fields:+,}\"$escaped_label\":\"$escaped_value\""
+    done
+    printf '{"schema":"dotfiles.ui.v1","type":"validation_error","surface":"install","mode":"json","data":{"message":"%s","fields":{%s}}}\n' \
+      "$(install_remote::json_escape "$message")" \
+      "$json_fields" >&2
+    return 0
+  fi
+
+  printf 'dotfiles install: %s\n' "$message" >&2
+  for record in "$@"; do
+    IFS=$'\t' read -r label value <<<"$record"
+    [[ -n "$label" && -n "$value" ]] || continue
+    printf '  %s: %s\n' "$label" "$value" >&2
+  done
+}
+
+install_remote::load_ui() {
+  if declare -F ui::validation_error >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [[ -f "$DOTFILES_DIR/scripts/lib/ui/errors.sh" ]]; then
+    # shellcheck disable=SC1090
+    source "$DOTFILES_DIR/scripts/lib/ui/errors.sh"
+  fi
+}
+
+install_remote::validation_error() {
+  local message="$1"
+  shift || true
+
+  install_remote::load_ui
+  if declare -F ui::validation_error >/dev/null 2>&1; then
+    ui::validation_error "$message" "$@"
+  else
+    install_remote::fallback_validation_error "$message" "$@"
+  fi
+}
+
 install_remote::require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
-    printf 'dotfiles install: required command not found: %s\n' "$1" >&2
+    install_remote::validation_error "required command not found" \
+      $'command\t'"$1"
     return 1
   fi
 }
@@ -18,8 +80,13 @@ install_remote::ensure_clean_worktree() {
 
   status="$(git -C "$DOTFILES_DIR" status --porcelain)"
   if [[ -n "$status" ]]; then
-    printf 'dotfiles install: local changes found in %s; refusing to update.\n' "$DOTFILES_DIR" >&2
-    printf '%s\n' "$status" >&2
+    install_remote::validation_error "local changes found; refusing to update" \
+      $'path\t'"$DOTFILES_DIR" \
+      $'status\t'"$status" \
+      $'next\tcommit, stash, or discard local changes before update'
+    if [[ "${DOTFILES_INSTALL_UI_MODE:-auto}" != "json" ]]; then
+      printf '%s\n' "$status" >&2
+    fi
     return 1
   fi
 }
@@ -27,9 +94,13 @@ install_remote::ensure_clean_worktree() {
 install_remote::clone_or_update_repo() {
   if [[ ! -d "$DOTFILES_DIR" ]]; then
     git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+    install_remote::load_ui
   elif [[ ! -d "$DOTFILES_DIR/.git" ]]; then
-    printf 'dotfiles install: path exists but is not a git repo: %s\n' "$DOTFILES_DIR" >&2
+    install_remote::validation_error "path exists but is not a git repo" \
+      $'path\t'"$DOTFILES_DIR"
     return 1
+  else
+    install_remote::load_ui
   fi
 
   install_remote::ensure_clean_worktree
@@ -47,4 +118,6 @@ install_remote::main() {
   exec "$DOTFILES_DIR/install" "$@"
 }
 
-install_remote::main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  install_remote::main "$@"
+fi

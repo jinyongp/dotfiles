@@ -7,6 +7,11 @@ if [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/style.sh" ]]; th
   source "$DOTFILES_ROOT/scripts/lib/style.sh"
 fi
 
+if ! declare -F ui::input_required >/dev/null 2>&1 && [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/ui/errors.sh" ]]; then
+  # shellcheck disable=SC1090
+  source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
+fi
+
 # shellcheck disable=SC1090
 source "$PROMPT__LIB_DIR/prompt/style.bash"
 # shellcheck disable=SC1090
@@ -18,27 +23,57 @@ PROMPT__CURSOR_HIDDEN=0
 PROMPT__RENDERED_LINES=0
 PROMPT__STTY_STATE=""
 PROMPT__CANCELLED=0
-PROMPT__UI_MODE="${DOTFILES_INSTALL_UI_MODE:-compact}"
+PROMPT__UI_MODE="${DOTFILES_INSTALL_UI_MODE:-auto}"
 
-case "$PROMPT__UI_MODE" in
-  plain|compact|rich) ;;
-  *) PROMPT__UI_MODE="compact" ;;
-esac
+if declare -F ui::mode >/dev/null 2>&1; then
+  PROMPT__UI_MODE="$(ui::mode)"
+else
+  case "$PROMPT__UI_MODE" in
+    auto|plain|json) ;;
+    *) PROMPT__UI_MODE="auto" ;;
+  esac
+fi
 
 prompt::ui_mode() {
   printf '%s' "$PROMPT__UI_MODE"
 }
 
 prompt::is_plain_mode() {
-  [[ "$PROMPT__UI_MODE" == "plain" ]]
-}
-
-prompt::is_rich_mode() {
-  [[ "$PROMPT__UI_MODE" == "rich" ]]
+  if declare -F ui::is_plain >/dev/null 2>&1; then
+    ui::is_plain
+  else
+    [[ "$PROMPT__UI_MODE" == "plain" || "${TERM:-}" == "dumb" ]]
+  fi
 }
 
 prompt::uses_inline_status() {
-  [[ "$PROMPT__UI_MODE" != "rich" ]]
+  return 0
+}
+
+prompt::is_json_mode() {
+  if declare -F ui::is_json >/dev/null 2>&1; then
+    ui::is_json
+  else
+    [[ "$PROMPT__UI_MODE" == "json" ]]
+  fi
+}
+
+prompt::require_human_input() {
+  local component="$1"
+  local question="${2:-}"
+
+  if ! prompt::is_json_mode; then
+    return 0
+  fi
+
+  if declare -F ui::input_required >/dev/null 2>&1; then
+    ui::input_required "JSON mode requires ${component} input in the request document." \
+      "component	$component" \
+      "question	$question" >&2
+  else
+    printf 'input required: %s: %s\n' "$component" "$question" >&2
+  fi
+  return 1
 }
 
 prompt::display_hint_token() {
@@ -57,6 +92,11 @@ prompt::display_hint_token() {
 prompt::strip_ansi() {
   local text="$1"
   local prefix suffix
+
+  if declare -F ui::strip_ansi >/dev/null 2>&1; then
+    ui::strip_ansi "$text"
+    return 0
+  fi
 
   while [[ "$text" == *$'\033['*m* ]]; do
     prefix="${text%%$'\033['*}"
@@ -388,6 +428,8 @@ prompt::text() {
   local error_message=""
   local detail
 
+  prompt::require_human_input text "$question" || return 64
+
   if [[ "$#" -gt 0 ]] && declare -F "$1" >/dev/null 2>&1; then
     validator_callback="$1"
     shift || true
@@ -464,7 +506,9 @@ prompt::select() {
   local key rendered_lines current_description_line rendered_option
   local status_align_width=0
   local header_line footer_line blank_line
-  local rich_mode=0 inline_status=0
+  local inline_status=0
+
+  prompt::require_human_input select "$question" || return 64
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -487,7 +531,6 @@ prompt::select() {
     index=$((index + 1))
   done
 
-  prompt::is_rich_mode && rich_mode=1
   prompt::uses_inline_status && inline_status=1
 
   header_line="$(prompt::question_header "$question")"
@@ -530,10 +573,6 @@ prompt::select() {
     current_description_line="${description_lines[$current_index]}"
     [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
 
-    if [[ "$rich_mode" -eq 1 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$blank_line"
-    fi
-
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
       if [[ "$index" -eq "$current_index" ]]; then
@@ -544,9 +583,6 @@ prompt::select() {
       index=$((index + 1))
     done
 
-    if [[ "$rich_mode" -eq 1 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$blank_line"
-    fi
     rendered_lines[${#rendered_lines[@]}]="$footer_line"
 
     prompt::render_block "${rendered_lines[@]}"
@@ -607,7 +643,9 @@ prompt::multiselect() {
   local window_start window_end remaining_above remaining_below
   local status_align_width=0
   local header_line footer_line blank_line
-  local rich_mode=0 inline_status=0
+  local inline_status=0
+
+  prompt::require_human_input multiselect "$question" || return 64
 
   for record in "${records[@]}"; do
     id="$(prompt::record_field "$record" 1)"
@@ -631,7 +669,6 @@ prompt::multiselect() {
     index=$((index + 1))
   done
 
-  prompt::is_rich_mode && rich_mode=1
   prompt::uses_inline_status && inline_status=1
 
   header_line="$(prompt::question_header "$question")"
@@ -678,10 +715,6 @@ prompt::multiselect() {
     rendered_lines[${#rendered_lines[@]}]="$header_line"
     current_description_line="${description_lines[$current_index]}"
     [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
-
-    if [[ "$rich_mode" -eq 1 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$blank_line"
-    fi
 
     reserved_lines=7
     [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + 1))
@@ -734,9 +767,6 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↓" "$remaining_below")"
     fi
 
-    if [[ "$rich_mode" -eq 1 ]]; then
-      rendered_lines[${#rendered_lines[@]}]="$blank_line"
-    fi
     rendered_lines[${#rendered_lines[@]}]="$footer_line"
 
     prompt::render_block "${rendered_lines[@]}"
@@ -812,6 +842,6 @@ prompt::confirm() {
     options[1]=$'no\tNo\tSkip or cancel this step.\t1\t0'
   fi
 
-  prompt::select answer "$question" "$hint" "${options[@]}"
+  prompt::select answer "$question" "$hint" "${options[@]}" || return $?
   prompt::set_result "$result_var" "$answer"
 }

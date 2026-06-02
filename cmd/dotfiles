@@ -4,36 +4,63 @@ set -euo pipefail
 
 DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
-dotfiles::usage() {
-  cat <<EOF
-Usage:
-  dotfiles install [target] [item...]
-  dotfiles agents list [--json]
-  dotfiles agents sync [skill...]
-  dotfiles list
-  dotfiles update
-  dotfiles doctor
-  dotfiles path
+source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
+source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
 
-Aliases:
-  dfx -> dotfiles, when no existing dfx command is installed
-EOF
+dotfiles::usage() {
+  ui::help_start "dotfiles" "Manage this dotfiles repository and installer."
+  ui::help_usage \
+    "dotfiles install [target] [item...]" \
+    "dotfiles agents list" \
+    "dotfiles agents sync [skill...]" \
+    "dotfiles list" \
+    "dotfiles update" \
+    "dotfiles doctor" \
+    "dotfiles path"
+  ui::help_commands \
+    $'install\tinstall\tRun the interactive installer or a direct install target.' \
+    $'agents\tagents\tManage external agent skills.' \
+    $'list\tlist\tList direct install targets.' \
+    $'update\tupdate\tFast-forward this dotfiles repository.' \
+    $'doctor\tdoctor\tCheck the local dotfiles setup.' \
+    $'path\tpath\tPrint the dotfiles repository path.' \
+    $'complete\tcomplete\tPrint shell completion records.'
+  ui::help_environment \
+    $'DOTFILES_INSTALL_UI_MODE\tDOTFILES_INSTALL_UI_MODE\tauto, plain, or json.'
+  ui::help_records "Aliases:" \
+    $'dfx\tdfx\tAlias for dotfiles when no existing dfx command is installed.'
 }
 
 dotfiles::ensure_git_repo() {
+  local root_field=""
+  local usage_field=""
+
   if ! git -C "$DOTFILES_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    printf 'dotfiles: not a git repository: %s\n' "$DOTFILES_ROOT" >&2
+    printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
+    printf -v usage_field 'usage\t%s' 'git -C <root> rev-parse --is-inside-work-tree'
+    ui::validation_error "not a git repository" \
+      "$root_field" \
+      "$usage_field"
     return 1
   fi
 }
 
 dotfiles::ensure_clean_worktree() {
   local status=""
+  local root_field=""
+  local next_field=""
 
   status="$(git -C "$DOTFILES_ROOT" status --porcelain)"
   if [[ -n "$status" ]]; then
-    printf 'dotfiles: local changes found; refusing to update.\n' >&2
-    printf '%s\n' "$status" >&2
+    printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
+    printf -v next_field 'next\t%s' 'commit, stash, or discard local changes before update'
+    ui::validation_error "local changes found; refusing to update" \
+      "$root_field" \
+      $'status\t'"$status" \
+      "$next_field"
+    if ! ui::is_json; then
+      printf '%s\n' "$status" >&2
+    fi
     return 1
   fi
 }
@@ -42,14 +69,19 @@ dotfiles::update() {
   local upstream=""
   local local_head=""
   local remote_head=""
+  local root_field=""
+  local next_field=""
 
   dotfiles::ensure_git_repo
   dotfiles::ensure_clean_worktree
 
   upstream="$(git -C "$DOTFILES_ROOT" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
   if [[ -z "$upstream" ]]; then
-    printf 'dotfiles: current branch has no upstream.\n' >&2
-    printf 'dotfiles: run: git -C %q pull --ff-only <remote> <branch>\n' "$DOTFILES_ROOT" >&2
+    printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
+    printf -v next_field 'next\t%s' "git -C $DOTFILES_ROOT pull --ff-only <remote> <branch>"
+    ui::validation_error "current branch has no upstream" \
+      "$root_field" \
+      "$next_field"
     return 1
   fi
 
@@ -68,6 +100,8 @@ dotfiles::update() {
 
 dotfiles::doctor() {
   local failed=0
+  local root_field=""
+  local expected_field=""
 
   printf 'root: %s\n' "$DOTFILES_ROOT"
 
@@ -88,7 +122,11 @@ dotfiles::doctor() {
   if [[ -d "$DOTFILES_ROOT/zsh" && -d "$DOTFILES_ROOT/cmd" ]]; then
     printf 'layout: ok\n'
   else
-    printf 'layout: missing expected directories\n'
+    printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
+    printf -v expected_field 'expected\t%s' 'zsh, cmd'
+    ui::validation_error "layout is missing expected directories" \
+      "$root_field" \
+      "$expected_field"
     failed=1
   fi
 
@@ -199,8 +237,13 @@ case "${1:-help}" in
     dotfiles::complete "$@"
     ;;
   *)
-    printf 'dotfiles: unknown command: %s\n' "$1" >&2
-    dotfiles::usage >&2
+    input_field=""
+    usage_field=""
+    printf -v input_field 'input\t%s' "$1"
+    printf -v usage_field 'usage\t%s' 'dotfiles <command>'
+    ui::validation_error "unknown dotfiles command" \
+      "$input_field" \
+      "$usage_field"
     exit 2
     ;;
 esac

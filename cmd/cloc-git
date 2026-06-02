@@ -3,8 +3,12 @@
 set -euo pipefail
 
 cmd="$(basename "$0")"
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 tmp_dir=""
 clone_log=""
+
+source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
+source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
 
 cleanup() {
   [[ -n "$tmp_dir" && -d "$tmp_dir" ]] && rm -rf "$tmp_dir"
@@ -15,43 +19,53 @@ cleanup() {
 trap cleanup EXIT
 
 usage() {
-  cat <<EOF
-Usage: $cmd <git-url>
-
-Clone a repository into a temporary directory and run cloc against it.
-
-Examples:
-  $cmd https://github.com/jinyongp/untouchable
-    $cmd: cloning github.com/jinyongp/untouchable with gh...
-    $cmd: counting lines...
-    github.com/AlDanial/cloc v 2.08  T=0.02 s
-    -------------------------------------------------------------------------------
-    Language                     files          blank        comment           code
-    -------------------------------------------------------------------------------
-    TypeScript                      18            423            309           1464
-    YAML                             2            862              0           3190
-    -------------------------------------------------------------------------------
-    SUM:                            28           1355            309           5025
-    -------------------------------------------------------------------------------
-
-  $cmd git@github.com:owner/private-repo.git
-    $cmd: cloning github.com/owner/private-repo with ssh...
-    $cmd: counting lines...
-    github.com/AlDanial/cloc v 2.08  T=...
-EOF
+  ui::help_start "$cmd" "Clone a repository into a temporary directory and run cloc against it."
+  ui::help_usage "$cmd <git-url>"
+  ui::help_examples \
+    "$cmd https://github.com/jinyongp/untouchable" \
+    "$cmd git@github.com:owner/private-repo.git"
 }
 
 die() {
-  echo "$cmd: $1" >&2
+  local message="$1"
+  local field="${2:-}"
+
+  if [[ -n "$field" ]]; then
+    ui::validation_error "$message" "$field" $'usage\t'"$cmd <git-url>"
+  else
+    ui::validation_error "$message" $'usage\t'"$cmd <git-url>"
+  fi
   exit 1
 }
 
 info() {
+  if ui::is_json; then
+    return 0
+  fi
+
   echo "$cmd: $1" >&2
 }
 
+warn() {
+  local message="$1"
+  local field="${2:-}"
+
+  if ui::is_json; then
+    if [[ -n "$field" ]]; then
+      local label="${field%%$'\t'*}"
+      local value="${field#*$'\t'}"
+      ui::json_event warning cli "{\"message\":\"$(ui::json_escape "$message")\",\"fields\":{\"$(ui::json_escape "$label")\":\"$(ui::json_escape "$value")\"}}" >&2
+    else
+      ui::json_event warning cli "{\"message\":\"$(ui::json_escape "$message")\",\"fields\":{}}" >&2
+    fi
+    return 0
+  fi
+
+  ui::warn "$message"
+}
+
 require_command() {
-  command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+  command -v "$1" >/dev/null 2>&1 || die "missing required command" $'command\t'"$1"
 }
 
 github_slug() {
@@ -117,8 +131,7 @@ case "${1:-}" in
 esac
 
 if [[ $# -ne 1 ]]; then
-  usage >&2
-  exit 1
+  die "missing git URL" $'argument\tgit-url'
 fi
 
 require_command git
@@ -130,9 +143,13 @@ tmp_dir="$(mktemp -d "$tmp_parent/cloc-git.XXXXXX")"
 clone_log="$(mktemp "$tmp_parent/cloc-git.XXXXXX.log")"
 
 if ! clone_repo "$1"; then
-  cat "$clone_log" >&2
+  if ! ui::is_json; then
+    cat "$clone_log" >&2
+  fi
   if github_slug "$1" >/dev/null 2>&1; then
-    echo "$cmd: GitHub private repos require either valid gh auth or SSH access." >&2
+    warn "GitHub private repos require either valid gh auth or SSH access." $'repository\t'"$1"
+  elif ui::is_json; then
+    ui::validation_error "failed to clone repository" $'repository\t'"$1"
   fi
   exit 1
 fi

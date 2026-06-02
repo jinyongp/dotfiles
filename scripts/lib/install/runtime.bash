@@ -74,9 +74,7 @@ install::should_auto_launch_zsh() {
 }
 
 install::enable_interactive_style() {
-  if [[ -t 0 && -t 1 && -z "${DOTFILES_FORCE_COLOR:-}" ]]; then
-    export DOTFILES_FORCE_COLOR=1
-  fi
+  return 0
 }
 
 install::detect_platform() {

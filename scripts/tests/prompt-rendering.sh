@@ -39,9 +39,8 @@ prompt_test::case_names() {
 
 prompt_test::mode_names() {
   printf '%s\n' \
-    "compact" \
-    "plain" \
-    "rich"
+    "auto" \
+    "plain"
 }
 
 prompt_test::write_case_input() {
@@ -67,20 +66,20 @@ prompt_test::run_case_to_file() {
     >"$output_file"
 }
 
-prompt_test::assert_compact_expectations() {
+prompt_test::assert_auto_expectations() {
   local case_name="$1"
   local actual_file="$2"
 
   case "$case_name" in
     select_basic)
       perl -0ne 'exit(!/Cross-platform prompt using the Starship binary\.\n   ● starship/s)' "$actual_file" \
-        || prompt_test::fail "compact select_basic should keep dense spacing"
+        || prompt_test::fail "auto select_basic should keep dense spacing"
       ;;
     select_with_disabled_and_status)
       grep -Eq 'starship[[:space:]]+\[current\]' "$actual_file" \
-        || prompt_test::fail "compact select_with_disabled_and_status should render inline current status"
+        || prompt_test::fail "auto select_with_disabled_and_status should render inline current status"
       grep -Eq 'powerlevel10k[[:space:]]+\[installed\]' "$actual_file" \
-        || prompt_test::fail "compact select_with_disabled_and_status should render inline installed status"
+        || prompt_test::fail "auto select_with_disabled_and_status should render inline installed status"
       ;;
   esac
 }
@@ -105,22 +104,6 @@ prompt_test::assert_plain_expectations() {
   esac
 }
 
-prompt_test::assert_rich_expectations() {
-  local case_name="$1"
-  local actual_file="$2"
-
-  case "$case_name" in
-    select_basic)
-      perl -0ne 'exit(!/Cross-platform prompt using the Starship binary\.\n\n   ● starship/s)' "$actual_file" \
-        || prompt_test::fail "rich select_basic should keep spaced layout"
-      ;;
-    select_with_disabled_and_status)
-      grep -Eq 'starship[[:space:]]{2,}\[current\]' "$actual_file" \
-        || prompt_test::fail "rich select_with_disabled_and_status should keep aligned badges"
-      ;;
-  esac
-}
-
 prompt_test::assert_mode_expectations() {
   local mode="$1"
   local case_name="$2"
@@ -128,9 +111,8 @@ prompt_test::assert_mode_expectations() {
   local actual_file="$4"
 
   case "$mode" in
-    compact) prompt_test::assert_compact_expectations "$case_name" "$actual_file" ;;
+    auto) prompt_test::assert_auto_expectations "$case_name" "$actual_file" ;;
     plain) prompt_test::assert_plain_expectations "$case_name" "$raw_file" "$actual_file" ;;
-    rich) prompt_test::assert_rich_expectations "$case_name" "$actual_file" ;;
   esac
 }
 
@@ -408,9 +390,12 @@ prompt_test::run_case() {
   local mode="$2"
 
   export DOTFILES_ROOT
-  export DOTFILES_FORCE_COLOR=1
+  export FORCE_COLOR=1
   export DOTFILES_COLOR_SCHEME=light
   export DOTFILES_INSTALL_UI_MODE="$mode"
+  if [[ "$mode" != "plain" ]]; then
+    export TERM=xterm-256color
+  fi
   PROMPT_TEST__KEY_FILE="$(mktemp "${TMPDIR:-/tmp}/prompt-rendering-keys.XXXXXX")"
   trap 'rm -f "$PROMPT_TEST__KEY_FILE"' EXIT
 
@@ -458,6 +443,102 @@ prompt_test::run_case() {
   esac
 }
 
+prompt_test::assert_json_refuses_interactive() {
+  local work_dir="$1"
+  local output_file="$work_dir/json-refuse.out"
+  local status=0
+
+  set +e
+  DOTFILES_ROOT="$DOTFILES_ROOT" DOTFILES_INSTALL_UI_MODE=json bash -s >"$output_file" 2>&1 <<'BASH'
+set -euo pipefail
+source "$DOTFILES_ROOT/scripts/lib/prompt.bash"
+prompt::enter_raw_mode() {
+  printf 'raw mode opened\n' >&2
+  exit 99
+}
+
+records=(
+  $'starship\tstarship\tCross-platform prompt.\t1\t0\t'
+  $'default\tdefault\tDefault prompt.\t0\t0\t'
+)
+
+if prompt::select result "Select a shell theme." "Use arrows." "${records[@]}"; then
+  exit 1
+fi
+if prompt::multiselect result "Select base CLI packages." "Use arrows." "${records[@]}"; then
+  exit 1
+fi
+if prompt::text result "Enter your Git email." "" "no"; then
+  exit 1
+fi
+BASH
+  status=$?
+  set -e
+
+  [[ "$status" -eq 0 ]] || prompt_test::fail "json prompt refusal script failed"
+  grep -Fq '"type":"input_required"' "$output_file" \
+    || prompt_test::fail "json prompt refusal should emit input_required events"
+  grep -Fq '"component":"select"' "$output_file" \
+    || prompt_test::fail "json prompt refusal should include select component"
+  grep -Fq '"component":"multiselect"' "$output_file" \
+    || prompt_test::fail "json prompt refusal should include multiselect component"
+  grep -Fq '"component":"text"' "$output_file" \
+    || prompt_test::fail "json prompt refusal should include text component"
+  if grep -Fq 'raw mode opened' "$output_file"; then
+    prompt_test::fail "json prompt refusal should not enter raw mode"
+  fi
+  python3 - "$output_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    events = [json.loads(line) for line in handle if line.strip()]
+
+assert len(events) == 3
+assert {event["data"]["fields"]["component"] for event in events} == {"select", "multiselect", "text"}
+PY
+  printf 'ok json/refuses_interactive\n'
+}
+
+prompt_test::assert_json_confirm_propagates_failure() {
+  local work_dir="$1"
+  local output_file="$work_dir/json-confirm.out"
+  local status=0
+
+  set +e
+  DOTFILES_ROOT="$DOTFILES_ROOT" DOTFILES_INSTALL_UI_MODE=json bash -s >"$output_file" 2>&1 <<'BASH'
+set -uo pipefail
+source "$DOTFILES_ROOT/scripts/lib/prompt.bash"
+
+result="unchanged"
+prompt::confirm result "Proceed?" "yes"
+status=$?
+printf 'status=%s\n' "$status"
+printf 'result=%s\n' "$result"
+BASH
+  status=$?
+  set -e
+
+  [[ "$status" -eq 0 ]] || prompt_test::fail "json confirm propagation script failed"
+  grep -Fq 'status=64' "$output_file" \
+    || prompt_test::fail "json prompt confirm should return select failure status"
+  grep -Fq 'result=unchanged' "$output_file" \
+    || prompt_test::fail "json prompt confirm should not overwrite result on failure"
+  grep -Fq '"component":"select"' "$output_file" \
+    || prompt_test::fail "json prompt confirm should emit select input_required event"
+  python3 - "$output_file" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    events = [json.loads(line) for line in handle if line.startswith("{")]
+
+assert len(events) == 1
+assert events[0]["type"] == "input_required"
+PY
+  printf 'ok json/confirm_propagates_failure\n'
+}
+
 prompt_test::main() {
   local work_dir=""
   local mode=""
@@ -484,6 +565,9 @@ prompt_test::main() {
   if [[ "$failures" -gt 0 ]]; then
     prompt_test::fail "$failures case(s) failed"
   fi
+
+  prompt_test::assert_json_refuses_interactive "$work_dir"
+  prompt_test::assert_json_confirm_propagates_failure "$work_dir"
 
   if [[ "${UPDATE:-0}" == "1" ]]; then
     printf 'updated %s snapshot(s)\n' "$(( $(prompt_test::case_names | wc -l | tr -d ' ') * $(prompt_test::mode_names | wc -l | tr -d ' ') ))"
