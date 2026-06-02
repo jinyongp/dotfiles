@@ -91,7 +91,7 @@ dotfiles::update() {
   remote_head="$(git -C "$DOTFILES_ROOT" rev-parse "$upstream")"
 
   if [[ "$local_head" == "$remote_head" ]]; then
-    printf 'dotfiles: already up to date.\n'
+    printf '%s\n' "$(ui::status completed "already up to date")"
     return 0
   fi
 
@@ -103,24 +103,25 @@ dotfiles::doctor() {
   local root_field=""
   local expected_field=""
 
-  printf 'root: %s\n' "$DOTFILES_ROOT"
+  printf '%s\n' "$(ui::section "Doctor")"
+  printf '%s\n' "$(ui::line "$(ui::field root "$DOTFILES_ROOT" path)")"
 
   if git -C "$DOTFILES_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    printf 'git: ok\n'
+    printf '%s\n' "$(ui::status completed "git repository detected")"
   else
-    printf 'git: missing repo\n'
+    printf '%s\n' "$(ui::status failed "git repository missing")"
     failed=1
   fi
 
   if [[ -x "$DOTFILES_ROOT/install" ]]; then
-    printf 'installer: ok\n'
+    printf '%s\n' "$(ui::status completed "installer executable")"
   else
-    printf 'installer: not executable\n'
+    printf '%s\n' "$(ui::status failed "installer is not executable")"
     failed=1
   fi
 
   if [[ -d "$DOTFILES_ROOT/zsh" && -d "$DOTFILES_ROOT/cmd" ]]; then
-    printf 'layout: ok\n'
+    printf '%s\n' "$(ui::status completed "required directories present")"
   else
     printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
     printf -v expected_field 'expected\t%s' 'zsh, cmd'

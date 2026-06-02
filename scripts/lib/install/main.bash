@@ -72,14 +72,14 @@ install::main() {
 
   if install::should_auto_launch_zsh; then
     zsh_bin="$(install::find_zsh)"
-    install::color_yellow "Starting a login zsh shell with the installed dotfiles config."
+    ui::note "Starting a login zsh shell with the installed dotfiles config."
     if ! exec "$zsh_bin" -l; then
-      install::color_red "Failed to start a login zsh shell automatically."
-      install::color_yellow "Run this manually: exec zsh -l"
+      ui::fail "Failed to start a login zsh shell automatically."
+      ui::note "Run this manually: exec zsh -l"
       exit 1
     fi
   fi
 
-  install::color_yellow "Skipping automatic zsh launch because $(install::display_path "$HOME/.zshrc") is not managed by this dotfiles repo."
-  install::color_yellow "Run this manually: exec zsh -l"
+  ui::note "Skipping automatic zsh launch because $(install::display_path "$HOME/.zshrc") is not managed by this dotfiles repo."
+  ui::note "Run this manually: exec zsh -l"
 }

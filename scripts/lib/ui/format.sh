@@ -25,8 +25,26 @@ ui::section() {
   ui::heading "$1"
 }
 
+ui::title() {
+  local title="$1"
+  local summary="${2:-}"
+
+  printf '%s\n' "$(ui::heading "$title")"
+  if [[ -n "$summary" ]]; then
+    printf '%s\n' "$(ui::description "$summary")"
+  fi
+}
+
 ui::list_item() {
   printf '  %s %s' "$(ui::muted "$(ui::symbol bullet)")" "$1"
+}
+
+ui::row() {
+  local left="$1"
+  local right="${2:-}"
+  local width="${3:-18}"
+
+  ui::align_pair "$left" "$right" "$width"
 }
 
 ui::kv() {
@@ -34,6 +52,31 @@ ui::kv() {
   local value="$2"
 
   printf '%s %s' "$(ui::muted "${label}:")" "$(ui::body "$value")"
+}
+
+ui::field() {
+  local label="$1"
+  local value="$2"
+  local kind="${3:-body}"
+  local rendered_value=""
+
+  case "$kind" in
+    code|command) rendered_value="$(ui::code "$value")" ;;
+    path) rendered_value="$(ui::path "$value")" ;;
+    value) rendered_value="$(ui::style value "$value")" ;;
+    muted|description) rendered_value="$(ui::description "$value")" ;;
+    *) rendered_value="$(ui::body "$value")" ;;
+  esac
+
+  printf '%s %s' "$(ui::muted "${label}:")" "$rendered_value"
+}
+
+ui::command() {
+  ui::code "$1"
+}
+
+ui::path_value() {
+  ui::path "$1"
 }
 
 ui::status_label() {

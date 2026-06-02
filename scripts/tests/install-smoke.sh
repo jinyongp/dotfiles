@@ -519,7 +519,7 @@ install_smoke_test::assert_direct_dotfiles() {
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
   install_smoke_test::assert_contains "$normalized_output" "Post-install Report" "dotfiles install should print final report"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "dotfiles direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "dotfiles direct install should complete"
 
   install_smoke_test::assert_symlink_target "$HOME_DIR/.zshenv" "$DOTFILES_ROOT/zsh/.zshenv"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.zprofile" "$DOTFILES_ROOT/zsh/.zprofile"
@@ -559,7 +559,7 @@ install_smoke_test::assert_direct_neovim() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "neovim direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "neovim direct install should complete"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.config/nvim" "$DOTFILES_ROOT/nvim"
   install_smoke_test::assert_not_exists "$HOME_DIR/.zshenv"
   install_smoke_test::assert_not_exists "$HOME_DIR/.zprofile"
@@ -603,7 +603,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "agents direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "agents direct install should complete"
   install_smoke_test::assert_not_contains "$normalized_output" "Warning: Skipping existing agent skill" "existing agent skills should not be report warnings"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "# Local Codex Rules" "agents install should preserve existing Codex AGENTS.md content"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "<!-- dotfiles:agents:codex:start -->" "agents install should add managed Codex block"
@@ -958,7 +958,7 @@ install_smoke_test::assert_direct_packages() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "packages direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "packages direct install should complete"
   install_smoke_test::assert_contains "$normalized_output" "No shell restart is needed." "packages direct install should not need shell restart"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fnm" "expected brew install for fnm"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install eza" "expected brew install for eza"
@@ -987,7 +987,7 @@ install_smoke_test::assert_direct_theme() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "theme direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "theme direct install should complete"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install starship" "theme direct install should install starship"
   install_smoke_test::assert_login_zsh_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
@@ -1004,7 +1004,7 @@ install_smoke_test::assert_direct_fonts() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "fonts direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "fonts direct install should complete"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask font-fira-code-nerd-font" "expected font cask install"
   install_smoke_test::assert_file_exists "$HOME_DIR/Library/Fonts/Monocraft.otf"
   install_smoke_test::assert_file_exists "$HOME_DIR/Library/Fonts/MonocraftNF.otf"
@@ -1023,7 +1023,7 @@ install_smoke_test::assert_direct_desktop_apps() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "desktop apps direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "desktop apps direct install should complete"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask keka" "expected Keka cask install"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install --cask kekaexternalhelper" "expected Keka helper cask install"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
@@ -1041,7 +1041,7 @@ install_smoke_test::assert_direct_macos_defaults() {
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
-  install_smoke_test::assert_contains "$normalized_output" "Direct install complete." "macos defaults direct install should complete"
+  install_smoke_test::assert_contains "$normalized_output" "completed  direct install complete" "macos defaults direct install should complete"
   install_smoke_test::assert_file_contains "$HOME_DIR/Library/KeyBindings/DefaultKeyBinding.dict" '"₩" = ("insertText:", "\`");' "expected keybinding file contents"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged

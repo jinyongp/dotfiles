@@ -13,8 +13,7 @@ install::color_red() {
 }
 
 install::log_step() {
-  printf '\n'
-  install::color_green "$1"
+  ui::step "$1"
 }
 
 install::display_path() {
@@ -131,13 +130,15 @@ install::run_as_root() {
     return 0
   fi
 
-  install::color_red "This step requires root privileges, but sudo is not available."
+  ui::validation_error "root privileges required" \
+    $'command\tsudo' \
+    $'expected\tsudo command available or root user'
   return 1
 }
 
 install::ensure_zsh_with_apt() {
   install::log_step "Bootstrapping zsh with apt"
-  install::color_yellow "zsh is not installed yet. Running apt-get update/install so the zsh runner can start."
+  ui::note "zsh is not installed yet. Running apt-get update/install so the zsh runner can start."
   install::run_as_root apt-get update
   install::run_as_root apt-get install -y zsh
 }
@@ -147,7 +148,7 @@ install::ensure_zsh_with_brew() {
 
   brew_bin="$(install::find_brew)"
   install::log_step "Bootstrapping zsh with Homebrew"
-  install::color_yellow "zsh is not installed yet. Installing it with Homebrew so the zsh runner can start."
+  ui::note "zsh is not installed yet. Installing it with Homebrew so the zsh runner can start."
   "$brew_bin" install zsh
 }
 
@@ -166,8 +167,10 @@ install::ensure_zsh() {
         install::ensure_zsh_with_brew
         install::record_bootstrap_zsh_installed "brew"
       else
-        install::color_red "zsh was not found on macOS and Homebrew is unavailable."
-        install::color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
+        ui::validation_error "zsh bootstrap unavailable" \
+          $'platform\tmacos' \
+          $'expected\tHomebrew or existing zsh' \
+          $'next\t'"Install zsh manually, then rerun $DOTFILES_ROOT/install"
         return 1
       fi
       ;;
@@ -177,7 +180,7 @@ install::ensure_zsh() {
         install::record_bootstrap_zsh_installed "brew"
       elif command -v apt-get >/dev/null 2>&1; then
         if [[ "$preferred_package_manager" == "brew" ]]; then
-          install::color_yellow "Homebrew was selected for package installs, but zsh bootstrap is falling back to apt because brew is not ready yet."
+          ui::warn "Homebrew was selected for package installs, but zsh bootstrap is falling back to apt because brew is not ready yet."
         fi
         install::ensure_zsh_with_apt
         install::record_bootstrap_zsh_installed "apt"
@@ -185,19 +188,23 @@ install::ensure_zsh() {
         install::ensure_zsh_with_brew
         install::record_bootstrap_zsh_installed "brew"
       else
-        install::color_red "zsh is missing and no supported bootstrap package manager was found."
-        install::color_red "Install zsh manually, then rerun $DOTFILES_ROOT/install"
+        ui::validation_error "zsh bootstrap unavailable" \
+          $'platform\t'"$platform" \
+          $'expected\tapt, Homebrew, or existing zsh' \
+          $'next\t'"Install zsh manually, then rerun $DOTFILES_ROOT/install"
         return 1
       fi
       ;;
     *)
-      install::color_red "Unsupported platform for bootstrap."
+      ui::validation_error "unsupported platform for bootstrap" \
+        $'platform\t'"$platform"
       return 1
       ;;
   esac
 
   if ! install::find_zsh >/dev/null 2>&1; then
-    install::color_red "zsh installation did not produce a usable zsh binary."
+    ui::validation_error "zsh installation did not produce a usable zsh binary" \
+      $'expected\tzsh command available'
     return 1
   fi
 }

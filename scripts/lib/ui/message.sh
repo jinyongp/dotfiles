@@ -106,3 +106,7 @@ ui::report_section() {
     printf '%s\n' "$(ui::list_item "$line")"
   done
 }
+
+ui::record_section() {
+  ui::report_section "$@"
+}

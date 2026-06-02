@@ -293,26 +293,27 @@ install::run_direct_install() {
   target_label="$(install::direct_target_label "$target")"
 
   install::log_step "Running direct install"
-  install::color_yellow "Target: $target_label"
-  install::color_yellow "Package manager: $DOTFILES_PACKAGE_MANAGER"
-  install::color_yellow "Theme: $DOTFILES_THEME"
+  printf '%s\n' "$(ui::status starting "direct install")"
+  printf '%s\n' "$(ui::line "$(ui::field target "$target_label")")"
+  printf '%s\n' "$(ui::line "$(ui::field "package manager" "$DOTFILES_PACKAGE_MANAGER")")"
+  printf '%s\n' "$(ui::line "$(ui::field theme "$DOTFILES_THEME")")"
 
   if [[ "$target" != "theme" ]]; then
     item_labels="$(install::get_module_item_labels "$target")"
     if [[ -n "$item_labels" ]]; then
-      install::color_yellow "Items: $item_labels"
+      printf '%s\n' "$(ui::line "$(ui::field items "$item_labels")")"
     fi
   fi
 
   install::run_install_plan_or_exit "Direct install failed."
-  install::color_green "Direct install complete."
+  printf '%s\n' "$(ui::status completed "direct install complete")"
 
   if install::should_auto_launch_zsh; then
     zsh_bin="$(install::find_zsh)"
-    install::color_yellow "Starting a login zsh shell with the installed dotfiles config."
+    ui::note "Starting a login zsh shell with the installed dotfiles config."
     if ! exec "$zsh_bin" -l; then
-      install::color_red "Failed to start a login zsh shell automatically."
-      install::color_yellow "Run this manually: exec zsh -l"
+      ui::fail "Failed to start a login zsh shell automatically."
+      ui::note "Run this manually: exec zsh -l"
       exit 1
     fi
   fi

@@ -62,6 +62,91 @@ cli_ui_test::assert_json_file() {
   python3 -m json.tool "$1" >/dev/null
 }
 
+cli_ui_test::assert_agents_inventory() {
+  local output_file="$WORK_DIR/agents_inventory.out"
+  local error_file="$WORK_DIR/agents_inventory.err"
+  local codex_skills="$HOME_DIR/.codex/skills"
+
+  mkdir -p "$codex_skills"
+  ln -s "$DOTFILES_ROOT/agents/skills/planning" "$codex_skills/planning"
+  mkdir -p "$codex_skills/review-loop"
+  ln -s "$WORK_DIR/not-the-taskwarrior-skill" "$codex_skills/taskwarrior"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    DOTFILES_INSTALL_UI_MODE="json" \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    dotfiles agents list >"$output_file" 2>"$error_file"
+
+  cli_ui_test::assert_json_file "$output_file"
+  [[ ! -s "$error_file" ]] || cli_ui_test::fail "agents inventory JSON should not emit stderr"
+
+  python3 - "$output_file" "$DOTFILES_ROOT" "$HOME_DIR" <<'PY'
+import json
+import sys
+
+path, root, home = sys.argv[1:]
+records = json.load(open(path, encoding="utf-8"))
+by_id = {record["id"]: record for record in records}
+
+for skill_id in ("planning", "review-loop", "taskwarrior", "git-commit", "caveman"):
+    assert skill_id in by_id, skill_id
+    assert by_id[skill_id]["kind"] == "internal"
+    assert by_id[skill_id]["source"] == "repository"
+    assert by_id[skill_id]["sourcePath"].startswith(root + "/agents/skills/")
+
+assert by_id["gate"]["kind"] == "external"
+assert by_id["gate"]["source"] == "external"
+assert "adapterTargets" in by_id["gate"]
+
+def target_status(skill_id, adapter):
+    targets = by_id[skill_id]["adapterTargets"]
+    return next(item for item in targets if item["adapter"] == adapter)
+
+planning = target_status("planning", "codex")
+assert planning["status"] == "linked"
+assert planning["linkType"] == "symlink"
+assert planning["linkTarget"] == root + "/agents/skills/planning"
+
+review_loop = target_status("review-loop", "codex")
+assert review_loop["status"] == "materialized"
+assert review_loop["linkType"] == "directory"
+
+taskwarrior = target_status("taskwarrior", "codex")
+assert taskwarrior["status"] == "conflict"
+assert taskwarrior["linkType"] == "symlink"
+
+git_commit = target_status("git-commit", "codex")
+assert git_commit["status"] == "missing"
+assert git_commit["adapterAvailable"] is True
+
+claude = target_status("git-commit", "claude")
+assert claude["status"] == "unavailable"
+assert claude["adapterAvailable"] is False
+PY
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    zsh -f -c 'dfx() { dotfiles "$@"; }; dfx agents list' >"$WORK_DIR/dfx_agents_list.out" 2>"$WORK_DIR/dfx_agents_list.err"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "Agent skills:"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "planning"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "codex:linked"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "claude:unavailable"
+
+  printf 'ok agents_inventory\n'
+}
+
 cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_help dotfiles help
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_help.out" "Usage:"
@@ -88,9 +173,26 @@ EOF
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "dotfiles:Dotfiles"
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_targets.out" "theme:Install dependencies for the current shell theme."
 
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_PLATFORM="macos" \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    zsh -f -c 'source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"; source "$DOTFILES_ROOT/zsh/alias.zsh"; type dfx; eval "dfx --help"; eval "dfx list"' >"$WORK_DIR/dfx_help_list.out" 2>"$WORK_DIR/dfx_help_list.err"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "dfx is an alias"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Usage:"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Available direct install targets:"
+
   cli_ui_test::run_cmd_json dotfiles_agents_json dotfiles agents list
   cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_agents_json.out"
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "gate"'
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "planning"'
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"kind": "internal"'
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"adapterTargets":'
 
   if cli_ui_test::run_cmd_json dotfiles_agents_json_flag dotfiles agents list --json; then
     cli_ui_test::fail "dotfiles agents list --json unexpectedly succeeded"
@@ -180,6 +282,7 @@ EOF
 
 cli_ui_test::main() {
   cli_ui_test::assert_dotfiles
+  cli_ui_test::assert_agents_inventory
   cli_ui_test::assert_small_commands
   printf 'all cli ui tests passed\n'
 }

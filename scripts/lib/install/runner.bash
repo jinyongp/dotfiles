@@ -63,7 +63,7 @@ install::run_install_plan_or_exit() {
   if [[ "${PROMPT__SESSION_OPEN:-0}" == "1" ]]; then
     prompt::cancel "$failure_message"
   else
-    install::color_red "$failure_message"
+    ui::fail "$failure_message"
   fi
 
   exit 1

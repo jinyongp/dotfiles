@@ -15,12 +15,12 @@ source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
 source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
 
 agent_skills::usage() {
-  ui::help_start "dotfiles agents" "Manage external agent skills."
+  ui::help_start "dotfiles agents" "Manage internal and external agent skills."
   ui::help_usage \
     "dotfiles agents list" \
     "dotfiles agents sync [skill...]"
   ui::help_commands \
-    $'list\tlist\tList external agent skills and installed revisions.' \
+    $'list\tlist\tList internal and external skills with adapter install state.' \
     $'sync\tsync\tFetch latest configured refs and update the local cache.'
   ui::help_environment \
     $'DOTFILES_INSTALL_UI_MODE\tDOTFILES_INSTALL_UI_MODE\tauto, plain, or json.'

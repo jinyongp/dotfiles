@@ -792,6 +792,11 @@ agents::external_selected_ids_valid() {
 agents::print_json_string() {
   local value="$1"
 
+  if typeset -f ui::json_escape >/dev/null 2>&1; then
+    print -rn -- "\"$(ui::json_escape "$value")\""
+    return 0
+  fi
+
   value="${value//\\/\\\\}"
   value="${value//\"/\\\"}"
   value="${value//$'\n'/\\n}"
@@ -815,11 +820,216 @@ agents::print_json_string_array() {
   print -rn -- "]"
 }
 
+agents::adapter_skills_dir() {
+  case "$1" in
+    codex) agents::codex_skills_dir ;;
+    claude) agents::claude_skills_dir ;;
+    *) return 1 ;;
+  esac
+}
+
+agents::set_adapter_target_state() {
+  local adapter_id="$1"
+  local source_path="$2"
+  local install_name="$3"
+  local target_dir target_path target_status link_type link_target adapter_available
+
+  target_dir="$(agents::adapter_skills_dir "$adapter_id")" || return 1
+  target_path="$target_dir/$install_name"
+  link_target=""
+  adapter_available=0
+  [[ -d "$target_dir" ]] && adapter_available=1
+
+  if [[ -L "$target_path" ]]; then
+    link_target="$(readlink "$target_path" 2>/dev/null || true)"
+    link_type="symlink"
+    if [[ "$link_target" == "$source_path" ]]; then
+      target_status="linked"
+    else
+      target_status="conflict"
+    fi
+  elif [[ -e "$target_path" ]]; then
+    if [[ -d "$target_path" ]]; then
+      link_type="directory"
+    elif [[ -f "$target_path" ]]; then
+      link_type="file"
+    else
+      link_type="other"
+    fi
+    target_status="materialized"
+  else
+    link_type="none"
+    if [[ "$adapter_available" -eq 1 ]]; then
+      target_status="missing"
+    else
+      target_status="unavailable"
+    fi
+  fi
+
+  AGENTS_ADAPTER_TARGET_ADAPTER="$adapter_id"
+  AGENTS_ADAPTER_TARGET_PATH="$target_path"
+  AGENTS_ADAPTER_TARGET_STATUS="$target_status"
+  AGENTS_ADAPTER_TARGET_LINK_TYPE="$link_type"
+  AGENTS_ADAPTER_TARGET_LINK_TARGET="$link_target"
+  AGENTS_ADAPTER_TARGET_AVAILABLE="$adapter_available"
+}
+
+agents::print_json_adapter_targets() {
+  local adapters="$1"
+  local source_path="$2"
+  local install_name="$3"
+  local adapter_id first=1
+
+  print -rn -- "["
+  for adapter_id in ${(s:,:)adapters}; do
+    [[ -n "$adapter_id" ]] || continue
+    agents::set_adapter_target_state "$adapter_id" "$source_path" "$install_name"
+    if (( first == 0 )); then
+      print -rn -- ","
+    fi
+    print -rn -- "{"
+    print -rn -- '"adapter":'
+    agents::print_json_string "$AGENTS_ADAPTER_TARGET_ADAPTER"
+    print -rn -- ',"targetPath":'
+    agents::print_json_string "$AGENTS_ADAPTER_TARGET_PATH"
+    print -rn -- ',"status":'
+    agents::print_json_string "$AGENTS_ADAPTER_TARGET_STATUS"
+    print -rn -- ',"linkType":'
+    agents::print_json_string "$AGENTS_ADAPTER_TARGET_LINK_TYPE"
+    print -rn -- ',"linkTarget":'
+    agents::print_json_string "$AGENTS_ADAPTER_TARGET_LINK_TARGET"
+    print -rn -- ',"adapterAvailable":'
+    if [[ "$AGENTS_ADAPTER_TARGET_AVAILABLE" -eq 1 ]]; then
+      print -rn -- "true"
+    else
+      print -rn -- "false"
+    fi
+    print -rn -- "}"
+    first=0
+  done
+  print -rn -- "]"
+}
+
+agents::adapter_target_summary() {
+  local adapters="$1"
+  local source_path="$2"
+  local install_name="$3"
+  local adapter_id
+  local -a summaries=()
+
+  for adapter_id in ${(s:,:)adapters}; do
+    [[ -n "$adapter_id" ]] || continue
+    agents::set_adapter_target_state "$adapter_id" "$source_path" "$install_name"
+    case "$AGENTS_ADAPTER_TARGET_STATUS" in
+      linked) summaries+=("${adapter_id}:linked") ;;
+      materialized) summaries+=("${adapter_id}:materialized") ;;
+      conflict) summaries+=("${adapter_id}:conflict") ;;
+      missing) summaries+=("${adapter_id}:missing") ;;
+      unavailable) summaries+=("${adapter_id}:unavailable") ;;
+      *) summaries+=("${adapter_id}:${AGENTS_ADAPTER_TARGET_STATUS}") ;;
+    esac
+  done
+
+  print -r -- "${(j:, :)summaries}"
+}
+
+agents::print_skill_json_record() {
+  local id="$1"
+  local inventory_kind="$2"
+  local record_status="$3"
+  local source="$4"
+  local source_id="$5"
+  local ref="$6"
+  local revision="$7"
+  local install_name="$8"
+  local adapters="$9"
+  local copy_policy="${10}"
+  local repo_url="${11}"
+  local source_path="${12}"
+  local cache_path="${13:-}"
+
+  print -r -- "  {"
+  print -n -- '    "id": '
+  agents::print_json_string "$id"
+  print -r -- ","
+  print -n -- '    "kind": '
+  agents::print_json_string "$inventory_kind"
+  print -r -- ","
+  print -n -- '    "status": '
+  agents::print_json_string "$record_status"
+  print -r -- ","
+  print -n -- '    "source": '
+  agents::print_json_string "$source"
+  print -r -- ","
+  print -n -- '    "sourceId": '
+  agents::print_json_string "$source_id"
+  print -r -- ","
+  print -n -- '    "ref": '
+  agents::print_json_string "$ref"
+  print -r -- ","
+  print -n -- '    "revision": '
+  agents::print_json_string "$revision"
+  print -r -- ","
+  print -n -- '    "installName": '
+  agents::print_json_string "$install_name"
+  print -r -- ","
+  print -n -- '    "adapters": '
+  agents::print_json_string_array "$adapters"
+  print -r -- ","
+  print -n -- '    "adapterTargets": '
+  agents::print_json_adapter_targets "$adapters" "${cache_path:-$source_path}" "$install_name"
+  print -r -- ","
+  print -n -- '    "copyPolicy": '
+  agents::print_json_string "$copy_policy"
+  print -r -- ","
+  print -n -- '    "repoUrl": '
+  agents::print_json_string "$repo_url"
+  print -r -- ","
+  print -n -- '    "sourcePath": '
+  agents::print_json_string "$source_path"
+  if [[ -n "$cache_path" ]]; then
+    print -r -- ","
+    print -n -- '    "cachePath": '
+    agents::print_json_string "$cache_path"
+  fi
+  print -r -- ""
+  print -n -- "  }"
+}
+
+agents::skill_human_rows() {
+  local id="$1"
+  local inventory_kind="$2"
+  local record_status="$3"
+  local source="$4"
+  local source_id="$5"
+  local ref="$6"
+  local revision="$7"
+  local install_name="$8"
+  local adapters="${9}"
+  local source_path="${10}"
+  local target_source_path="${11}"
+  local adapter_summary source_detail revision_detail
+
+  adapter_summary="$(agents::adapter_target_summary "$adapters" "$target_source_path" "$install_name")"
+  source_detail="$source"
+  [[ -n "$source_id" ]] && source_detail="$source_detail:$source_id"
+  [[ -n "$ref" ]] && source_detail="$source_detail@$ref"
+  revision_detail="$revision"
+  [[ -n "$revision_detail" ]] || revision_detail="unknown"
+
+  print -r -- "$(ui::align_pair "$(ui::code "$id")" "${inventory_kind}; ${record_status}; ${adapter_summary}" 22)"
+  print -r -- "$(ui::align_pair "$(ui::muted "source")" "${source_detail}; revision ${revision_detail}" 22)"
+  print -r -- "$(ui::align_pair "$(ui::muted "path")" "$source_path" 22)"
+}
+
 agents::list_external_skills() {
   local artifact_id source_id source_path install_name adapters kind copy_policy revision skill_status target_dir
   local row_source_id row_repo_url row_ref repo_url ref
-  local display_adapters listed=0 first_json=1 output_json=0
+  local skill_id skill_path
+  local listed=0 first_json=1 output_json=0
   local input_field="" usage_field=""
+  local -a human_rows=()
+  local human_line
 
   if (( $# > 0 )); then
     if typeset -f ui::validation_error >/dev/null 2>&1; then
@@ -841,6 +1051,23 @@ agents::list_external_skills() {
   if [[ "$output_json" -eq 1 ]]; then
     print -r -- "["
   fi
+
+  for skill_path in "$DOTFILES_ROOT"/agents/skills/*(/N); do
+    skill_id="${skill_path:t}"
+    [[ -f "$skill_path/SKILL.md" ]] || continue
+    listed=1
+    if [[ "$output_json" -eq 1 ]]; then
+      if (( first_json == 0 )); then
+        print -r -- ","
+      fi
+      agents::print_skill_json_record "$skill_id" "internal" "available" "repository" "dotfiles" "" "" "$skill_id" "codex,claude" "preserve" "" "$skill_path" ""
+      first_json=0
+    else
+      while IFS= read -r human_line; do
+        human_rows+=("$human_line")
+      done < <(agents::skill_human_rows "$skill_id" "internal" "available" "repository" "dotfiles" "" "" "$skill_id" "codex,claude" "$skill_path" "$skill_path")
+    fi
+  done
 
   while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
     [[ -n "$artifact_id" ]] || continue
@@ -870,51 +1097,14 @@ agents::list_external_skills() {
       if (( first_json == 0 )); then
         print -r -- ","
       fi
-      print -r -- "  {"
-      print -n -- '    "id": '
-      agents::print_json_string "$artifact_id"
-      print -r -- ","
-      print -n -- '    "status": '
-      agents::print_json_string "$skill_status"
-      print -r -- ","
-      print -n -- '    "sourceId": '
-      agents::print_json_string "$source_id"
-      print -r -- ","
-      print -n -- '    "ref": '
-      agents::print_json_string "$ref"
-      print -r -- ","
-      print -n -- '    "revision": '
-      agents::print_json_string "${revision:-unknown}"
-      print -r -- ","
-      print -n -- '    "installName": '
-      agents::print_json_string "$install_name"
-      print -r -- ","
-      print -n -- '    "adapters": '
-      agents::print_json_string_array "$adapters"
-      print -r -- ","
-      print -n -- '    "copyPolicy": '
-      agents::print_json_string "$copy_policy"
-      print -r -- ","
-      print -n -- '    "repoUrl": '
-      agents::print_json_string "$repo_url"
-      print -r -- ","
-      print -n -- '    "sourcePath": '
-      agents::print_json_string "$source_path"
-      print -r -- ""
-      print -n -- "  }"
+      agents::print_skill_json_record "$artifact_id" "external" "$skill_status" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$copy_policy" "$repo_url" "$source_path" "$target_dir"
       first_json=0
       continue
     fi
 
-    display_adapters="${adapters//,/, }"
-    print -r -- "$artifact_id  ${skill_status//_/ }"
-    print -r -- "  source:  $source_id @ $ref"
-    print -r -- "  revision: ${revision:-unknown}"
-    print -r -- "  install: $install_name -> $display_adapters"
-    print -r -- "  policy:  $copy_policy"
-    print -r -- "  path:    $source_path"
-    print -r -- "  repo:    $repo_url"
-    print -r -- ""
+    while IFS= read -r human_line; do
+      human_rows+=("$human_line")
+    done < <(agents::skill_human_rows "$artifact_id" "external" "${skill_status//_/ }" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$source_path" "$target_dir")
   done < <(catalog::external_skill_artifact_records)
 
   if [[ "$output_json" -eq 1 ]]; then
@@ -924,8 +1114,12 @@ agents::list_external_skills() {
     print -r -- "]"
   fi
 
+  if [[ "$output_json" -eq 0 && ${#human_rows[@]} -gt 0 ]]; then
+    ui::report_section "Agent skills:" "${human_rows[@]}"
+  fi
+
   if (( listed == 0 )); then
-    dotfiles::log_warn "No external agent skills configured."
+    dotfiles::log_warn "No agent skills configured."
     return 1
   fi
 }
