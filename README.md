@@ -44,6 +44,25 @@ less install-remote.bash
 bash install-remote.bash
 ```
 
+Install through Homebrew when you want Homebrew to manage the installed source
+version.
+
+```sh
+brew install jinyongp/tap/dotfiles
+dotfiles install
+```
+
+The Homebrew formula is published to
+[`jinyongp/homebrew-tap`](https://github.com/jinyongp/homebrew-tap). Each push to
+`main` publishes `Formula/dotfiles.rb` with a source archive for the full Git
+commit and the short commit hash as the formula version. Upgrade the Homebrew
+installation with:
+
+```sh
+brew update
+brew upgrade dotfiles
+```
+
 The interactive installer is plan-first: it starts with a profile (`Minimal`, `Recommended`, `Full`, or `Custom`), then lets you review, revise, or cancel the final plan before anything runs.
 For the full interactive flow, direct install targets, platform notes, and machine-local config paths, see [`docs/installer.md`](docs/installer.md).
 
