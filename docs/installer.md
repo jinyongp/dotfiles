@@ -186,6 +186,79 @@ Examples:
 - OrbStack: `source ~/.orbstack/shell/init.zsh 2>/dev/null || :` belongs in `~/.config/dotfiles/profile.zsh`
 - Homebrew: `eval "$(/opt/homebrew/bin/brew shellenv)"` is already handled by the repo bootstrap and does not need a local override
 
+## Uninstall and Rollback
+
+Run uninstall to remove dotfiles-managed symlinks and agent instruction blocks.
+
+```sh
+dotfiles uninstall -y
+```
+
+The command removes only these items when they point to the active dotfiles
+checkout or dotfiles external skill cache:
+
+- `~/.zshenv`
+- `~/.zprofile`
+- `~/.zshrc`
+- `~/.vimrc`
+- `~/.gitconfig`
+- `~/.config/nvim`
+- `~/.codex/skills/<name>`
+- `~/.claude/skills/<name>`
+
+It also removes matching managed instruction blocks from `~/.codex/AGENTS.md`
+and `~/.claude/CLAUDE.md`.
+
+```text
+<!-- dotfiles:agents:codex:start -->
+...
+<!-- dotfiles:agents:codex:end -->
+
+<!-- dotfiles:agents:claude:start -->
+...
+<!-- dotfiles:agents:claude:end -->
+```
+
+For a Homebrew-managed install, it also runs `brew uninstall dotfiles` when the
+installed formula matches the active `dotfiles` command.
+
+The command preserves packages, fonts, desktop apps, themes, backups,
+machine-local config, and manual repository checkouts.
+
+Files replaced during install are moved to timestamped backup directories:
+
+```text
+~/.config/dotfiles/backups/<timestamp>/
+```
+
+Restore from the newest relevant backup by copying files back into `$HOME`.
+Review the backup contents first; do not blindly overwrite newer local changes.
+
+```sh
+ls -la "$HOME/.config/dotfiles/backups"
+ls -la "$HOME/.config/dotfiles/backups/<timestamp>"
+```
+
+Machine-local files under `~/.config/dotfiles` are intentionally preserved.
+Remove that directory only when you no longer need local shell overrides, Git
+identity files, backups, external agent skill caches, or install state.
+
+```sh
+rm -rf "$HOME/.config/dotfiles"
+```
+
+Packages, fonts, desktop apps, and themes installed by the setup are not tracked
+as an uninstall manifest.
+Remove them with the package manager only after checking that no other setup on
+the machine depends on them.
+
+For a manual clone, remove the checkout after the symlinks are removed and any
+needed backups are restored.
+
+```sh
+rm -rf "$HOME/.dotfiles"
+```
+
 ## Zsh Startup Files
 
 The dotfiles module manages `~/.zshenv`, `~/.zprofile`, and `~/.zshrc` together.

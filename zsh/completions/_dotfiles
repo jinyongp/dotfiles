@@ -17,6 +17,13 @@ case "$CURRENT" in
         entries=("${(@f)$(dotfiles complete targets 2>/dev/null)}")
         _describe -V -t install-targets 'install target' entries
         ;;
+      uninstall)
+        entries=(
+          '-y:run uninstall without interactive confirmation'
+          '--yes:run uninstall without interactive confirmation'
+        )
+        _describe -V -t uninstall-options 'uninstall option' entries
+        ;;
       agents)
         entries=(
           'list:list external agent skills'

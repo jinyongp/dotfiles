@@ -170,6 +170,7 @@ cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_complete_commands dotfiles complete commands
   diff -u "$WORK_DIR/dotfiles_complete_commands.out" - <<'EOF'
 install:run the interactive installer or direct install target
+uninstall:remove dotfiles-managed links and agent instruction blocks
 list:list direct install targets
 themes:manage shell theme selection and dependencies
 agents:manage external agent skills
@@ -264,6 +265,95 @@ EOF
   printf 'ok dotfiles_cli\n'
 }
 
+cli_ui_test::assert_uninstall() {
+  local codex_agents="$HOME_DIR/.codex/AGENTS.md"
+  local claude_agents="$HOME_DIR/.claude/CLAUDE.md"
+  local codex_skills="$HOME_DIR/.codex/skills"
+  local claude_skills="$HOME_DIR/.claude/skills"
+  local external_cache="$CONFIG_DIR/dotfiles/agents/external-skills/gate"
+  local fake_brew_path=""
+
+  mkdir -p "$HOME_DIR/.config" "$codex_skills" "$claude_skills" "$external_cache" "$HOME_DIR/.codex" "$HOME_DIR/.claude"
+  ln -s "$DOTFILES_ROOT/zsh/.zshenv" "$HOME_DIR/.zshenv"
+  ln -s "$DOTFILES_ROOT/zsh/.zprofile" "$HOME_DIR/.zprofile"
+  ln -s "$DOTFILES_ROOT/zsh/.zshrc" "$HOME_DIR/.zshrc"
+  ln -s "$DOTFILES_ROOT/vim/.vimrc" "$HOME_DIR/.vimrc"
+  ln -s "$DOTFILES_ROOT/git/.gitconfig" "$HOME_DIR/.gitconfig"
+  ln -s "$DOTFILES_ROOT/nvim" "$HOME_DIR/.config/nvim"
+  ln -s "$DOTFILES_ROOT/agents/skills/planning" "$codex_skills/planning"
+  ln -s "$external_cache" "$codex_skills/gate"
+  ln -s "$DOTFILES_ROOT/agents/skills/git-commit" "$claude_skills/git-commit"
+  ln -s "$WORK_DIR/not-managed" "$codex_skills/custom"
+  printf '%s\n' \
+    "keep codex before" \
+    "<!-- dotfiles:agents:codex:start -->" \
+    "@/tmp/remove-me" \
+    "<!-- dotfiles:agents:codex:end -->" \
+    "keep codex after" >"$codex_agents"
+  printf '%s\n' \
+    "keep claude before" \
+    "<!-- dotfiles:agents:claude:start -->" \
+    "@/tmp/remove-me" \
+    "<!-- dotfiles:agents:claude:end -->" \
+    "keep claude after" >"$claude_agents"
+
+  if cli_ui_test::run_cmd dotfiles_uninstall_missing_yes dotfiles uninstall; then
+    cli_ui_test::fail "dotfiles uninstall without -y unexpectedly succeeded"
+  fi
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall_missing_yes.err" "uninstall requires explicit confirmation"
+
+  cli_ui_test::run_cmd dotfiles_uninstall dotfiles uninstall -y
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall.out" "uninstall finished"
+  [[ ! -e "$HOME_DIR/.zshenv" ]] || cli_ui_test::fail "managed .zshenv link was not removed"
+  [[ ! -e "$HOME_DIR/.zprofile" ]] || cli_ui_test::fail "managed .zprofile link was not removed"
+  [[ ! -e "$HOME_DIR/.zshrc" ]] || cli_ui_test::fail "managed .zshrc link was not removed"
+  [[ ! -e "$HOME_DIR/.vimrc" ]] || cli_ui_test::fail "managed .vimrc link was not removed"
+  [[ ! -e "$HOME_DIR/.gitconfig" ]] || cli_ui_test::fail "managed .gitconfig link was not removed"
+  [[ ! -e "$HOME_DIR/.config/nvim" ]] || cli_ui_test::fail "managed nvim link was not removed"
+  [[ ! -e "$codex_skills/planning" ]] || cli_ui_test::fail "managed codex skill link was not removed"
+  [[ ! -e "$codex_skills/gate" ]] || cli_ui_test::fail "managed external skill link was not removed"
+  [[ ! -e "$claude_skills/git-commit" ]] || cli_ui_test::fail "managed claude skill link was not removed"
+  [[ -L "$codex_skills/custom" ]] || cli_ui_test::fail "unmanaged skill link should be preserved"
+  cli_ui_test::assert_contains "$codex_agents" "keep codex before"
+  cli_ui_test::assert_contains "$codex_agents" "keep codex after"
+  cli_ui_test::assert_not_contains "$codex_agents" "dotfiles:agents:codex:start"
+  cli_ui_test::assert_contains "$claude_agents" "keep claude before"
+  cli_ui_test::assert_contains "$claude_agents" "keep claude after"
+  cli_ui_test::assert_not_contains "$claude_agents" "dotfiles:agents:claude:start"
+
+  rm -rf "$HOME_DIR/.codex" "$HOME_DIR/.claude" "$HOME_DIR/.config"
+
+  fake_brew_path="$WORK_DIR/fake-brew"
+  mkdir -p "$fake_brew_path"
+  cat >"$fake_brew_path/brew" <<EOF
+#!/usr/bin/env bash
+if [[ "\$1" == "--prefix" && "\$2" == "dotfiles" ]]; then
+  printf '%s\n' "$DOTFILES_ROOT"
+  exit 0
+fi
+if [[ "\$1" == "uninstall" && "\$2" == "dotfiles" ]]; then
+  printf 'fake brew uninstall dotfiles\n'
+  exit 0
+fi
+printf 'unexpected brew invocation: %s\n' "\$*" >&2
+exit 2
+EOF
+  chmod +x "$fake_brew_path/brew"
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    PATH="$fake_brew_path:$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    dotfiles uninstall -y >"$WORK_DIR/dotfiles_uninstall_brew.out" 2>"$WORK_DIR/dotfiles_uninstall_brew.err"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall_brew.out" "uninstalling Homebrew formula: dotfiles"
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall_brew.out" "fake brew uninstall dotfiles"
+
+  printf 'ok uninstall\n'
+}
+
 cli_ui_test::assert_small_commands() {
   cli_ui_test::run_cmd text_help text --help
   cli_ui_test::assert_not_contains "$WORK_DIR/text_help.out" "Usage:"
@@ -322,6 +412,7 @@ EOF
 
 cli_ui_test::main() {
   cli_ui_test::assert_dotfiles
+  cli_ui_test::assert_uninstall
   cli_ui_test::assert_agents_inventory
   cli_ui_test::assert_small_commands
   printf 'all cli ui tests passed\n'

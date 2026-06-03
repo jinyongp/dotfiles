@@ -11,6 +11,7 @@ dotfiles::usage() {
   ui::help_start "dotfiles" "Manage this dotfiles repository and installer."
   ui::help_usage \
     "dotfiles install [target] [item...]" \
+    "dotfiles uninstall -y" \
     "dotfiles agents list" \
     "dotfiles agents sync [skill...]" \
     "dotfiles list" \
@@ -19,6 +20,7 @@ dotfiles::usage() {
     "dotfiles path"
   ui::help_commands \
     $'install\tinstall\tRun the interactive installer or a direct install target.' \
+    $'uninstall\tuninstall\tRemove dotfiles-managed links and agent instruction blocks.' \
     $'list\tlist\tList direct install targets.' \
     $'themes\tthemes\tManage shell theme selection and dependencies.' \
     $'agents\tagents\tManage external agent skills.' \
@@ -28,6 +30,198 @@ dotfiles::usage() {
     $'help\thelp\tShow help.'
   ui::help_records "Aliases:" \
     $'dfx\tdfx\tAlias for dotfiles when no existing dfx command is installed.'
+}
+
+dotfiles::config_dir() {
+  printf '%s\n' "${DOTFILES_CONFIG_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles}"
+}
+
+dotfiles::is_under_path() {
+  local path="$1"
+  local root="$2"
+
+  case "$path" in
+    "$root"|"$root"/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+dotfiles::remove_managed_symlink() {
+  local path="$1"
+  local root="$2"
+  local label="${3:-managed link}"
+  local target=""
+
+  [[ -L "$path" ]] || return 0
+
+  target="$(readlink "$path")"
+  if dotfiles::is_under_path "$target" "$root"; then
+    rm "$path"
+    printf '%s\n' "$(ui::status completed "removed $label: $path")"
+  fi
+}
+
+dotfiles::remove_managed_agent_links() {
+  local config_dir="$1"
+  local dir path target
+
+  for dir in "$HOME/.codex/skills" "$HOME/.claude/skills"; do
+    [[ -d "$dir" ]] || continue
+    for path in "$dir"/*; do
+      [[ -e "$path" || -L "$path" ]] || continue
+      [[ -L "$path" ]] || continue
+
+      target="$(readlink "$path")"
+      if dotfiles::is_under_path "$target" "$DOTFILES_ROOT/agents/skills" ||
+        dotfiles::is_under_path "$target" "$config_dir/agents/external-skills"; then
+        rm "$path"
+        printf '%s\n' "$(ui::status completed "removed agent skill link: $path")"
+      fi
+    done
+  done
+}
+
+dotfiles::remove_managed_agent_block() {
+  local adapter_id="$1"
+  local target_path="$2"
+  local start="<!-- dotfiles:agents:${adapter_id}:start -->"
+  local end="<!-- dotfiles:agents:${adapter_id}:end -->"
+  local tmp_file=""
+
+  [[ -f "$target_path" ]] || return 0
+  grep -Fqx -- "$start" "$target_path" || return 0
+
+  tmp_file="$(mktemp "${target_path}.tmp.XXXXXX")"
+  if ! awk -v start="$start" -v end="$end" '
+    $0 == start { skipping = 1; next }
+    $0 == end { skipping = 0; next }
+    skipping != 1 { print }
+  ' "$target_path" >"$tmp_file"; then
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  mv "$tmp_file" "$target_path"
+  printf '%s\n' "$(ui::status completed "removed agent instruction block: $target_path")"
+}
+
+dotfiles::canonical_existing_path() {
+  local path="$1"
+  local dir=""
+  local base=""
+
+  [[ -e "$path" || -L "$path" ]] || return 1
+
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$path"
+    return 0
+  fi
+
+  dir="$(cd -- "$(dirname -- "$path")" && pwd -P)"
+  base="$(basename -- "$path")"
+  printf '%s\n' "$dir/$base"
+}
+
+dotfiles::brew_formula_matches_current_root() {
+  local brew_prefix="$1"
+  local root_real=""
+  local prefix_real=""
+  local command_path=""
+  local command_real=""
+
+  [[ -n "$brew_prefix" ]] || return 1
+  prefix_real="$(dotfiles::canonical_existing_path "$brew_prefix" 2>/dev/null || true)"
+  [[ -n "$prefix_real" ]] || return 1
+
+  root_real="$(dotfiles::canonical_existing_path "$DOTFILES_ROOT" 2>/dev/null || true)"
+  if [[ -n "$root_real" ]] && dotfiles::is_under_path "$root_real" "$prefix_real"; then
+    return 0
+  fi
+
+  command_path="$(command -v dotfiles 2>/dev/null || true)"
+  if [[ -n "$command_path" ]]; then
+    command_real="$(dotfiles::canonical_existing_path "$command_path" 2>/dev/null || true)"
+    if [[ -n "$command_real" ]] && dotfiles::is_under_path "$command_real" "$prefix_real"; then
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
+dotfiles::uninstall_homebrew_formula_if_current() {
+  local brew_prefix=""
+
+  command -v brew >/dev/null 2>&1 || return 0
+
+  brew_prefix="$(brew --prefix dotfiles 2>/dev/null || true)"
+  if ! dotfiles::brew_formula_matches_current_root "$brew_prefix"; then
+    return 0
+  fi
+
+  printf '%s\n' "$(ui::status note "uninstalling Homebrew formula: dotfiles")"
+  brew uninstall dotfiles
+}
+
+dotfiles::uninstall() {
+  local yes=0
+  local arg=""
+  local config_dir=""
+  local path=""
+  local -a managed_paths=()
+
+  for arg in "$@"; do
+    case "$arg" in
+      -y|--yes)
+        yes=1
+        ;;
+      -h|--help)
+        ui::help_start "dotfiles uninstall" "Remove dotfiles-managed links and agent instruction blocks."
+        ui::help_options \
+          $'-y, --yes\tyes\tRun uninstall without an interactive confirmation.'
+        return 0
+        ;;
+      *)
+        ui::validation_error "unknown uninstall option" \
+          $'input\t'"$arg" \
+          $'usage\tdotfiles uninstall -y'
+        return 2
+        ;;
+    esac
+  done
+
+  if [[ "$yes" != "1" ]]; then
+    ui::input_required "uninstall requires explicit confirmation" \
+      $'usage\tdotfiles uninstall -y' \
+      $'removes\tmanaged symlinks and agent instruction blocks' \
+      $'preserves\tpackages, apps, fonts, themes, backups, and local config'
+    return 2
+  fi
+
+  config_dir="$(dotfiles::config_dir)"
+  managed_paths=(
+    "$HOME/.zshenv"
+    "$HOME/.zprofile"
+    "$HOME/.zshrc"
+    "$HOME/.vimrc"
+    "$HOME/.gitconfig"
+    "$HOME/.config/nvim"
+  )
+
+  printf '%s\n' "$(ui::section "Uninstall")"
+  printf '%s\n' "$(ui::line "$(ui::field root "$DOTFILES_ROOT" path)")"
+
+  for path in "${managed_paths[@]}"; do
+    dotfiles::remove_managed_symlink "$path" "$DOTFILES_ROOT" "managed link"
+  done
+
+  dotfiles::remove_managed_agent_links "$config_dir"
+  dotfiles::remove_managed_agent_block codex "$HOME/.codex/AGENTS.md"
+  dotfiles::remove_managed_agent_block claude "$HOME/.claude/CLAUDE.md"
+  dotfiles::uninstall_homebrew_formula_if_current
+
+  printf '%s\n' "$(ui::status completed "uninstall finished")"
+  printf '%s\n' "$(ui::status note "preserved packages, apps, fonts, themes, backups, and local config")"
 }
 
 dotfiles::ensure_git_repo() {
@@ -166,6 +360,7 @@ dotfiles::complete() {
     commands)
       cat <<'EOF'
 install:run the interactive installer or direct install target
+uninstall:remove dotfiles-managed links and agent instruction blocks
 list:list direct install targets
 themes:manage shell theme selection and dependencies
 agents:manage external agent skills
@@ -223,6 +418,10 @@ case "${1:-help}" in
   install)
     shift
     exec "$DOTFILES_ROOT/install" "$@"
+    ;;
+  uninstall)
+    shift
+    dotfiles::uninstall "$@"
     ;;
   agents)
     shift
