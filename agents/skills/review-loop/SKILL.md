@@ -2,7 +2,8 @@
 name: review-loop
 description: >
   Unified scoped code review + parent-owned fix loop. Use for /review-loop,
-  review until clean, code review with fixes, or modes: web, server, database, node.
+  review until clean, code review with fixes, or modes: web, server, database,
+  node, planning.
 compatibility: Requires Git worktree for default scope. Designed for Codex read-only subagents.
 ---
 
@@ -18,20 +19,23 @@ Modes:
 - `server`: HTTP/API, middleware, auth/session, webhooks, jobs, queues, integrations
 - `database`: schema, migrations, ORM/models, SQL, transactions, indexes, constraints, fixtures/backfills
 - `node`: JS/TS runtime, package scripts, CLIs, workers, libs, build tooling, modules/deps/process/fs
+- `planning`: plans, specs, ADRs, RFCs, requirements, design docs
 
 Aliases:
 - web: `frontend client browser ui ux design ssr rendering hydration assets`
 - server: `api backend http middleware auth session webhook jobs queue integration`
 - database: `db sql orm migration schema transaction index constraint repository data-access`
 - node: `js ts typescript javascript nodejs package npm pnpm yarn cli worker build esm cjs`
+- planning: `plan planning docs document design-doc spec proposal adr rfc requirements roadmap task-list implementation-plan`
 
-Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`. No explicit area/mode/axis: inspect requested scope first, then infer review area, modes, risk axes, and agent plan from changed code plus direct contracts. Ask only when the target or material coverage is genuinely ambiguous.
+Normalize aliases. Examples: `/review-loop web server`, `/review-loop frontend api`, `/review-loop backend db`, `/review-loop ts package`, `/review-loop planning docs/checkout-plan.md`. No explicit area/mode/axis: inspect requested scope first, then infer review area, modes, risk axes, and agent plan from changed code plus direct contracts. Ask only when the target or material coverage is genuinely ambiguous.
 
 Infer review plan from paths/content:
 - web: `component|page|layout|style|css|client|browser|hydration|asset|screen`
 - server: `route|api|middleware|controller|auth|session|webhook|job|queue`
 - database: `schema|migration|sql|prisma|drizzle|typeorm|model|repository`
 - node: `package.json|tsconfig|script|cli|worker|build|esm|cjs|fs|process`
+- planning: `plan|planning|proposal|design-doc|design_doc|adr|rfc|spec|requirements|roadmap|milestone|migration-plan|implementation-plan|docs/.+\\.md|\\.md$`
 
 ## Contract
 
@@ -70,6 +74,7 @@ git diff --name-only
 git ls-files --others --exclude-standard
 git diff --cached -- <path>
 git diff -- <path>
+git diff --no-index -- /dev/null <untracked-path>
 ```
 
 Steps: verify root; verify explicit scope readable; default enumerate staged/unstaged/untracked/deleted diffs; include generated/lockfile only with related source; exclude vendored/dist unless changed by request; empty default ask+stop; derive review area (feature/module/file set), modes, axes, coverage map, and agent plan from changed paths/content plus direct deps/contracts/tests/config/generated sources; read enough context to cover every in-scope behavior and confirm findings.
@@ -78,45 +83,24 @@ Steps: verify root; verify explicit scope readable; default enumerate staged/uns
 
 Use selected modes only. Do not run every listed axis merely because a mode matched, but do not leave any in-scope changed behavior unreviewed. Select axes whose failure modes are plausible from changed code and direct contracts; include high-risk axes when scope touches auth, permissions, persistence, migrations, provider I/O, process/env, routing, or user-facing workflows.
 
+Parent reads and passes selected mode references:
+- web: `references/web.md`
+- server: `references/server.md`
+- database: `references/database.md`
+- node: `references/node.md`
+- planning: `references/planning.md`
+
 For any selected mode, read `references/code-quality.md` when scope adds or changes authored helpers, composables, function signatures, normalization/resolve layers, duplicate domain helpers, or public-ish APIs.
-
-Web:
-1. Client security, sensitive data, storage
-2. SSR/render/hydration/assets/cache/redirects
-3. Interaction, async state, double submit, stale responses
-4. UI/API contract drift, generated clients, validation assumptions
-5. UI/UX fluency, information hierarchy, raw data rendering, action clarity
-
 For Web UI/UX fluency review, read `references/ui-ux.md` when scope includes user-facing screens, components, cards, tables, dashboards, order/admin views, forms, status/action surfaces, or data-heavy UI.
-
-Server:
-1. Security, authz, tenancy, permissions, sensitive data
-2. API contract, request validation, response semantics, versioning
-3. Routing, middleware, sessions, cookies, CSRF, CORS, headers, proxy trust
-4. Webhooks/jobs/queues/retries/idempotency/provider I/O
-5. Errors, observability, shutdown, health/readiness
-
-Database:
-1. Schema/migrations/generated models/compatibility
-2. Constraints/indexes/uniqueness/FK/tenant isolation
-3. Queries/filters/pagination/raw SQL/N+1/plans
-4. Transactions/consistency/idempotency/retry races
-5. Seeds/fixtures/backfills/generated-client drift
-
-Node:
-1. Runtime/data shape/nullability/control flow
-2. Async/promises/event-loop/timers/cancel
-3. Modules/package boundaries/exports/imports/ESM/CJS/build output
-4. Dependency/version/package scripts
-5. Process/env/fs/path/OS/child process
-6. Perf/memory/stream/backpressure/cleanup
-7. Tests/fixtures/mocks/determinism/typecheck/build
+For Planning review, read `../planning/SKILL.md` before `references/planning.md`. Run alone for docs-only scope or with code modes when plans describe changed behavior.
 
 Custom axes: preserve. Too many axes => waves. Small adjacent axes may share one read-only subagent; high-risk or broad independent axes get their own subagent. Agent count = useful independent review threads for the selected axes, bounded by available capacity, not fixed by config.
 
 ## Subagent Prompt
 
 Each review assignment gets same scope + selected mode/axis set. Prefer one focused axis per subagent when risk is high; combine tightly related low-risk axes when that improves signal. Also pass relevant known context: user decisions, explicit non-goals, allowed/forbidden approaches, legacy/compat policy, product constraints, validation constraints, repo conventions, prior accepted risks. Do not let subagents flag issues that contradict accepted constraints.
+
+Also pass selected mode reference content and required companion skill rules loaded by parent.
 
 Read-only. Adjacent direct contracts OK only to confirm concrete finding. No writes/validation.
 
