@@ -105,64 +105,6 @@ dotfiles::remove_managed_agent_block() {
   printf '%s\n' "$(ui::status completed "removed agent instruction block: $target_path")"
 }
 
-dotfiles::canonical_existing_path() {
-  local path="$1"
-  local dir=""
-  local base=""
-
-  [[ -e "$path" || -L "$path" ]] || return 1
-
-  if command -v realpath >/dev/null 2>&1; then
-    realpath "$path"
-    return 0
-  fi
-
-  dir="$(cd -- "$(dirname -- "$path")" && pwd -P)"
-  base="$(basename -- "$path")"
-  printf '%s\n' "$dir/$base"
-}
-
-dotfiles::brew_formula_matches_current_root() {
-  local brew_prefix="$1"
-  local root_real=""
-  local prefix_real=""
-  local command_path=""
-  local command_real=""
-
-  [[ -n "$brew_prefix" ]] || return 1
-  prefix_real="$(dotfiles::canonical_existing_path "$brew_prefix" 2>/dev/null || true)"
-  [[ -n "$prefix_real" ]] || return 1
-
-  root_real="$(dotfiles::canonical_existing_path "$DOTFILES_ROOT" 2>/dev/null || true)"
-  if [[ -n "$root_real" ]] && dotfiles::is_under_path "$root_real" "$prefix_real"; then
-    return 0
-  fi
-
-  command_path="$(command -v dotfiles 2>/dev/null || true)"
-  if [[ -n "$command_path" ]]; then
-    command_real="$(dotfiles::canonical_existing_path "$command_path" 2>/dev/null || true)"
-    if [[ -n "$command_real" ]] && dotfiles::is_under_path "$command_real" "$prefix_real"; then
-      return 0
-    fi
-  fi
-
-  return 1
-}
-
-dotfiles::uninstall_homebrew_formula_if_current() {
-  local brew_prefix=""
-
-  command -v brew >/dev/null 2>&1 || return 0
-
-  brew_prefix="$(brew --prefix dotfiles 2>/dev/null || true)"
-  if ! dotfiles::brew_formula_matches_current_root "$brew_prefix"; then
-    return 0
-  fi
-
-  printf '%s\n' "$(ui::status note "uninstalling Homebrew formula: dotfiles")"
-  brew uninstall dotfiles
-}
-
 dotfiles::uninstall() {
   local yes=0
   local arg=""
@@ -218,7 +160,6 @@ dotfiles::uninstall() {
   dotfiles::remove_managed_agent_links "$config_dir"
   dotfiles::remove_managed_agent_block codex "$HOME/.codex/AGENTS.md"
   dotfiles::remove_managed_agent_block claude "$HOME/.claude/CLAUDE.md"
-  dotfiles::uninstall_homebrew_formula_if_current
 
   printf '%s\n' "$(ui::status completed "uninstall finished")"
   printf '%s\n' "$(ui::status note "preserved packages, apps, fonts, themes, backups, and local config")"

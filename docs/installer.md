@@ -219,9 +219,6 @@ and `~/.claude/CLAUDE.md`.
 <!-- dotfiles:agents:claude:end -->
 ```
 
-For a Homebrew-managed install, it also runs `brew uninstall dotfiles` when the
-installed formula matches the active `dotfiles` command.
-
 The command preserves packages, fonts, desktop apps, themes, backups,
 machine-local config, and manual repository checkouts.
 

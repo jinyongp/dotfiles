@@ -27,20 +27,6 @@ git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles
 ~/.dotfiles/install
 ```
 
-Homebrew can manage the checkout version instead:
-
-```sh
-brew install jinyongp/tap/dotfiles
-dotfiles install
-```
-
-Upgrade a Homebrew install with:
-
-```sh
-brew update
-brew upgrade dotfiles
-```
-
 ## Usage
 
 After shell setup is installed, use the `dotfiles` command.
@@ -78,7 +64,6 @@ config paths, see [`docs/installer.md`](docs/installer.md).
 Run uninstall to remove dotfiles-managed symlinks and agent instruction blocks.
 It does not remove packages, apps, fonts, themes, backups, machine-local config,
 or a manual checkout.
-For a Homebrew-managed install, it also uninstalls the `dotfiles` formula.
 
 ```sh
 dotfiles uninstall -y

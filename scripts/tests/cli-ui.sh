@@ -323,34 +323,6 @@ cli_ui_test::assert_uninstall() {
 
   rm -rf "$HOME_DIR/.codex" "$HOME_DIR/.claude" "$HOME_DIR/.config"
 
-  fake_brew_path="$WORK_DIR/fake-brew"
-  mkdir -p "$fake_brew_path"
-  cat >"$fake_brew_path/brew" <<EOF
-#!/usr/bin/env bash
-if [[ "\$1" == "--prefix" && "\$2" == "dotfiles" ]]; then
-  printf '%s\n' "$DOTFILES_ROOT"
-  exit 0
-fi
-if [[ "\$1" == "uninstall" && "\$2" == "dotfiles" ]]; then
-  printf 'fake brew uninstall dotfiles\n'
-  exit 0
-fi
-printf 'unexpected brew invocation: %s\n' "\$*" >&2
-exit 2
-EOF
-  chmod +x "$fake_brew_path/brew"
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    PATH="$fake_brew_path:$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    dotfiles uninstall -y >"$WORK_DIR/dotfiles_uninstall_brew.out" 2>"$WORK_DIR/dotfiles_uninstall_brew.err"
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall_brew.out" "uninstalling Homebrew formula: dotfiles"
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_uninstall_brew.out" "fake brew uninstall dotfiles"
-
   printf 'ok uninstall\n'
 }
 
