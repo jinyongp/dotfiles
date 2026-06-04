@@ -27,6 +27,7 @@ zsh_bootstrap_test::setup_fixture() {
   FAKE_BREW_PREFIX="$WORK_DIR/homebrew"
   FNM_TEST_ROOT="$WORK_DIR/fnm"
   TEST_TMPDIR="$WORK_DIR/tmp"
+  USER_LOCAL_BIN="$HOME_DIR/.local/bin"
   NPM_GLOBAL_BIN="$HOME_DIR/Library/Application Support/npm-global/bin"
   FNM_INSTALL_DIR="$HOME_DIR/Library/Application Support/fnm"
   VSCODE_SHELL_INTEGRATION_SCRIPT="$WORK_DIR/vscode-shellIntegration-rc.zsh"
@@ -38,6 +39,7 @@ zsh_bootstrap_test::setup_fixture() {
     "$FAKE_BREW_PREFIX/bin" \
     "$FNM_TEST_ROOT/default-node-bin" \
     "$FNM_TEST_ROOT/project-node-bin" \
+    "$USER_LOCAL_BIN" \
     "$NPM_GLOBAL_BIN" \
     "$FNM_INSTALL_DIR" \
     "$TEST_TMPDIR" \
@@ -113,6 +115,16 @@ zsh_bootstrap_test::setup_fixture() {
   zsh_bootstrap_test::write_executable "$FNM_TEST_ROOT/project-node-bin/npm" '#!/bin/sh' 'printf "project-npm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/Library/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
   zsh_bootstrap_test::write_executable "$HOME_DIR/.local/share/pnpm/pnpm" '#!/bin/sh' 'printf "pnpm\n"'
+  zsh_bootstrap_test::write_executable "$USER_LOCAL_BIN/gate" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "--version" ]; then printf "local-gate\n"; exit 0; fi' \
+    'if [ "${1:-}" = "completion" ]; then printf "_gate() { :; }\n"; exit 0; fi' \
+    'printf "local-gate\n"'
+  zsh_bootstrap_test::write_executable "$FAKE_BREW_PREFIX/bin/gate" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "--version" ]; then printf "brew-gate\n"; exit 0; fi' \
+    'if [ "${1:-}" = "completion" ]; then printf "_gate() { :; }\n"; exit 0; fi' \
+    'printf "brew-gate\n"'
   zsh_bootstrap_test::write_executable "$INITIAL_BIN/code" \
     '#!/bin/sh' \
     'if [ "${1:-}" = "--locate-shell-integration-path" ]; then' \
@@ -303,6 +315,11 @@ zsh_bootstrap_test::assert_shared_runtime_paths() {
     esac
 
     case ":$PATH:" in
+      *":'"$USER_LOCAL_BIN"':"*) ;;
+      *) print -r -- "missing-user-local-path"; exit 1 ;;
+    esac
+
+    case ":$PATH:" in
       *":'"$NPM_GLOBAL_BIN"':"*) ;;
       *) print -r -- "missing-npm-global-path"; exit 1 ;;
     esac
@@ -316,6 +333,11 @@ zsh_bootstrap_test::assert_shared_runtime_paths() {
       *":'"$FNM_INSTALL_DIR"':"*) ;;
       *) print -r -- "missing-fnm-install-path"; exit 1 ;;
     esac
+
+    if [[ "$(command -v gate)" != "'"$USER_LOCAL_BIN"'/gate" ]]; then
+      print -r -- "gate-not-user-local"
+      exit 1
+    fi
 
     print -r -- "config=$DOTFILES_CONFIG_DIR"
     print -r -- "install_env=$DOTFILES_INSTALL_ENV"

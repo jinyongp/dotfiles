@@ -33,6 +33,10 @@ dotfiles_configure_npm_global_path() {
   dotfiles_prepend_path "$(dotfiles::npm_global_bin_dir)"
 }
 
+dotfiles_configure_user_local_path() {
+  dotfiles_prepend_path "$HOME/.local/bin"
+}
+
 dotfiles_configure_pnpm_home() {
   if [[ -z "${PNPM_HOME:-}" ]]; then
     export PNPM_HOME="$(dotfiles::pnpm_home)"
@@ -78,6 +82,7 @@ dotfiles_activate_fnm() {
 
 dotfiles_configure_base_toolchain() {
   dotfiles_apply_brew_shellenv
+  dotfiles_configure_user_local_path
   dotfiles_configure_npm_global_path
   dotfiles_activate_fnm base
   dotfiles_configure_pnpm_home
