@@ -33,6 +33,7 @@ Keep unresolved items visible in conversation:
 
 Never move open decisions into docs as settled facts.
 Open decision exists? Print in conversation with recommendation + why.
+Open decisions require user review? Explain in detailed prose, not terse labels, so the user can decide from context.
 User answer vague, wrong, unsafe, inconsistent, or still underspecified? Keep discussing in conversation until testable.
 
 ## Gates
@@ -57,6 +58,7 @@ User answer vague, wrong, unsafe, inconsistent, or still underspecified? Keep di
 
 - Open decisions stay in conversation, not docs.
 - Options useful? Include options + required recommendation in conversation.
+- Recommendation present? Explain reasoning, tradeoffs, consequences, and selection criteria in detailed prose, because the user must inspect and decide.
 - Mark optional choices optional.
 - Do not let docs hide unresolved choices.
 - User answer vague? Convert to testable wording and confirm.
