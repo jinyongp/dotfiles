@@ -25,10 +25,25 @@ skills; it does not replace them.
 - `close`: load for closeout before final status or commit preparation.
 - `git-commit`: load only when user asks to stage, commit, split commits, or draft commit text.
 
+## Goal Tool
+
+If an agent goal tool is available and the user explicitly asks for goal-backed
+work, create the goal before survey/planning. Good triggers include:
+
+- `workstream goal`
+- `goal로 관리`
+- `목표 잡고 진행`
+- `budget <n>` or explicit token budget
+
+Do not create a goal for ordinary tasks solely because `workstream` triggered.
+When a goal exists, align the objective with the plan `Goal`, then close it only
+when the workstream is actually complete or truly blocked.
+
 ## Flow
 
 1. Intake
    - Clarify goal, scope, non-goals, constraints, success criteria, validation.
+   - If a goal tool is available and explicitly requested, create the goal before further work.
    - Run `survey` first when codebase shape, commands, or relevant paths are unknown.
    - Ask only for material unknowns. Make conservative assumptions for routine details.
    - If ambiguity affects behavior, restate the decision before planning.
@@ -42,7 +57,7 @@ skills; it does not replace them.
 
 3. Queue
    - Use `queue` to extract actionable `Work Items` from the plan.
-   - Show a Taskwarrior draft before mutation.
+   - Show a concise user-language queue summary before mutation.
    - Use `project:<slug>` plus tags such as `+survey`, `+implementation`, `+validation`, `+review`, `+risk`.
    - Use Taskwarrior `depends:` for strict task order such as survey -> implementation -> validation -> review.
    - Prefer one task per independently verifiable work item.
@@ -65,6 +80,7 @@ skills; it does not replace them.
 
 7. Close
    - Use `close` to check plan/task status, validation results, review state, git status, and residual risk.
+   - If a workstream goal exists, update it only after `close` confirms complete or blocked status.
    - Do not commit unless user asked. If asked, use `git-commit`.
 
 ## Plan Format
@@ -93,9 +109,10 @@ skills; it does not replace them.
 
 ## Task Draft
 
-Use `queue` for the authoritative Taskwarrior draft format, including
-dependency lines. Proceed only after confirmation when Taskwarrior mutation is
-involved.
+Use `queue` for the authoritative confirmation format. Keep raw Taskwarrior
+commands and dependency lines internal unless the user asks or mutation risk
+requires explicit inspection. Proceed only after confirmation when Taskwarrior
+mutation is involved.
 
 ## Triggers
 

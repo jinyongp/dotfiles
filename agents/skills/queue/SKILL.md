@@ -4,8 +4,8 @@ description: >
   Convert implementation plans, Markdown checklists, and work items into a
   Taskwarrior task queue. Use when the user asks to queue, taskify, 태스크화,
   작업 큐, 작업 등록, plan to tasks, checklist to tasks, or when workstream
-  needs a Taskwarrior draft from plan Work Items. Shows a draft before mutation
-  and delegates command safety to the taskwarrior skill.
+  needs a Taskwarrior draft from plan Work Items. Shows a concise user-language
+  summary before mutation and delegates command safety to the taskwarrior skill.
 ---
 
 # Queue
@@ -50,31 +50,36 @@ Use Taskwarrior's built-in dependency model for strict order:
 Because dependency targets may not exist before add, draft dependencies by
 task number, then wire them after creation with `depends:`.
 
-## Draft
+## Confirmation
 
-Always show draft before Taskwarrior mutation:
-
-```txt
-Task draft:
-1. <description> project:<slug> +survey
-2. <description> project:<slug> +implementation
-3. <description> project:<slug> +validation
-4. <description> project:<slug> +review
-
-Dependencies:
-- 2 depends on 1
-- 3 depends on 2
-- 4 depends on 3
-
-Register these tasks?
-```
-
-If adding annotations:
+Before Taskwarrior mutation, show a concise summary in the user's current
+language. Do not dump raw `project:<slug>`, tags, or dependency lines by default
+when all tasks share the same project.
 
 ```txt
-Annotations:
-- task 4: <risk or context>
+작업 큐 추가:
+- 프로젝트: <slug>
+- 작업: <n>개
+- 구성: 조사 <n>, 구현 <n>, 검증 <n>, 리뷰 <n>
+
+요약:
+- <short summary in user language>
+- <short summary in user language>
+- <short summary in user language>
+
+이대로 추가할까?
 ```
+
+Keep the raw execution plan internally:
+
+- task descriptions
+- `project:<slug>`
+- tags
+- dependency map
+- annotations
+
+Show raw details only when the user asks, when projects differ, when dependency
+shape is unusual, or when a mutation risk needs explicit inspection.
 
 ## Execute
 
@@ -102,6 +107,7 @@ Taskwarrior safety refs first.
 - Keep validation tasks explicit, not just `test`.
 - Avoid duplicate tasks already present in the same `project:<slug>` report.
 - Preserve user wording when it carries domain meaning.
+- User-facing confirmation should match the user's current language and level of detail.
 
 ## Output
 
