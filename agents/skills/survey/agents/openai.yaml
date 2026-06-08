@@ -1,0 +1,7 @@
+interface:
+  display_name: "Survey"
+  short_description: "Map project structure, commands, risks, and checks"
+  default_prompt: "Use $survey to map this repo before planning the implementation."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,110 @@
+---
+name: workstream
+description: >
+  Orchestrate implementation work from intake to closeout. Use when the user
+  asks to run a task through a consistent work flow, plan first, turn a plan
+  into Taskwarrior tasks, execute task-by-task, verify, review, and optionally
+  prepare commits. Trigger phrases include workstream, 작업흐름, 작업 흐름,
+  기획부터 태스크화, 계획 세우고 구현, and 태스크화해서 구현.
+---
+
+# Workstream
+
+Run implementation work as one coherent flow. This skill coordinates existing
+skills; it does not replace them.
+
+## Skill Chain
+
+- `caveman`: preserve active terse style unless user says `stop caveman` or `normal mode`.
+- `survey`: load before planning when repository structure, commands, or validation paths are not already known.
+- `planning`: load for intake, scope, assumptions, tradeoffs, success criteria, plan docs.
+- `queue`: load to convert plan work items into a Taskwarrior task draft.
+- `taskwarrior`: load before creating, reading, modifying, or completing tasks.
+- `verify`: load before choosing or running validation checks, and before marking implementation tasks done.
+- `review-loop`: load for substantial diffs, risky changes, or user-requested review.
+- `close`: load for closeout before final status or commit preparation.
+- `git-commit`: load only when user asks to stage, commit, split commits, or draft commit text.
+
+## Flow
+
+1. Intake
+   - Clarify goal, scope, non-goals, constraints, success criteria, validation.
+   - Run `survey` first when codebase shape, commands, or relevant paths are unknown.
+   - Ask only for material unknowns. Make conservative assumptions for routine details.
+   - If ambiguity affects behavior, restate the decision before planning.
+
+2. Plan
+   - Create or update a plan doc before implementation when work is non-trivial.
+   - Prefer an existing repo convention such as `docs/`, `plans/`, or `docs/exec-plans/`.
+   - If no convention exists, use `.agents/work/<slug>/plan.md`.
+   - If creating repo-local agent files may be unwanted, state the path first.
+   - Write settled facts only. Keep unresolved decisions in conversation.
+
+3. Queue
+   - Use `queue` to extract actionable `Work Items` from the plan.
+   - Show a Taskwarrior draft before mutation.
+   - Use `project:<slug>` plus tags such as `+survey`, `+implementation`, `+validation`, `+review`, `+risk`.
+   - Use Taskwarrior `depends:` for strict task order such as survey -> implementation -> validation -> review.
+   - Prefer one task per independently verifiable work item.
+   - Workstream queues are repo-local. If no project-local Taskwarrior store is found, ask to set one up; do not write global Taskwarrior tasks.
+
+4. Execute
+   - Work from the ready task queue, normally `task project:<slug> +READY next`.
+   - Refresh reports before using numeric IDs. Prefer UUIDs for multi-step updates.
+   - Start or annotate tasks when useful. Mark done only after relevant validation passes.
+   - Keep edits scoped to the active task and plan.
+
+5. Verify
+   - Use `verify` to map every work item, behavior, and material risk to a check.
+   - Run targeted checks first, then broader checks for shared or risky changes.
+   - If validation is skipped or blocked, keep affected tasks pending or blocked unless the user explicitly accepts deferral.
+
+6. Review
+   - Run review-loop for broad, risky, or cross-boundary changes.
+   - Fix findings in scope. Convert deferred follow-ups into Taskwarrior tasks only with clear scope.
+
+7. Close
+   - Use `close` to check plan/task status, validation results, review state, git status, and residual risk.
+   - Do not commit unless user asked. If asked, use `git-commit`.
+
+## Plan Format
+
+```md
+# <Title> Plan
+
+## Goal
+
+## Scope
+
+## Non-goals
+
+## Constraints
+
+## Assumptions
+
+## Work Items
+- [ ] ...
+
+## Validation
+- [ ] ...
+
+## Risks
+```
+
+## Task Draft
+
+Use `queue` for the authoritative Taskwarrior draft format, including
+dependency lines. Proceed only after confirmation when Taskwarrior mutation is
+involved.
+
+## Triggers
+
+Use this skill for:
+
+- `workstream으로 진행`
+- `작업흐름으로 진행`
+- `기획부터 태스크화해서 구현`
+- `계획 세우고 taskwarrior에 넣어서 진행`
+- `작업 계획 문서 만들고 수행`
+
+Do not use for tiny one-shot edits unless the user explicitly asks for workstream.

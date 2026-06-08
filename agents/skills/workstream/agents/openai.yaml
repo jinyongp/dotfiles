@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workstream"
+  short_description: "Plan, queue, execute, verify implementation work"
+  default_prompt: "Use $workstream to plan this change, queue tasks, implement, verify, and close it out."
+
+policy:
+  allow_implicit_invocation: false
