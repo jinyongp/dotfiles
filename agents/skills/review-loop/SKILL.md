@@ -120,9 +120,10 @@ Status: `actionable|suspected|out-of-scope|user-decision`. Clean: `no actionable
 4. Prove suspected security/race/runtime/cache/webhook/data/transaction/migration/query/integration bugs before edit with smallest reliable repro/test/dry-run/schema/query/transaction/replay/mock/import check.
 5. No broad redesign, public contract reshape, package/routing/auth/session/deploy/DB engine/ORM migration/destructive repair/product change without approval.
 6. Do not “fix” by weakening tests, changing expected behavior without approval, adding speculative refactor, dependency upgrade, legacy path, or compatibility shim that violates stated direction.
-7. After fixes: re-review touched files/contracts; run targeted validation.
-8. Affected-axis re-review after fixes. If fixes alter reviewed behavior, refresh the coverage map and repeat selected axes until the entire scope is clean.
-9. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
+7. Test cleanup is allowed when a test asserts volatile implementation details that are not behavior contracts. Remove or rewrite assertions against Tailwind/static class strings, incidental DOM structure, generated ids, ordering without semantic meaning, exact copy not owned by the feature, timestamps, random values, or other frequently changing values unless the test is explicitly about that style/content/serialization contract.
+8. After fixes: re-review touched files/contracts; run targeted validation.
+9. Affected-axis re-review after fixes. If fixes alter reviewed behavior, refresh the coverage map and repeat selected axes until the entire scope is clean.
+10. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
 
 ## Validation
 

@@ -49,6 +49,26 @@ Flag:
 
 Prefer inline expression for one-off logic. Prefer one shared generic helper when behavior is truly reused and identical.
 
+## Test Contract Guard
+
+Tests should assert observable behavior, user-visible semantics, accessibility roles/names, stable API/data contracts, security boundaries, and real failure handling. Do not test volatile implementation details just because they are easy to select or compare.
+
+Flag tests that assert:
+
+- Tailwind/static class strings or class presence when styling itself is not the behavior under test
+- Incidental DOM nesting, wrapper elements, generated ids, framework attributes, or component internals
+- Array/object ordering without semantic meaning
+- Exact copy, formatting, timestamps, randomized values, or generated values that are not owned as a stable product/API contract
+- Mock call shapes that mirror private implementation instead of externally meaningful effects
+
+Allow implementation-detail assertions only when the detail is the contract:
+
+- Styling variants, responsive state, disabled/invalid/error state, animation state, or layout class is explicitly what the component promises
+- Serialization, ordering, formatting, ids, copy, or generated values are documented API/product behavior
+- The assertion prevents a concrete regression that a user, caller, assistive tech, or integration would observe
+
+Prefer resilient assertions: role/name/text semantics, resulting state, emitted events, API payloads, persisted data, navigation, validation messages, and accessibility attributes. For Tailwind-heavy UI, avoid `toHaveClass` unless the test is specifically for style variants; query by role/label and assert behavior or semantic state instead.
+
 ## Parameter Count
 
 More than two parameters is a review smell. Prefer no params when value can be derived locally. If input is needed, prefer one primary subject plus one named options object.
