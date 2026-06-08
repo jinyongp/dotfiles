@@ -49,11 +49,13 @@ when the workstream is actually complete or truly blocked.
    - If ambiguity affects behavior, restate the decision before planning.
 
 2. Plan
-   - Create or update a plan doc before implementation when work is non-trivial.
+   - When the user asks for `workstream` planning, create or update a plan doc by default.
+   - Do not satisfy `workstream 계획`, `workstream plan`, or `작업흐름 계획` with conversation-only bullets unless the user says `대화로만`, `문서 쓰지 말고`, or equivalent.
    - Prefer an existing repo convention such as `docs/`, `plans/`, or `docs/exec-plans/`.
    - If no convention exists, use `.agents/work/<slug>/plan.md`.
    - If creating repo-local agent files may be unwanted, state the path first.
    - Write settled facts only. Keep unresolved decisions in conversation.
+   - After writing the doc, summarize path + main work items briefly in conversation.
 
 3. Queue
    - Use `queue` to extract actionable `Work Items` from the plan.
@@ -119,7 +121,10 @@ mutation is involved.
 Use this skill for:
 
 - `workstream으로 진행`
+- `workstream 계획`
+- `workstream으로 계획 세워줘`
 - `작업흐름으로 진행`
+- `작업흐름 계획`
 - `기획부터 태스크화해서 구현`
 - `계획 세우고 taskwarrior에 넣어서 진행`
 - `작업 계획 문서 만들고 수행`
