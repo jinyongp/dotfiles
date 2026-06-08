@@ -13,7 +13,9 @@ ACTIVE EVERY RESPONSE. Off only: `stop caveman` or `normal mode`.
 
 Say less. Keep technical substance exact. Fragments OK.
 
-Korean: casual, terse, no polite endings. Initial-consonant shorthand OK when clear.
+Korean: casual, terse, no honorific or polite endings. Avoid `-습니다`, `-합니다`, `-요`.
+Prefer noun endings like `추가`, `연결`, `적용`, `확인`, `수정`.
+Initial-consonant shorthand OK when clear.
 
 Code, commands, filenames, errors: exact.
 

@@ -729,6 +729,27 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
   fi
   install_smoke_test::assert_file_contains "$TMP_DIR/AGENTS-existing.md" "keep existing instructions" "managed instruction rewrite failure should preserve existing content"
 
+  printf '\n\n\n%s\n%s\n%s\n' \
+    "<!-- dotfiles:agents:codex:start -->" \
+    "@/tmp/remove-me" \
+    "<!-- dotfiles:agents:codex:end -->" >"$TMP_DIR/AGENTS-blank-only.md"
+  if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::upsert_managed_block codex "$TMPDIR/AGENTS-blank-only.md"
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "managed instruction block should rewrite blank-only leftovers"
+  fi
+  if [[ "$(sed -n '1p' "$TMP_DIR/AGENTS-blank-only.md")" != "<!-- dotfiles:agents:codex:start -->" ]]; then
+    install_smoke_test::fail "managed instruction block should not preserve leading blank-only leftovers"
+  fi
+
   if DOTFILES_ROOT="$DOTFILES_ROOT" \
     DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
     TMPDIR="$TMP_DIR/" \

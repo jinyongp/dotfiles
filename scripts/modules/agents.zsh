@@ -54,7 +54,7 @@ agents::managed_block() {
 agents::upsert_managed_block() {
   local adapter_id="$1"
   local target_path="$2"
-  local tmp_file
+  local tmp_file normalized_file
 
   dotfiles::ensure_dir "${target_path:h}"
   tmp_file="$(agents::tmpfile_for "$target_path")"
@@ -73,7 +73,31 @@ agents::upsert_managed_block() {
     fi
 
     if [[ -s "$tmp_file" ]]; then
-      if ! print -r -- "" >>"$tmp_file"; then
+      if grep -q '[^[:space:]]' "$tmp_file"; then
+        normalized_file="$(agents::tmpfile_for "$target_path")"
+        if ! awk '
+          { lines[++count] = $0 }
+          END {
+            while (count > 0 && lines[count] ~ /^[[:space:]]*$/) {
+              count--
+            }
+            for (i = 1; i <= count; i++) {
+              print lines[i]
+            }
+          }
+        ' "$tmp_file" >"$normalized_file"; then
+          rm -f "$tmp_file" "$normalized_file"
+          return 1
+        fi
+        if ! mv "$normalized_file" "$tmp_file"; then
+          rm -f "$tmp_file" "$normalized_file"
+          return 1
+        fi
+        if ! print -r -- "" >>"$tmp_file"; then
+          rm -f "$tmp_file"
+          return 1
+        fi
+      elif ! : >"$tmp_file"; then
         rm -f "$tmp_file"
         return 1
       fi
