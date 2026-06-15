@@ -43,6 +43,12 @@ Goal: exhaustively review the given scope and its direct contracts, fix in-scope
 
 Parent owns scope, coverage, modes, axes, findings, fixes, decisions, validation, oscillation, subagents. Final = canonical review record unless user asks otherwise.
 
+## Continuity
+
+If the agent has persistent goal/progress tools, use them as a review-loop continuity guard. At workflow start, create or refresh one active goal whose objective is to finish the scoped review-loop only when the scoped coverage plan is clean or blocked by a user decision. At the end of every full cycle, update/refresh the goal with the current cycle number, completed axes, unresolved findings, fixes applied, validation status, and next cycle entry point. If the available goal API only supports terminal status, re-read/refresh the goal each cycle and keep the cycle ledger in the thread.
+
+Never mark the goal complete until the whole scoped coverage plan has no actionable in-scope findings and final validation is complete or explicitly blocked. Mark blocked only for a real user decision, repeated oscillation, or an unavailable required validation/service that prevents further progress. Context length, subagent completion, or a single clean axis is not a stop condition.
+
 ## Gates
 
 1. Scope explicit wins. No scope = current Git uncommitted only. Never whole repo by default.
@@ -51,13 +57,14 @@ Parent owns scope, coverage, modes, axes, findings, fixes, decisions, validation
 4. Before subagents: derive a coverage plan from scope. Cover every in-scope changed file/behavior and direct contract needed to judge it. Select material modes/axes for that coverage and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
 5. First pass: planned read-only subagents if available; else ask serial fallback approval.
 6. Budget = live thread. Run planned axes in waves; do not drop selected axes.
-7. Subagents direct children only, no recursion, read-only.
-8. Parent aggregates, edits, tests, validates, final.
-9. Loop until the whole scoped coverage plan has no actionable in-scope findings or user decision blocks.
-10. Oscillation: A->B->A serious. Same issue twice => stop/blocker.
-11. Close subagents before final CI/end; copy unresolved findings first.
-12. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
-13. DB guard: no prod/staging migrations, destructive resets, seed truncation, backfills, data repair, live provider ops, shared-env writes without explicit approval.
+7. Continuity guard: if goal/progress tools exist, refresh the active goal or cycle ledger once per cycle before deciding whether to continue, complete, or block.
+8. Subagents direct children only, no recursion, read-only.
+9. Parent aggregates, edits, tests, validates, final.
+10. Loop until the whole scoped coverage plan has no actionable in-scope findings or user decision blocks.
+11. Oscillation: A->B->A serious. Same issue twice => stop/blocker.
+12. Close subagents before final CI/end; copy unresolved findings first.
+13. Final CI after cleanup. In-scope fail => fix + affected-axis re-review + CI again.
+14. DB guard: no prod/staging migrations, destructive resets, seed truncation, backfills, data repair, live provider ops, shared-env writes without explicit approval.
 
 Severity:
 - P0: exploit/data loss/prod outage
@@ -114,16 +121,18 @@ Status: `actionable|suspected|out-of-scope|user-decision`. Clean: `no actionable
 
 ## Fix Loop
 
-1. Dedup by root cause/files/fix; keep mode+axis tags.
-2. Queue user decisions.
-3. If not review-only, fix clear local in-scope issues.
-4. Prove suspected security/race/runtime/cache/webhook/data/transaction/migration/query/integration bugs before edit with smallest reliable repro/test/dry-run/schema/query/transaction/replay/mock/import check.
-5. No broad redesign, public contract reshape, package/routing/auth/session/deploy/DB engine/ORM migration/destructive repair/product change without approval.
-6. Do not “fix” by weakening tests, changing expected behavior without approval, adding speculative refactor, dependency upgrade, legacy path, or compatibility shim that violates stated direction.
-7. Test cleanup is allowed when a test asserts volatile implementation details that are not behavior contracts. Remove or rewrite assertions against Tailwind/static class strings, incidental DOM structure, generated ids, ordering without semantic meaning, exact copy not owned by the feature, timestamps, random values, or other frequently changing values unless the test is explicitly about that style/content/serialization contract.
-8. After fixes: re-review touched files/contracts; run targeted validation.
-9. Affected-axis re-review after fixes. If fixes alter reviewed behavior, refresh the coverage map and repeat selected axes until the entire scope is clean.
-10. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
+1. Start each cycle from the latest coverage map plus goal/cycle ledger when available.
+2. Dedup by root cause/files/fix; keep mode+axis tags.
+3. Queue user decisions.
+4. If not review-only, fix clear local in-scope issues.
+5. Prove suspected security/race/runtime/cache/webhook/data/transaction/migration/query/integration bugs before edit with smallest reliable repro/test/dry-run/schema/query/transaction/replay/mock/import check.
+6. No broad redesign, public contract reshape, package/routing/auth/session/deploy/DB engine/ORM migration/destructive repair/product change without approval.
+7. Do not “fix” by weakening tests, changing expected behavior without approval, adding speculative refactor, dependency upgrade, legacy path, or compatibility shim that violates stated direction.
+8. Test cleanup is allowed when a test asserts volatile implementation details that are not behavior contracts. Remove or rewrite assertions against Tailwind/static class strings, incidental DOM structure, generated ids, ordering without semantic meaning, exact copy not owned by the feature, timestamps, random values, or other frequently changing values unless the test is explicitly about that style/content/serialization contract.
+9. After fixes: re-review touched files/contracts; run targeted validation.
+10. Affected-axis re-review after fixes. If fixes alter reviewed behavior, refresh the coverage map and repeat selected axes until the entire scope is clean.
+11. End each cycle by recording completed axes, remaining findings, validation results, and next entry point in the goal/cycle ledger.
+12. Check oscillation before touching same issue again. Same root cause after 2 fix attempts => stop+ask. Product decision required => defer, don't guess. Validation unavailable after workaround => stop, report risk.
 
 ## Validation
 
