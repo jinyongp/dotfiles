@@ -39,6 +39,21 @@ Do not create a goal for ordinary tasks solely because `workstream` triggered.
 When a goal exists, align the objective with the plan `Goal`, then close it only
 when the workstream is actually complete or truly blocked.
 
+When creating the goal objective, include context-preservation rules needed to
+resume correctly after compaction or interruption:
+
+- Keep `caveman` style active for assistant conversation during the workstream
+  until the user says `stop caveman` or `normal mode`; do not apply it to
+  copywriting, docs, UI text, commit text, or other deliverable prose unless
+  explicitly requested.
+- Continue from the newest user request and current plan/task state; do not
+  restart from scratch after resume or context compaction.
+- Preserve active constraints, assumptions, non-goals, validation expectations,
+  and unresolved decisions from the plan.
+- Protect user work: do not revert unrelated changes, and do not commit unless
+  the user asked for commit work.
+- Keep the workstream open until `close` confirms complete or truly blocked.
+
 ## Flow
 
 1. Intake
@@ -54,6 +69,7 @@ when the workstream is actually complete or truly blocked.
    - Prefer an existing repo convention such as `docs/`, `plans/`, or `docs/exec-plans/`.
    - If no convention exists, use `.agents/work/<slug>/plan.md`.
    - If creating repo-local agent files may be unwanted, state the path first.
+   - In `Constraints`, record context-preservation rules that must survive resume, including active style mode, user constraints, commit policy, validation policy, and any "do not touch" paths.
    - Write settled facts only. Keep unresolved decisions in conversation.
    - After writing the doc, summarize path + main work items briefly in conversation.
 
