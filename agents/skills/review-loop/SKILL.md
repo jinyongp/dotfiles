@@ -47,6 +47,14 @@ Parent owns scope, coverage, modes, axes, findings, fixes, decisions, validation
 
 If the agent has persistent goal/progress tools, use them as a review-loop continuity guard. At workflow start, create or refresh one active goal whose objective is to finish the scoped review-loop only when the scoped coverage plan is clean or blocked by a user decision. At the end of every full cycle, update/refresh the goal with the current cycle number, completed axes, unresolved findings, fixes applied, validation status, and next cycle entry point. If the available goal API only supports terminal status, re-read/refresh the goal each cycle and keep the cycle ledger in the thread.
 
+Preserve active response-style context for the whole review-loop. If `caveman`
+is active, keep it active for assistant conversation, status updates, summaries,
+and explanations until the user says `stop caveman` or `normal mode`. Do not
+apply caveman style to deliverable prose such as copywriting, docs, UI text,
+commit/PR text, changelogs, or generated artifacts unless explicitly requested.
+Record this style boundary in the goal objective or cycle ledger so resume and
+context compaction keep the same behavior.
+
 Never mark the goal complete until the whole scoped coverage plan has no actionable in-scope findings and final validation is complete or explicitly blocked. Mark blocked only for a real user decision, repeated oscillation, or an unavailable required validation/service that prevents further progress. Context length, subagent completion, or a single clean axis is not a stop condition.
 
 ## Gates
