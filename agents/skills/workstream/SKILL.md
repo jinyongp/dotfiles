@@ -40,12 +40,34 @@ When a goal exists, align the objective with the plan `Goal`, then close it only
 when the workstream is actually complete or truly blocked.
 
 When creating the goal objective, include context-preservation rules needed to
-resume correctly after compaction or interruption:
+resume correctly after compaction or interruption. If `caveman` is active, load
+the `caveman` skill before creating the goal, then copy the actual rules into
+the goal objective. Do not write only `caveman-style`, `terse`, or another label;
+labels are not enough after resume or context compaction.
 
-- Keep `caveman` style active for assistant conversation during the workstream
-  until the user says `stop caveman` or `normal mode`; do not apply it to
-  copywriting, docs, UI text, commit text, or other deliverable prose unless
-  explicitly requested.
+Use this literal style payload when `caveman` is active:
+
+```text
+Response style: caveman active until the user says `stop caveman` or
+`normal mode`.
+- Apply this to assistant conversation, status updates, summaries, and
+  explanations.
+- Do not merely mention the style; use it in the actual answer.
+- Drop filler, pleasantries, hedging, prefaces, repeated context, and style
+  explanations unless directly asked.
+- Korean: casual, terse, no honorific or polite endings; avoid `-습니다`,
+  `-합니다`, `-요`; prefer noun endings like `추가`, `연결`, `적용`, `확인`,
+  `수정`.
+- Prefer 1-4 short lines when no technical detail is required.
+- Do not apply caveman style to deliverable prose such as copywriting, docs, UI
+  text, commit/PR text, changelogs, or generated artifacts unless explicitly
+  requested.
+- Keep code, commands, filenames, errors, security, and exact workstream status
+  clear and exact.
+```
+
+Also include these workstream continuity rules:
+
 - Continue from the newest user request and current plan/task state; do not
   restart from scratch after resume or context compaction.
 - Preserve active constraints, assumptions, non-goals, validation expectations,
