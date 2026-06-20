@@ -49,15 +49,18 @@ If the agent has persistent goal/progress tools, use them as a review-loop conti
 
 Preserve active response-style context for the whole review-loop. If `caveman`
 is active, load the `caveman` skill before creating the goal, then copy the
-actual rules into the goal objective or cycle ledger. Do not write only
-`caveman-style`, `terse`, or another label; labels are not enough after resume or
-context compaction.
+absolute skill path and actual rules into the goal objective or cycle ledger. Do
+not write only `caveman-style`, `terse`, or another label; labels are not enough
+after resume or context compaction.
 
 Use this literal style payload when `caveman` is active:
 
 ```text
 Response style: caveman active until the user says `stop caveman` or
 `normal mode`.
+- Skill path: `/Users/jinyongp/.dotfiles/agents/skills/caveman/SKILL.md`.
+- On resume or compaction, read the skill path before the first normal response
+  and keep following it.
 - Apply this to assistant conversation, status updates, summaries, and
   explanations.
 - Do not merely mention the style; use it in the actual answer.

@@ -21,35 +21,48 @@ skills; it does not replace them.
 - `queue`: load to convert plan work items into a Taskwarrior task draft.
 - `taskwarrior`: load before creating, reading, modifying, or completing tasks.
 - `verify`: load before choosing or running validation checks, and before marking implementation tasks done.
-- `review-loop`: load for substantial diffs, risky changes, or user-requested review.
+- `review-loop`: load after all implementation work and validation for every workstream, before closeout.
 - `close`: load for closeout before final status or commit preparation.
 - `git-commit`: load only when user asks to stage, commit, split commits, or draft commit text.
 
 ## Goal Tool
 
-If an agent goal tool is available and the user explicitly asks for goal-backed
-work, create the goal before survey/planning. Good triggers include:
+If an agent goal tool is available, create a goal before starting execution work
+in a workstream. Do this even when the user did not explicitly ask for
+goal-backed work. Skip only when the request is plan-only, the tool is
+unavailable, the user explicitly opts out of goal tracking, or an unfinished
+goal already exists and must be continued or resolved first.
+
+Plan-only workstream requests must not create a goal unless the user explicitly
+asks for goal-backed planning. Plan-only triggers include `workstream 계획`,
+`workstream plan`, and `작업흐름 계획` when the user does not ask to queue,
+implement, execute, verify, review, or close the work.
+
+Goal-backed work is especially important for triggers such as:
 
 - `workstream goal`
 - `goal로 관리`
 - `목표 잡고 진행`
 - `budget <n>` or explicit token budget
 
-Do not create a goal for ordinary tasks solely because `workstream` triggered.
 When a goal exists, align the objective with the plan `Goal`, then close it only
 when the workstream is actually complete or truly blocked.
 
 When creating the goal objective, include context-preservation rules needed to
 resume correctly after compaction or interruption. If `caveman` is active, load
-the `caveman` skill before creating the goal, then copy the actual rules into
-the goal objective. Do not write only `caveman-style`, `terse`, or another label;
-labels are not enough after resume or context compaction.
+the `caveman` skill before creating the goal, then copy the absolute skill path
+and actual rules into the goal objective. Do not write only `caveman-style`,
+`terse`, or another label; labels are not enough after resume or context
+compaction.
 
 Use this literal style payload when `caveman` is active:
 
 ```text
 Response style: caveman active until the user says `stop caveman` or
 `normal mode`.
+- Skill path: `/Users/jinyongp/.dotfiles/agents/skills/caveman/SKILL.md`.
+- On resume or compaction, read the skill path before the first normal response
+  and keep following it.
 - Apply this to assistant conversation, status updates, summaries, and
   explanations.
 - Do not merely mention the style; use it in the actual answer.
@@ -80,7 +93,8 @@ Also include these workstream continuity rules:
 
 1. Intake
    - Clarify goal, scope, non-goals, constraints, success criteria, validation.
-   - If a goal tool is available and explicitly requested, create the goal before further work.
+   - If the request is plan-only, do not create a goal unless the user explicitly asks for goal-backed planning.
+   - If execution work will start and a goal tool is available, create the goal before further work unless the user opted out or an unfinished goal already exists.
    - Run `survey` first when codebase shape, commands, or relevant paths are unknown.
    - Ask only for material unknowns. Make conservative assumptions for routine details.
    - If ambiguity affects behavior, restate the decision before planning.
@@ -97,6 +111,7 @@ Also include these workstream continuity rules:
 
 3. Queue
    - Use `queue` to extract actionable `Work Items` from the plan.
+   - Use `taskwarrior` for all workstream task reads, creation, updates, and completion.
    - Show a concise user-language queue summary before mutation.
    - Use `project:<slug>` plus tags such as `+survey`, `+implementation`, `+validation`, `+review`, `+risk`.
    - Use Taskwarrior `depends:` for strict task order such as survey -> implementation -> validation -> review.
@@ -115,11 +130,13 @@ Also include these workstream continuity rules:
    - If validation is skipped or blocked, keep affected tasks pending or blocked unless the user explicitly accepts deferral.
 
 6. Review
-   - Run review-loop for broad, risky, or cross-boundary changes.
+   - Run `review-loop` after all work items are implemented and relevant validation has run.
+   - Treat review-loop as required for every workstream before closeout, not only broad or risky changes.
    - Fix findings in scope. Convert deferred follow-ups into Taskwarrior tasks only with clear scope.
 
 7. Close
-   - Use `close` to check plan/task status, validation results, review state, git status, and residual risk.
+   - Use `close` only after review-loop is clean or explicitly blocked.
+   - Check plan/task status, validation results, review-loop state, git status, and residual risk.
    - If a workstream goal exists, update it only after `close` confirms complete or blocked status.
    - Do not commit unless user asked. If asked, use `git-commit`.
 
