@@ -16,6 +16,11 @@ Use `task` safely. Target 3.4.2 stable. No legacy syntax unless user asks migrat
 ## Defaults
 
 - Read first. Mutate only when target + side effect clear.
+- If a higher-level skill such as `workstream` or `queue` says repo-local
+  non-destructive task mutation is pre-approved, do not ask for another
+  confirmation. Still require explicit approval for global task writes,
+  destructive commands, broad bulk changes, sync/config changes, or unclear
+  scope.
 - Project/local/repo task request: never write global `~/.taskrc` or `~/.task`.
 - `.taskwarrior/taskrc` in cwd/parent => project-local.
 - Dotfiles has `$DOTFILES/cmd/task` shim. Bootstrap puts it before real `task`.
@@ -27,7 +32,9 @@ Use `task` safely. Target 3.4.2 stable. No legacy syntax unless user asks migrat
 
 ## Project-Local Setup
 
-If user asks project-local and no `.taskwarrior/taskrc`, propose + confirm before files:
+If user asks project-local and no `.taskwarrior/taskrc`, propose + confirm
+before files unless a higher-level workstream/queue instruction pre-approves
+repo-local setup:
 
 ```bash
 mkdir -p .taskwarrior/data
@@ -67,7 +74,7 @@ Use for exports/backups/diagnostics/scratch. `.taskwarrior/` root is local store
 3. Preflight: `command -v task`, `task diagnostics`, `task --version`.
 4. Inspect narrow: `task next`, `task <filter> list`, `task <id> information`, `task context show`, `task reports`.
 5. Shape: `task <filter> <command> [mods|args]`.
-6. Mutation: read-only target confirm first. Safety-sensitive => safety ref first.
+6. Mutation: read-only target first. Confirm only when no higher-level skill pre-approval applies. Safety-sensitive => safety ref first.
 7. Execute only when unambiguous. Verify with read command.
 
 Never broad write (`modify`, `done`, `delete`, `purge`) without explicit scope + safety. Quote spaces, parens, regex, `or`, `xor`, shell metachars, user text.

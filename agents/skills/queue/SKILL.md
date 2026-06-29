@@ -4,8 +4,9 @@ description: >
   Convert implementation plans, Markdown checklists, and work items into a
   Taskwarrior task queue. Use when the user asks to queue, taskify, 태스크화,
   작업 큐, 작업 등록, plan to tasks, checklist to tasks, or when workstream
-  needs a Taskwarrior draft from plan Work Items. Shows a concise user-language
-  summary before mutation and delegates command safety to the taskwarrior skill.
+  needs a Taskwarrior queue from plan Work Items. Shows a concise user-language
+  summary before mutation, then registers the queue when scope is unambiguous.
+  Delegates command safety to the taskwarrior skill.
 ---
 
 # Queue
@@ -50,11 +51,16 @@ Use Taskwarrior's built-in dependency model for strict order:
 Because dependency targets may not exist before add, draft dependencies by
 task number, then wire them after creation with `depends:`.
 
-## Confirmation
+## Registration
 
-Before Taskwarrior mutation, show a concise summary in the user's current
-language. Do not dump raw `project:<slug>`, tags, or dependency lines by default
-when all tasks share the same project.
+Taskwarrior queue registration is pre-approved when the user explicitly asks to
+queue/taskify/register tasks or when `workstream` execution reaches the queue
+step. Show a concise summary in the user's current language, then add the tasks
+without a confirmation gate when scope is unambiguous and the mutation is
+non-destructive repo-local task creation, annotation, or dependency wiring.
+
+Do not dump raw `project:<slug>`, tags, or dependency lines by default when all
+tasks share the same project.
 
 ```txt
 작업 큐 추가:
@@ -67,7 +73,7 @@ when all tasks share the same project.
 - <short summary in user language>
 - <short summary in user language>
 
-이대로 추가할까?
+바로 추가.
 ```
 
 Keep the raw execution plan internally:
@@ -83,8 +89,6 @@ shape is unusual, or when a mutation risk needs explicit inspection.
 
 ## Execute
 
-After user confirmation:
-
 1. Load `taskwarrior`.
 2. Resolve project-local store using Taskwarrior rules.
 3. Preflight Taskwarrior when needed.
@@ -94,8 +98,10 @@ After user confirmation:
 7. Apply strict dependencies with `depends:`.
 8. Verify with `task project:<slug> list`, `blocked`, `blocking`, and `+READY next`.
 
-Queue is for project/repo work. If no project-local Taskwarrior store exists,
-ask to set one up; do not write global tasks.
+Queue is for project/repo work. If no project-local Taskwarrior store exists and
+the queue is part of a workstream execution, set it up automatically and ensure
+`.taskwarrior/` is ignored. For standalone queue requests, ask before setup. Do
+not write global tasks.
 
 Prefer simple `task add` commands. For bulk or scripted import, read
 Taskwarrior safety refs first.
@@ -107,7 +113,7 @@ Taskwarrior safety refs first.
 - Keep validation tasks explicit, not just `test`.
 - Avoid duplicate tasks already present in the same `project:<slug>` report.
 - Preserve user wording when it carries domain meaning.
-- User-facing confirmation should match the user's current language and level of detail.
+- User-facing registration summary should match the user's current language and level of detail.
 
 ## Output
 

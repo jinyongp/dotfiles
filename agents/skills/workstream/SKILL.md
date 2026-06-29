@@ -112,11 +112,13 @@ Also include these workstream continuity rules:
 3. Queue
    - Use `queue` to extract actionable `Work Items` from the plan.
    - Use `taskwarrior` for all workstream task reads, creation, updates, and completion.
-   - Show a concise user-language queue summary before mutation.
+   - Add the Taskwarrior queue before implementation starts; do not substitute Codex plan tracking to avoid a confirmation pause.
+   - Workstream task creation, annotation, dependency wiring, start/stop, and completion are pre-approved non-destructive repo-local mutations. Proceed without asking for confirmation when scope is unambiguous.
+   - Show a concise user-language queue summary before mutation, then execute.
    - Use `project:<slug>` plus tags such as `+survey`, `+implementation`, `+validation`, `+review`, `+risk`.
    - Use Taskwarrior `depends:` for strict task order such as survey -> implementation -> validation -> review.
    - Prefer one task per independently verifiable work item.
-   - Workstream queues are repo-local. If no project-local Taskwarrior store is found, ask to set one up; do not write global Taskwarrior tasks.
+   - Workstream queues are repo-local. If no project-local Taskwarrior store is found, set one up automatically and ensure `.taskwarrior/` is ignored; do not write global Taskwarrior tasks.
 
 4. Execute
    - Work from the ready task queue, normally `task project:<slug> +READY next`.
@@ -166,10 +168,11 @@ Also include these workstream continuity rules:
 
 ## Task Draft
 
-Use `queue` for the authoritative confirmation format. Keep raw Taskwarrior
+Use `queue` for the authoritative registration format. Keep raw Taskwarrior
 commands and dependency lines internal unless the user asks or mutation risk
-requires explicit inspection. Proceed only after confirmation when Taskwarrior
-mutation is involved.
+requires explicit inspection. For workstream execution, Taskwarrior queue
+registration is pre-approved; add tasks before implementation and proceed
+without a confirmation gate.
 
 ## Triggers
 
