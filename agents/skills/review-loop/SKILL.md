@@ -10,9 +10,9 @@ compatibility: Requires Git worktree for default scope. Designed for Codex read-
 # Review Loop
 
 Trigger semantics:
-- `/review-loop`, `review until clean`, `review-and-fix`, or `code review with fixes` means the user is explicitly requesting the review-loop workflow, including read-only subagents when the inferred scope/risk is broad enough to benefit.
-- Plain `review` or `code review` means review-only; use subagents only when the user explicitly asks for review-loop, subagents, delegation, or parallel review.
-- Do not ask the user to restate "use subagents" when review-loop was invoked and scope/risk justifies parallel read-only review. Derive the needed agent count from scope.
+- `/review-loop`, `review until clean`, `review-and-fix`, or `code review with fixes` means the user is requesting the review-loop workflow, including read-only subagents when the inferred scope/risk is broad enough to benefit.
+- Plain `review` or `code review` means review-only: report findings, do not fix unless separately requested. It does not disable subagents. Use read-only subagents whenever parent judgment says parallel review improves coverage, even if the user did not mention subagents, delegation, or parallel review.
+- Do not ask the user to restate "use subagents" before delegating read-only review. Derive the needed agent count from scope/risk/contracts.
 
 Modes:
 - `web`: browser/client, SSR/rendering, hydration, client state, assets, UI/UX
@@ -89,7 +89,9 @@ Never mark the goal complete until the whole scoped coverage plan has no actiona
    unreadable/unclear target, or review plan still unclear after scope
    inference. Do not fall back to all uncommitted changes unless the user
    explicitly asks for that scope.
-3. User says plain `review`/`code review` only => review-only. User says `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
+3. User says plain `review`/`code review` only => review-only, but still use
+   read-only subagents when scope/risk justifies parallel coverage. User says
+   `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
 4. Before subagents: derive a coverage plan from scope. Cover every in-scope changed file/behavior and direct contract needed to judge it. Select material modes/axes for that coverage and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
 5. First pass: planned read-only subagents if available; else ask serial fallback approval.
 6. Budget = live thread. Run planned axes in waves; do not drop selected axes.
