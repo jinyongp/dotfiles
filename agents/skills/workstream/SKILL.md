@@ -134,6 +134,16 @@ Also include these workstream continuity rules:
 6. Review
    - Run `review-loop` after all work items are implemented and relevant validation has run.
    - Treat review-loop as required for every workstream before closeout, not only broad or risky changes.
+   - Treat review-loop as the full loop workflow, not a single review pass. Do
+     not move to closeout after "found issue -> fixed issue -> validation
+     passed" unless review-loop has completed its affected-axis re-review and
+     recorded no remaining actionable in-scope findings.
+   - If review-loop fixes anything, rerun the affected validation and re-enter
+     review-loop from the latest changed files/contracts until it returns a
+     clean final review record or a real user-decision/blocker remains.
+   - The review task is done only when the final review-loop result includes
+     scope, modes/axes covered, cycle count or equivalent loop ledger, validation
+     status, and "no actionable findings" or explicit blocked/deferred items.
    - Fix findings in scope. Convert deferred follow-ups into Taskwarrior tasks only with clear scope.
 
 7. Close
