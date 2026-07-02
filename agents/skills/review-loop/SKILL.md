@@ -43,6 +43,15 @@ Goal: exhaustively review the given scope and its direct contracts, fix in-scope
 
 Parent owns scope, coverage, modes, axes, findings, fixes, decisions, validation, oscillation, subagents. Final = canonical review record unless user asks otherwise.
 
+Do not describe any in-progress cycle, local-only validation, pending subagent
+result, or candidate clean state with terminal wording that implies the loop is
+done. During the loop, use precise non-terminal wording such as "cycle
+validation", "local validation", "affected-axis re-review", "subagent result
+pending", "candidate clean pending subagent/CI", or "cycle closeout". Reserve
+terminal wording such as "final", "done", "complete", or "clean" for states
+where all selected axes and subagents are closed, no actionable in-scope
+findings remain, and final validation is complete or explicitly blocked.
+
 ## Continuity
 
 If the agent has persistent goal/progress tools, use them as a review-loop continuity guard. At workflow start, create or refresh one active goal whose objective is to finish the scoped review-loop only when the scoped coverage plan is clean or blocked by a user decision. At the end of every full cycle, update/refresh the goal with the current cycle number, completed axes, unresolved findings, fixes applied, validation status, and next cycle entry point. If the available goal API only supports terminal status, re-read/refresh the goal each cycle and keep the cycle ledger in the thread.
