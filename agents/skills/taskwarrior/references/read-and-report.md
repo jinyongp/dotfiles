@@ -39,9 +39,9 @@ Meta: `reports columns commands show "show all" udas ids uuids version news colo
 Read-only command, but redirected file is generated artifact:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
-task export > "$out_dir/taskwarrior-export.json"
+task export > "$out_dir/tasks-export.json"
 task project:Work export > "$out_dir/work-tasks.json"
 ```
 

@@ -11,9 +11,9 @@ Project-local active? Use shim bare `task`, or env prefix if shim missing.
 Read-only, but writes generated file:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
-task export > "$out_dir/taskwarrior-export.json"
+task export > "$out_dir/tasks-export.json"
 task project:Work export > "$out_dir/work-export.json"
 ```
 
@@ -24,7 +24,7 @@ Machines: JSON > table parse.
 Mutates local data. Safe flow:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
 task export > "$out_dir/before-import.json"
 task import "$out_dir/incoming.json"

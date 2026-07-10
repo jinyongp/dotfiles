@@ -12,7 +12,7 @@ find_project_root() {
   local dir="$PWD"
 
   while [[ -n "$dir" && "$dir" != "/" ]]; do
-    if [[ -f "$dir/.taskwarrior/taskrc" ]]; then
+    if [[ -f "$dir/.tasks/taskrc" ]]; then
       printf '%s\n' "$dir"
       return 0
     fi
@@ -56,8 +56,8 @@ if [[ -z "$real_task" ]]; then
 fi
 
 if [[ -n "$project_root" ]]; then
-  export TASKRC="$project_root/.taskwarrior/taskrc"
-  export TASKDATA="$project_root/.taskwarrior/data"
+  export TASKRC="$project_root/.tasks/taskrc"
+  export TASKDATA="$project_root/.tasks/data"
 fi
 
 exec "$real_task" "$@"

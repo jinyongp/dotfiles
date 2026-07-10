@@ -170,7 +170,11 @@ For Codex, it also links the shared `caveman`, `git-commit`, `planning`, `review
 External skills are declared as source records plus artifact records. Sources define the Git repository URL and ref. Artifacts define the skill path, install name, target adapters, kind, and copy policy. During `./install agents`, the installer downloads missing or stale external skill artifacts into `~/.config/dotfiles/agents/external-skills/<artifact>`, records the resolved revision and artifact metadata in `~/.config/dotfiles/agents/external-skills.lock`, and links each artifact only into its configured adapters. Artifacts that use repo-internal symlinks can opt into symlink materialization so cached skills stay self-contained. Run `dotfiles agents sync [skill...]` to fetch the latest configured refs later.
 It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
 
-Taskwarrior project-local mode is opt-in per repository. When `.taskwarrior/taskrc` exists in the current directory or a parent, the repo-managed `cmd/task` shim sets `TASKRC` and `TASKDATA` to that project before delegating to the real Taskwarrior binary. If no project-local config is found, it falls back to the normal global Taskwarrior config.
+Project-local task mode is opt-in per repository. When `.tasks/taskrc` exists in
+the current directory or a parent, the repo-managed `cmd/task` shim sets
+`TASKRC` and `TASKDATA` to that project's `.tasks/` root before delegating to
+the real Taskwarrior binary. If no project-local config is found, it falls back
+to the normal global Taskwarrior config.
 
 The installer creates the shell override files with header comments when they do not already exist.
 Existing override files are preserved.

@@ -16,16 +16,17 @@ Turn a settled plan into Taskwarrior tasks. This skill designs the queue;
 
 ## Inputs
 
-- Plan doc, preferably the repo's existing plan/docs convention; fallback `.agents/work/<slug>/plan.md`.
+- Plan doc, preferably the canonical `.tasks/items/<slug>/plan.md`.
 - Markdown checklist, usually `Work Items` and `Validation`.
 - User-provided task list.
 
-If no slug is given, derive one from goal/title with lowercase hyphen words.
+If no slug is given, use the canonical resolver output. For standalone queues,
+derive one from the settled goal/title with lowercase hyphen words.
 
 ## Mapping
 
 - One independently verifiable checklist item = one task.
-- Use `project:<slug>` for all tasks in the workstream.
+- Use `project:<slug>` for all tasks in the change.
 - Implementation work: `+implementation`.
 - Survey/research work: `+survey`.
 - Validation/test work: `+validation`.
@@ -100,8 +101,9 @@ shape is unusual, or when a mutation risk needs explicit inspection.
 
 Queue is for project/repo work. If no project-local Taskwarrior store exists and
 the queue is part of a workstream execution, set it up automatically and ensure
-`.taskwarrior/` is ignored. For standalone queue requests, ask before setup. Do
-not write global tasks.
+the root `.gitignore` contains the exact `/.tasks/` rule once. For standalone
+queue requests, ask before setup. Do not write global tasks or create another
+repo-local state root.
 
 Prefer simple `task add` commands. For bulk or scripted import, read
 Taskwarrior safety refs first.

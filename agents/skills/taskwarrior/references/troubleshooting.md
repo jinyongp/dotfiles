@@ -58,7 +58,7 @@ Redact certs, keys, credential URLs, private paths.
 No repair-like command unless documented + explicit. First export:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
 task export > "$out_dir/before-troubleshooting.json"
 task diagnostics > "$out_dir/diagnostics.txt"
@@ -68,4 +68,5 @@ Then inspect diagnostics + representative `information`.
 
 ## Bug Report
 
-Collect: version, OS/shell, exact command, redacted diagnostics, minimal repro/export with sensitive text removed. Store artifacts under `.codex/taskwarrior/` or `.taskwarrior/agent/`.
+Collect: version, OS/shell, exact command, redacted diagnostics, minimal
+repro/export with sensitive text removed. Store artifacts under `.tasks/aux/`.

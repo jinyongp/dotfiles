@@ -1,7 +1,7 @@
 interface:
   display_name: "Workstream"
-  short_description: "Plan, queue, execute, verify implementation work"
-  default_prompt: "Use $workstream to plan this change, queue tasks, implement, verify, and close it out."
+  short_description: "Run deterministic spec-to-close implementation work"
+  default_prompt: "Use $workstream to run this change with deterministic identity, artifacts, tasking, verification, convergence, review, and closeout."
 
 policy:
   allow_implicit_invocation: false

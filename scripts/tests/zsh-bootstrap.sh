@@ -369,9 +369,9 @@ zsh_bootstrap_test::assert_task_shim_project_local() {
   local project_dir="$WORK_DIR/task-project"
   local project_real_dir=""
 
-  mkdir -p "$project_dir/.taskwarrior/data" "$WORK_DIR/real-task-bin"
+  mkdir -p "$project_dir/.tasks/data" "$WORK_DIR/real-task-bin"
   project_real_dir="$(cd "$project_dir" && pwd -P)"
-  printf 'data.location=%s\nconfirmation=1\n' "$project_real_dir/.taskwarrior/data" >"$project_real_dir/.taskwarrior/taskrc"
+  printf 'data.location=%s\nconfirmation=1\n' "$project_real_dir/.tasks/data" >"$project_real_dir/.tasks/taskrc"
   zsh_bootstrap_test::write_executable "$WORK_DIR/real-task-bin/task" \
     '#!/bin/sh' \
     'printf "TASKRC=%s\n" "${TASKRC:-}"' \
@@ -386,8 +386,8 @@ zsh_bootstrap_test::assert_task_shim_project_local() {
   )
 
   zsh_bootstrap_test::assert_output "$name" "$(cat <<EOF
-TASKRC=$project_real_dir/.taskwarrior/taskrc
-TASKDATA=$project_real_dir/.taskwarrior/data
+TASKRC=$project_real_dir/.tasks/taskrc
+TASKDATA=$project_real_dir/.tasks/data
 EOF
 )"
   zsh_bootstrap_test::assert_no_stderr "$name"

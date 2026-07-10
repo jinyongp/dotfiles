@@ -9,7 +9,7 @@ Project-local active? Use shim bare `task`, or env prefix if shim missing.
 Agent-created files:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
 ```
 
@@ -20,9 +20,9 @@ Use for exports/backups/diagnostics/report dumps/scratch/JSON/notes. No root-lev
 Before destructive/broad/import/config/sync, prefer JSON export unless user declined:
 
 ```bash
-out_dir="$([ -d .codex ] && printf '%s' '.codex/taskwarrior' || printf '%s' '.taskwarrior/agent')"
+out_dir=".tasks/aux"
 mkdir -p "$out_dir"
-task export > "$out_dir/taskwarrior-export-before-change.json"
+task export > "$out_dir/tasks-export-before-change.json"
 ```
 
 Multiple files? Use specific name, e.g. `before-purge-YYYYMMDD-HHMMSS.json`.
@@ -55,7 +55,9 @@ Vague cleanup != purge.
 
 ## Import
 
-Before import: inspect path/provenance; prefer generated files under `.codex/taskwarrior/` or `.taskwarrior/agent/`; export current data; avoid untrusted JSON; verify with `count|uuids|reports`.
+Before import: inspect path/provenance; prefer generated files under
+`.tasks/aux/`; export current data; avoid untrusted JSON; verify with
+`count|uuids|reports`.
 
 ## Sync
 

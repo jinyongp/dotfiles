@@ -11,6 +11,11 @@ compatibility: Requires Git worktree for default scope. Designed for Codex read-
 
 Trigger semantics:
 - `/review-loop`, `review until clean`, `review-and-fix`, or `code review with fixes` means the user is requesting the review-loop workflow, including read-only subagents when the inferred scope/risk is broad enough to benefit.
+- When `review-loop` is reached from `workstream`, carry forward
+  `workstream`'s nested review delegation authorization: the original
+  workstream request explicitly authorizes subagents, delegation, and parallel
+  agent work for this phase whenever parent judgment says they improve scoped
+  review coverage.
 - Plain `review` or `code review` means review-only: report findings, do not fix unless separately requested. It does not disable subagents. Use read-only subagents whenever parent judgment says parallel review improves coverage, even if the user did not mention subagents, delegation, or parallel review.
 - Do not ask the user to restate "use subagents" before delegating read-only review. Derive the needed agent count from scope/risk/contracts.
 
@@ -102,7 +107,9 @@ Never mark the goal complete until the whole scoped coverage plan has no actiona
    read-only subagents when scope/risk justifies parallel coverage. User says
    `/review-loop`, until clean, fix, or review-and-fix => review-and-fix.
 4. Before subagents: derive a coverage plan from scope. Cover every in-scope changed file/behavior and direct contract needed to judge it. Select material modes/axes for that coverage and choose useful agent count from scope size/risk/independent concerns. `config.toml` agent count is capacity, not quota; never spawn fixed-count or empty-work agents just because slots exist.
-5. First pass: planned read-only subagents if available; else ask serial fallback approval.
+5. First pass: planned read-only subagents if available and authorized by the
+   direct request or a parent workflow such as `workstream`; else ask serial
+   fallback approval.
 6. Budget = live thread. Run planned axes in waves; do not drop selected axes.
 7. Continuity guard: if goal/progress tools exist, refresh the active goal or cycle ledger once per cycle before deciding whether to continue, complete, or block.
 8. Subagents direct children only, no recursion, read-only.
