@@ -90,6 +90,23 @@ User answer vague, wrong, unsafe, inconsistent, or still underspecified? Keep di
 - User answer risky? Present guardrail, default recommendation, and consequence.
 - User answer wrong/inconsistent? Stop and reconcile before docs or execution.
 
+## Decision Canonicalization
+
+When the user replaces or rejects a proposal, apply the governing context
+hygiene rules before updating any artifact or handoff:
+
+- Make the selected behavior or design the positive canonical state.
+- Remove superseded alternatives from active specs, plans, prompts, comments,
+  summaries, and handoffs.
+- Preserve an exact prohibition only when it remains an active durable
+  constraint; record its scope and reason.
+- Preserve a task-local constraint only for its stated scope and lifetime.
+- Put historical rationale only in an explicitly required audit or decision
+  record, never in the active execution context by default.
+
+After a material decision change, scan the active artifacts for stale mentions
+before treating the decision as settled.
+
 ## Docs
 
 If user asks docs, write settled facts only: behavior, commands, constraints, current state. No undecided item as decided.

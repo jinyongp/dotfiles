@@ -9,3 +9,4 @@ Use Planning skill rules loaded by parent plus these axes:
 5. Risk: security, data, migration/backfill, rollback, ops, perf, compatibility covered when material.
 6. Decisions: unresolved choices stay visible, not settled; vague/risky choices get guardrails or user decision.
 7. Validation: material behavior maps to concrete checks, including failure cases and final acceptance.
+8. Context hygiene: active artifacts contain current canonical state; durable prohibitions include scope and reason; task-local constraints include expiry; rejected, superseded, and expired context appears only in an explicitly required audit record.

@@ -184,7 +184,15 @@ sufficient after resume or compaction.
      write checks fail, stop; do not fall back to another path.
    - Translate intent into technical decisions, exact implementation surfaces,
      independently verifiable work items, validation, risks, and governance checks.
-   - In `Constraints`, record context-preservation rules that must survive resume, including active style mode, user constraints, commit policy, validation policy, and any "do not touch" paths.
+   - In `Constraints`, record only active context-preservation rules that must
+     survive resume: active style mode, durable user constraints, unexpired
+     task-local constraints, commit policy, validation policy, and current
+     protected paths. Include scope and reason for durable prohibitions and
+     scope plus expiry for task-local constraints.
+   - Normalize preferences and selected designs into positive canonical state.
+     Keep rejected proposals, superseded alternatives, and expired constraints
+     out of plans, goals, ledgers, queues, subagent prompts, and handoffs unless
+     an explicit audit artifact requires their history.
    - Write settled facts only. Keep unresolved decisions in conversation.
    - Do not add an `Open Decisions` section by default. If a repo template or
      explicit user request requires one, follow `planning` open-decision
@@ -196,7 +204,8 @@ sufficient after resume or compaction.
      intent source, plan, governing rules, work items, and validation.
    - Check duplicate/conflicting requirements, vague or untestable acceptance
      criteria, governance violations, uncovered `REQ/AC`, unmapped `WI`, missing
-     `VAL`, impossible ordering, and file-path or terminology drift.
+     `VAL`, impossible ordering, file-path or terminology drift, and stale
+     rejected or expired context outside an explicit audit artifact.
    - Treat governing MUST violations, contradictory intent, unresolved
      security/data/migration/public-contract decisions, and missing coverage or
      validation for baseline behavior as blockers. Other gaps may be deferred

@@ -171,7 +171,15 @@ Custom axes: preserve. Too many axes => waves. Small adjacent axes may share one
 
 ## Subagent Prompt
 
-Each review assignment gets same scope + selected mode/axis set. Prefer one focused axis per subagent when risk is high; combine tightly related low-risk axes when that improves signal. Also pass relevant known context: user decisions, explicit non-goals, allowed/forbidden approaches, legacy/compat policy, product constraints, validation constraints, repo conventions, prior accepted risks. Do not let subagents flag issues that contradict accepted constraints.
+Each review assignment gets same scope + selected mode/axis set. Prefer one
+focused axis per subagent when risk is high; combine tightly related low-risk
+axes when that improves signal. Pass only relevant active context: current user
+decisions expressed as positive state, active non-goals, effective allowed
+approaches, durable prohibitions with scope and reason, unexpired task-local
+constraints with scope and expiry, legacy/compat policy, product constraints,
+validation constraints, repo conventions, and prior accepted risks. Exclude
+rejected proposals, superseded alternatives, and expired constraints. Do not
+let subagents flag issues that contradict accepted constraints.
 
 Also pass selected mode reference content and required companion skill rules loaded by parent.
 If `caveman` is active, every subagent prompt must include the full literal
