@@ -4,7 +4,7 @@ description: >
   Orchestrate implementation work from intent to closeout: clarify and specify
   behavior when needed, plan, analyze artifact coverage, queue Taskwarrior
   tasks, implement, verify, converge code with intent, review until clean, and
-  optionally prepare commits. Use for workstream, 작업흐름, 작업 흐름,
+  commit completed work units in Git repositories. Use for workstream, 작업흐름, 작업 흐름,
   기획부터 태스크화, 계획 세우고 구현, and 태스크화해서 구현 requests.
 ---
 
@@ -23,13 +23,33 @@ skills; it does not replace them.
 - `verify`: load before choosing or running validation checks, and before marking implementation tasks done.
 - `review-loop`: load after all implementation work and validation for every workstream, before closeout.
 - `close`: load for closeout before final status or commit preparation.
-- `git-commit`: load only when user asks to stage, commit, split commits, or draft commit text.
+- `git-commit`: in a Git repository, load before committing each completed work unit; also load when the user separately asks to stage, commit, split commits, or draft commit text.
 
 ## Operating Model
 
 Treat intent artifacts as executable contracts, not disposable notes. Keep the
 workflow proportionate: add structure only when it reduces ambiguity, rework,
 or validation risk.
+
+### Work-Unit Commits
+
+During intake, determine whether the current working directory belongs to a Git
+worktree. Do not initialize a repository. When it does, an explicit
+`workstream` invocation also authorizes staging and committing each completed
+work unit through `git-commit`, unless the user opts out of commits.
+
+- A work unit is one independently verifiable `WI` after its mapped task-local
+  validation passes. When dependent work items or inseparable hunks must stay
+  atomic, commit the smallest coherent group and record the grouping rationale.
+- Treat convergence and review fixes as work units after affected validation
+  passes.
+- Before every commit, load `git-commit`, inspect the full worktree, stage only
+  the current unit, and preserve unrelated user changes.
+- If `git-commit` reports an unsafe or unseparable state, keep the affected work
+  item incomplete and surface the blocker. Do not silently defer its commit to
+  closeout.
+- Outside a Git worktree, continue without commits and do not create a
+  repository merely to enable them.
 
 ### Artifact Depth
 
@@ -251,8 +271,9 @@ sufficient after resume or compaction.
    - Work from the ready task queue using the resolver's exact project, normally
      `task project:<slug> +READY next`.
    - Refresh reports before using numeric IDs. Prefer UUIDs for multi-step updates.
-   - Start or annotate tasks when useful. Mark a WI task done after its mapped
-     task-local acceptance checks pass. Never wait on a standalone validation
+   - Start or annotate tasks when useful. After a WI's mapped task-local
+     acceptance checks pass, commit that work unit when operating in a Git
+     worktree, then mark the WI task done. Never wait on a standalone validation
      task that depends on that WI.
    - Respect dependencies and file conflicts. Keep edits scoped to the active
      task, intent, and plan.
@@ -318,7 +339,9 @@ sufficient after resume or compaction.
    - Check intent satisfaction, artifact analysis, convergence, plan/task
      status, validation results, review-loop state, phase ledger, git status, and residual risk.
    - If a workstream goal exists, update it only after `close` confirms complete or blocked status.
-   - Do not commit unless user asked. If asked, use `git-commit`.
+   - In a Git worktree, confirm every completed work unit has a corresponding
+     `git-commit` result. Commit any validated closeout-only change as its own
+     work unit before declaring completion.
 
 ## Adoption Boundaries
 
