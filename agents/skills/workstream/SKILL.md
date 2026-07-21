@@ -45,6 +45,10 @@ work unit through `git-commit`, unless the user opts out of commits.
   passes.
 - Before every commit, load `git-commit`, inspect the full worktree, stage only
   the current unit, and preserve unrelated user changes.
+- After every successful commit, append its hash, subject, and covered `WI` or
+  fix group to an ordered workstream commit list in the phase-ledger evidence.
+  Preserve this list across resume and compaction; do not reconstruct it from
+  the final `HEAD` alone.
 - If `git-commit` reports an unsafe or unseparable state, keep the affected work
   item incomplete and surface the blocker. Do not silently defer its commit to
   closeout.
@@ -342,6 +346,11 @@ sufficient after resume or compaction.
    - In a Git worktree, confirm every completed work unit has a corresponding
      `git-commit` result. Commit any validated closeout-only change as its own
      work unit before declaring completion.
+   - Verify every recorded workstream commit against Git before the final
+     response. Report all workstream-created commits in creation order as
+     `<short-hash> <subject> — <WI or fix group>`; never collapse the report to
+     only the final commit. Exclude pre-existing and unrelated commits. If the
+     workstream created none, report `Commits: none`.
 
 ## Adoption Boundaries
 
