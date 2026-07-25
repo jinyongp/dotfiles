@@ -9,7 +9,7 @@ if dotfiles_has_command dotfiles && ! dotfiles_has_command dfx; then
 fi
 
 if dotfiles_has_command eza; then
-  alias ls="eza --classify --icons --color=automatic --header --sort=type --git --show-symlinks"
+  alias ls="eza --classify --icons --color=auto --header --sort=type --git --show-symlinks"
   alias la="ls --all --long"
   alias lsd="ls --only-dirs"
   alias lst="eza --reverse --tree"
