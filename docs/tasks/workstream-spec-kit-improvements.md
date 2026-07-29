@@ -76,8 +76,8 @@ verification, review, and closeout contracts.
 
 ## Governance Check
 
-- PASS: `AGENTS.md` rules loaded; all shell commands use `rtk` and manual edits
-  use `apply_patch`.
+- PASS: `AGENTS.md` rules loaded; shell commands followed repository rules and
+  manual edits use `apply_patch`.
 - PASS: Existing dirty changes identified; only current-session workstream files
   and the new plan are in implementation scope.
 - PASS: Skill remains below 500 lines and keeps detailed behavior in its existing

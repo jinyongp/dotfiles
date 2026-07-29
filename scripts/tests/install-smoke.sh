@@ -588,7 +588,6 @@ install_smoke_test::assert_direct_agents() {
   printf '%s\n' 'local-caveman-skill' >"$HOME_DIR/.codex/skills/caveman/SKILL.md"
   {
     printf '%s\n' '# Local Codex Rules'
-    printf '%s\n' "@$HOME_DIR/.codex/RTK.md"
     printf '%s\n' "@$HOME_DIR/.codex/skills/caveman/SKILL.md"
     printf '%s\n' 'Use Browser Plugin for browser checks, not Playwright.'
   } >"$HOME_DIR/.codex/AGENTS.md"

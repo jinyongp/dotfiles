@@ -2,7 +2,6 @@
 
 typeset -ga AGENTS_MANAGED_RULE_FILES=(
   BASE.md
-  RTK.md
   CAVEMAN.md
 )
 
