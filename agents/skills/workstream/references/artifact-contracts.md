@@ -47,7 +47,6 @@ content layout only; they never change resolver identity, paths, or filenames.
 ## Validation
 - VAL-001 [task-local] (WI-001, AC-001) ...
 - VAL-002 [standalone] (WI-001, risk: ...) ...
-- VAL-003 [review] (WI-001, AC-001) ...
 
 ## Phase Ledger
 | Phase | Status | Evidence | Next |
@@ -111,53 +110,4 @@ Use only for standard/high-risk work when no authoritative intent source exists:
 ```
 
 Keep exact commands and failure reasons. Append a new check row when rerun;
-never overwrite earlier evidence to hide a failure. Record only `task-local` and
-`standalone` checks here. The canonical results for `review` checks belong in
-`review.md`.
-
-## Review Format
-
-```md
-# Review
-
-## Scope
-
-## Coverage Summary
-
-## Modes
-
-## Review Mode
-- review-only|fix
-
-## Axis Execution
-
-## Review Checks
-| ID | Command or Method | Result | Evidence |
-|---|---|---|---|
-| VAL-003 | ... | pass / fail / blocked / skipped | ... |
-
-## Cycle Ledger
-| Cycle | Findings | Fixes | Validation | Outcome |
-|---|---|---|---|---|
-
-## Axis Summary
-
-## Fixed Issues
-- None.
-
-## Deferred Decisions
-- None.
-
-## Validation
-
-## Remaining Risks
-- None.
-
-## Final Status
-- clean|blocked
-```
-
-This format is the canonical final record for `review-loop`; do not replace it
-with a shorter summary. Record every plan-defined `review` VAL here. Use `clean`
-only for no actionable in-scope findings and passing review checks. Keep
-out-of-scope follow-ups separate from the active workstream record.
+never overwrite earlier evidence to hide a failure.

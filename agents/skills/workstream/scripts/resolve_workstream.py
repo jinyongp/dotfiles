@@ -52,8 +52,6 @@ class WorkstreamLayout:
     plan_path_relative: str
     validation_path: str
     validation_path_relative: str
-    review_path: str
-    review_path_relative: str
     manifest_status: str = "absent"
 
 
@@ -157,8 +155,6 @@ def build_layout(
         plan_path_relative=f"{work_dir_relative}/plan.md",
         validation_path=str(resolved_work_dir / "validation.md"),
         validation_path_relative=f"{work_dir_relative}/validation.md",
-        review_path=str(resolved_work_dir / "review.md"),
-        review_path_relative=f"{work_dir_relative}/review.md",
     )
 
 

@@ -3,8 +3,8 @@ name: workstream
 description: >
   Orchestrate implementation work from intent to closeout: clarify and specify
   behavior when needed, plan, analyze artifact coverage, queue Taskwarrior
-  tasks, implement, verify, converge code with intent, review until clean, and
-  commit completed work units in Git repositories. Use for workstream, 작업흐름, 작업 흐름,
+  tasks, implement, verify, converge code with intent, and commit completed work
+  units in Git repositories. Use for workstream, 작업흐름, 작업 흐름,
   기획부터 태스크화, 계획 세우고 구현, and 태스크화해서 구현 requests.
 ---
 
@@ -21,7 +21,6 @@ skills; it does not replace them.
 - `queue`: load to convert plan work items into a Taskwarrior task draft.
 - `taskwarrior`: load before creating, reading, modifying, or completing tasks.
 - `verify`: load before choosing or running validation checks, and before marking implementation tasks done.
-- `review-loop`: load after all implementation work and validation for every workstream, before closeout.
 - `close`: load for closeout before final status or commit preparation.
 - `git-commit`: in a Git repository, load before committing each completed work unit; also load when the user separately asks to stage, commit, split commits, or draft commit text.
 
@@ -41,8 +40,7 @@ work unit through `git-commit`, unless the user opts out of commits.
 - A work unit is one independently verifiable `WI` after its mapped task-local
   validation passes. When dependent work items or inseparable hunks must stay
   atomic, commit the smallest coherent group and record the grouping rationale.
-- Treat convergence and review fixes as work units after affected validation
-  passes.
+- Treat convergence fixes as work units after affected validation passes.
 - Before every commit, load `git-commit`, inspect the full worktree, stage only
   the current unit, and preserve unrelated user changes.
 - After every successful commit, append its hash, subject, and covered `WI` or
@@ -92,8 +90,7 @@ Use stable IDs in newly created workstream artifacts:
 - `WI-###`: independently verifiable work item; reference covered requirements
   and acceptance criteria.
 - `VAL-###`: validation check; reference the work item, acceptance criterion,
-  or material risk it proves, and classify it as `task-local`, `standalone`, or
-  `review`.
+  or material risk it proves, and classify it as `task-local` or `standalone`.
 
 Preserve existing repository ID schemes instead of renumbering them. Every
 requirement must have an acceptance signal, every buildable requirement must map
@@ -116,20 +113,6 @@ handoff. The ledger preserves workflow continuity; Taskwarrior remains
 authoritative for individual task state. Never duplicate every task update into
 the ledger.
 
-## Nested Review Delegation
-
-When the user invokes `workstream`, treat that request as also explicitly
-requesting and authorizing subagents, delegation, and parallel agent work for the
-nested `review-loop` phase whenever the parent agent judges they improve scoped
-review coverage. This is conditional authorization, not a fixed parallelism
-requirement: the parent still derives the useful agent count after
-implementation, validation, scope, risk, and direct contracts are known.
-
-Do not ask the user to repeat a separate "use subagents" request before
-`review-loop` delegation inside a workstream. If the available subagent tool
-still cannot be used, state the tool limitation and ask for serial fallback
-approval instead of silently reducing coverage.
-
 ## Goal Tool
 
 If an agent goal tool is available, create a goal before starting execution work
@@ -141,7 +124,7 @@ goal already exists and must be continued or resolved first.
 Plan-only workstream requests must not create a goal unless the user explicitly
 asks for goal-backed planning. Plan-only triggers include `workstream 계획`,
 `workstream plan`, and `작업흐름 계획` when the user does not ask to queue,
-implement, execute, verify, review, or close the work.
+implement, execute, verify, or close the work.
 
 Goal-backed work is especially important for triggers such as:
 
@@ -242,7 +225,7 @@ sufficient after resume or compaction.
      Unless the user explicitly requested goal-backed planning, do not create a
      goal; if they did, complete or block that planning goal from the analysis
      result. Never create a Taskwarrior queue, mutate code, verify an
-     implementation, run review-loop, or close an execution workstream.
+     implementation, or close an execution workstream.
 
 5. Queue
    - Use `queue` to extract actionable `Work Items` from the analyzed plan.
@@ -255,14 +238,10 @@ sufficient after resume or compaction.
    - Create one implementation task per `WI`. Keep task-local acceptance checks
      as mapped `VAL` evidence run before that WI is done. Create a standalone
      validation task only for broader or cross-WI checks; it depends on the
-     relevant WI tasks. Map every `review` VAL to one final `+review` task
-     depending on all required WI/standalone validation tasks. Keep Close
-     phase-only so it can inspect a clear queue rather than depend on itself.
-   - On convergence re-entry, reuse the single pending/in-progress review task,
-     add dependencies on every new WI and standalone VAL, and never create a
-     second review task.
+     relevant WI tasks. Keep Close phase-only so it can inspect a clear queue
+     rather than depend on itself.
    - Use the resolver's exact `project:<slug>` plus tags such as
-     `+survey`, `+implementation`, `+validation`, `+review`, `+risk`.
+     `+survey`, `+implementation`, `+validation`, `+risk`.
    - Use Taskwarrior `depends:` for strict task order. Mark work parallel-safe
      only when it touches different files/resources and has no incomplete dependency.
    - Prefer one task per independently verifiable work item; do not create tasks
@@ -319,29 +298,9 @@ sufficient after resume or compaction.
      cause after two fix attempts becomes a user decision/blocker, not an infinite loop.
    - If no gap remains, record convergence evidence in the phase ledger.
 
-9. Review
-   - Run `review-loop` after all work items are implemented and relevant validation has run.
-   - Treat review-loop as required for every workstream before closeout, not only broad or risky changes.
-   - Carry the `Nested Review Delegation` authorization into `review-loop` so
-     parent-selected read-only subagents can be used when they improve coverage.
-   - Delegate fix/re-review mechanics and final-record schema to `review-loop`.
-     Mark the single review task done only when its final record has no
-     actionable in-scope findings and all `review` VAL checks pass.
-   - Out-of-scope findings do not block that clean in-scope result; create any
-     approved follow-up under a distinct follow-up project, never the active
-     workstream queue. An accepted or unresolved in-scope residual is explicitly
-     blocked, not a generic deferred terminal state; keep the review task pending
-     or blocked and send that state to Close.
-   - If review fixes change observable behavior, contracts, or coverage, rerun
-     affected validation and focused convergence, then continue `review-loop`
-     before declaring the review task done.
-   - Write the final canonical review record to the resolver's `review.md` and
-     record its path in the phase ledger.
-
-10. Close
-   - Use `close` only after review-loop is clean or explicitly blocked.
+9. Close
    - Check intent satisfaction, artifact analysis, convergence, plan/task
-     status, validation results, review-loop state, phase ledger, git status, and residual risk.
+     status, validation results, phase ledger, git status, and residual risk.
    - If a workstream goal exists, update it only after `close` confirms complete or blocked status.
    - In a Git worktree, confirm every completed work unit has a corresponding
      `git-commit` result. Commit any validated closeout-only change as its own
@@ -361,8 +320,8 @@ sufficient after resume or compaction.
   `test`; choose validation from behavior and risk.
 - Do not add a generic hook, preset, or plugin system to a repository merely to
   run this workflow.
-- Do not let analysis replace runtime verification or let convergence replace
-  code review. They answer different questions.
+- Do not let analysis or convergence replace runtime verification. They answer
+  different questions.
 
 ## Artifact Contracts
 

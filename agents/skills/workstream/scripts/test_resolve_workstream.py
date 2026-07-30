@@ -77,7 +77,6 @@ class ResolveWorkstreamTests(unittest.TestCase):
             ".tasks/items/account-email-change/plan.md",
         )
         self.assertEqual(Path(layout.validation_path), expected / "validation.md")
-        self.assertEqual(Path(layout.review_path), expected / "review.md")
 
     def test_external_intent_omits_local_spec(self) -> None:
         external = self.build(

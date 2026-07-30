@@ -36,8 +36,7 @@ folders, issue titles, or a different agent's preference.
         ├── manifest.json     # immutable identity
         ├── spec.md           # Standard/High-risk, plan-local intent only
         ├── plan.md           # always
-        ├── validation.md     # execution validation evidence
-        └── review.md         # execution final review record
+        └── validation.md     # execution validation evidence
 ```
 
 - Task project: `<slug>` with no tool or workflow prefix.
@@ -47,7 +46,7 @@ folders, issue titles, or a different agent's preference.
   `final`, `v2`, or agent-specific suffixes.
 - Authoritative intent omits local `spec.md`; record its exact source without
   trimming or rewriting whitespace or case.
-- Plan-only work never creates `validation.md` or `review.md`.
+- Plan-only work never creates `validation.md`.
 - Create no empty placeholder artifacts.
 - In a Git repository, add the exact root rule `/.tasks/` to the root
   `.gitignore` once before initialization. Do not use `.git/info/exclude`, a
