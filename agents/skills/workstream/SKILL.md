@@ -240,6 +240,8 @@ sufficient after resume or compaction.
      validation task only for broader or cross-WI checks; it depends on the
      relevant WI tasks. Keep Close phase-only so it can inspect a clear queue
      rather than depend on itself.
+   - Register only explicit `WI` and standalone `VAL` entries. Do not synthesize
+     extra terminal phases or tasks.
    - Use the resolver's exact `project:<slug>` plus tags such as
      `+survey`, `+implementation`, `+validation`, `+risk`.
    - Use Taskwarrior `depends:` for strict task order. Mark work parallel-safe

@@ -37,6 +37,8 @@ derive one from the settled goal/title with lowercase hyphen words.
 
 Do not create tasks for headings, vague reminders, unresolved decisions, or
 non-goals.
+Register only explicit actionable items from the input. Do not synthesize
+terminal quality or closeout tasks absent from the plan or checklist.
 
 ## Dependencies
 
