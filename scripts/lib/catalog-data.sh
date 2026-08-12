@@ -90,6 +90,7 @@ catalog_data::external_skill_source_rows() {
   cat <<'EOF'
 gate	https://github.com/jinyongp/gate.git	main
 im-not-ai	https://github.com/epoko77-ai/im-not-ai.git	main
+impeccable	https://github.com/pbakaus/impeccable.git	main
 EOF
 }
 
@@ -105,5 +106,7 @@ catalog_data::external_skill_artifact_rows() {
   cat <<'EOF'
 gate	gate	skills/gate	gate	codex,claude	skill	preserve
 humanize-korean	im-not-ai	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks
+impeccable	impeccable	.agents/skills/impeccable	impeccable	codex	skill	preserve
+impeccable-claude	impeccable	.claude/skills/impeccable	impeccable	claude	skill	preserve
 EOF
 }

@@ -306,6 +306,12 @@ install_smoke_test::write_fake_commands() {
     '      printf "%s\n" "smoke quick rules" > "$target/.claude/skills/humanize-korean/references/quick-rules.md"' \
     '      ln -s "../../../.claude/skills/humanize-korean/references" "$target/codex/skills/humanize-korean/references"' \
     '      ;;' \
+    '    https://github.com/pbakaus/impeccable.git)' \
+    '      printf "%s\n" "smoke-impeccable-skill-revision" > "$target/.smoke-revision"' \
+    '      mkdir -p "$target/.agents/skills/impeccable" "$target/.claude/skills/impeccable"' \
+    '      printf "%s\n" "---" "name: impeccable" "description: smoke impeccable skill" "---" "" "# impeccable" > "$target/.agents/skills/impeccable/SKILL.md"' \
+    '      printf "%s\n" "---" "name: impeccable" "description: smoke impeccable Claude skill" "---" "" "# impeccable" > "$target/.claude/skills/impeccable/SKILL.md"' \
+    '      ;;' \
     '  esac' \
     '  exit 0' \
     'fi' \
@@ -619,17 +625,23 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/humanize-korean" "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable-claude"
   install_smoke_test::assert_not_exists "$HOME_DIR/.claude/skills/humanize-korean"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/gate/SKILL.md" "smoke gate skill" "agents install should download external gate skill"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/SKILL.md" "smoke humanize Korean skill" "agents install should download external humanize-korean skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable/SKILL.md" "smoke impeccable skill" "agents install should download external impeccable skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable-claude/SKILL.md" "smoke impeccable Claude skill" "agents install should download external impeccable Claude skill"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references/quick-rules.md" "smoke quick rules" "agents install should materialize external humanize-korean references"
   if [[ -L "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references" ]]; then
     install_smoke_test::fail "humanize-korean references should be materialized, not symlinked"
   fi
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'gate	smoke-gate-skill-revision	gate	main	https://github.com/jinyongp/gate.git	skills/gate	gate	codex,claude	skill	preserve' "agents install should record external gate skill revision"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'humanize-korean	smoke-im-not-ai-skill-revision	im-not-ai	main	https://github.com/epoko77-ai/im-not-ai.git	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks' "agents install should record external humanize-korean skill revision"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.agents/skills/impeccable	impeccable	codex	skill	preserve' "agents install should record external impeccable skill revision"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable-claude	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.claude/skills/impeccable	impeccable	claude	skill	preserve' "agents install should record external impeccable Claude skill revision"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"

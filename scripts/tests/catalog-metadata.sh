@@ -130,8 +130,11 @@ catalog_metadata_test::assert_agent_metadata() {
   catalog_metadata_test::assert_equal "$(catalog::agent_label claude)" "Claude" "expected Claude agent label"
   catalog_metadata_test::assert_contains "$external_skill_source_records" $'gate\thttps://github.com/jinyongp/gate.git\tmain' "missing gate external skill source record"
   catalog_metadata_test::assert_contains "$external_skill_source_records" $'im-not-ai\thttps://github.com/epoko77-ai/im-not-ai.git\tmain' "missing im-not-ai external skill source record"
+  catalog_metadata_test::assert_contains "$external_skill_source_records" $'impeccable\thttps://github.com/pbakaus/impeccable.git\tmain' "missing impeccable external skill source record"
   catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'gate\tgate\tskills/gate\tgate\tcodex,claude\tskill\tpreserve' "missing gate external skill artifact record"
   catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'humanize-korean\tim-not-ai\tcodex/skills/humanize-korean\thumanize-korean\tcodex\tskill\tmaterialize_repo_symlinks' "missing humanize-korean external skill artifact record"
+  catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'impeccable\timpeccable\t.agents/skills/impeccable\timpeccable\tcodex\tskill\tpreserve' "missing impeccable external skill artifact record"
+  catalog_metadata_test::assert_contains "$external_skill_artifact_records" $'impeccable-claude\timpeccable\t.claude/skills/impeccable\timpeccable\tclaude\tskill\tpreserve' "missing impeccable Claude external skill artifact record"
   printf 'ok agent_metadata\n'
 }
 

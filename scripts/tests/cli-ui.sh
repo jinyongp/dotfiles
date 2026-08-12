@@ -113,6 +113,10 @@ for skill_id in ("planning", "review-loop", "taskwarrior", "git-commit", "cavema
 assert by_id["gate"]["kind"] == "external"
 assert by_id["gate"]["source"] == "external"
 assert "adapterTargets" in by_id["gate"]
+assert by_id["impeccable"]["kind"] == "external"
+assert by_id["impeccable"]["source"] == "external"
+assert by_id["impeccable-claude"]["kind"] == "external"
+assert by_id["impeccable-claude"]["source"] == "external"
 
 def target_status(skill_id, adapter):
     targets = by_id[skill_id]["adapterTargets"]
@@ -231,6 +235,8 @@ EOF
   cli_ui_test::run_cmd_json dotfiles_agents_json dotfiles agents list
   cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_agents_json.out"
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "gate"'
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "impeccable"'
+  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "impeccable-claude"'
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "planning"'
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"kind": "internal"'
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"adapterTargets":'
