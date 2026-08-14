@@ -12,16 +12,24 @@ conventions or improvise fallback paths.
    - `plan-local`: local `spec.md` supplies Standard/High-risk intent.
    - `authoritative`: pass the exact path, URL, or identifier with
      `--intent-source`; no local `spec.md`.
-4. Run `scripts/resolve_workstream.py` without `--init` and use its JSON exactly.
+4. Unless the user supplied an explicit slug, choose a semantic slug base from
+   the settled Goal and pass it as `--slug-base`. Use three to five lowercase
+   ASCII English tokens that convey the concrete domain/object and outcome.
+   Translate meaning from non-English Goals; do not transliterate. Avoid bases
+   made only from generic workflow or surface words such as `api`, `ui`,
+   `admin`, `ops`, `feature`, `task`, `add`, `update`, or `fix`.
+5. Run `scripts/resolve_workstream.py` without `--init` and use its JSON exactly.
    Pass `--intent-source-kind plan-local` or both
    `--intent-source-kind authoritative --intent-source <exact-source>`.
-5. Show the resolved slug and work directory before the first artifact write.
-6. Run the same command with `--init` to create only the directory and
+6. Show the resolved slug and work directory before the first artifact write.
+7. Run the same command with `--init` to create only the directory and
    `manifest.json` identity manifest.
 
-The only optional override is an explicitly user-supplied `--slug`: lowercase
-ASCII kebab-case, maximum 63 characters. The root and intermediate directories
-cannot be overridden. Never derive a slug override from branch names, nearby
+`--slug-base` is the normal semantic input. The resolver validates it and
+appends the Goal hash; agents must not append or calculate that hash. The only
+full-slug override is an explicitly user-supplied `--slug`: lowercase ASCII
+kebab-case, maximum 63 characters. The root and intermediate directories cannot
+be overridden. Never derive a full-slug override from branch names, nearby
 folders, issue titles, or a different agent's preference.
 
 ## Canonical Defaults
@@ -55,12 +63,15 @@ folders, issue titles, or a different agent's preference.
 ## Slug Algorithm
 
 - Explicit valid `--slug` wins.
+- Otherwise, a valid semantic `--slug-base` receives the first ten Goal hash
+  digits: `<semantic-base>-<hash10>`.
 - Otherwise normalize Goal with Unicode NFKC, collapse whitespace, case-fold,
-  and hash with SHA-256.
-- Use up to five ASCII alphanumeric Goal tokens plus the first ten hash digits.
-- If Goal has no ASCII tokens, use `goal-<hash10>`.
+  and hash with SHA-256. Use up to five ASCII alphanumeric Goal tokens plus the
+  first ten hash digits only when those tokens pass the same minimum descriptive
+  quality bar. Fail instead of creating `goal-<hash>` or a generic-only name.
 
-The resolver owns this algorithm. Agents must not reproduce it manually.
+The resolver owns validation and hash composition. Agents choose only the
+semantic base and must not reproduce the full algorithm manually.
 
 Goal identity is lexical, not semantic. After initialization, never paraphrase
 the settled Goal to rediscover a workstream. Resume from the stored slug,

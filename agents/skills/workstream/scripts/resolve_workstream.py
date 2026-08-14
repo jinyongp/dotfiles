@@ -19,6 +19,26 @@ from pathlib import Path
 SCHEMA_VERSION = 3
 SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 ASCII_TOKEN_RE = re.compile(r"[a-z0-9]+")
+SEMANTIC_BASE_MIN_TOKENS = 3
+SEMANTIC_BASE_MAX_TOKENS = 5
+SEMANTIC_BASE_MAX_LENGTH = 48
+GENERIC_SLUG_TOKENS = frozenset(
+    {
+        "add",
+        "admin",
+        "api",
+        "app",
+        "change",
+        "feature",
+        "fix",
+        "implement",
+        "ops",
+        "task",
+        "ui",
+        "update",
+        "work",
+    }
+)
 STATE_ROOT = ".tasks"
 ITEMS_DIR = "items"
 MANIFEST_NAME = "manifest.json"
@@ -73,13 +93,45 @@ def validate_explicit_slug(slug: str) -> str:
     return slug
 
 
-def derive_slug(identity_goal: str, digest: str) -> str:
+def validate_semantic_slug_base(slug_base: str) -> str:
+    if len(slug_base) > SEMANTIC_BASE_MAX_LENGTH:
+        raise ResolutionError(
+            f"semantic slug base must be {SEMANTIC_BASE_MAX_LENGTH} characters or fewer"
+        )
+    if not SLUG_RE.fullmatch(slug_base):
+        raise ResolutionError(
+            "semantic slug base must be lowercase ASCII kebab-case: "
+            "[a-z0-9]+(-[a-z0-9]+)*"
+        )
+    tokens = slug_base.split("-")
+    if not SEMANTIC_BASE_MIN_TOKENS <= len(tokens) <= SEMANTIC_BASE_MAX_TOKENS:
+        raise ResolutionError(
+            "semantic slug base must contain three to five meaningful tokens"
+        )
+    if all(token in GENERIC_SLUG_TOKENS for token in tokens):
+        raise ResolutionError(
+            "semantic slug base must include a concrete domain or object token"
+        )
+    return slug_base
+
+
+def derive_slug(identity_goal: str, digest: str, slug_base: str | None = None) -> str:
+    if slug_base is not None:
+        return f"{validate_semantic_slug_base(slug_base)}-{digest}"
+
     ascii_goal = (
         unicodedata.normalize("NFKD", identity_goal)
         .encode("ascii", "ignore")
         .decode("ascii")
     )
     tokens = ASCII_TOKEN_RE.findall(ascii_goal)
+    if len(tokens) < SEMANTIC_BASE_MIN_TOKENS or all(
+        token in GENERIC_SLUG_TOKENS for token in tokens[:SEMANTIC_BASE_MAX_TOKENS]
+    ):
+        raise ResolutionError(
+            "goal does not yield a descriptive ASCII slug; provide --slug-base "
+            "with three to five semantic English tokens"
+        )
     prefix = "-".join(tokens[:5]) or "goal"
     prefix = prefix[:48].strip("-") or "goal"
     return f"{prefix}-{digest}"
@@ -110,13 +162,20 @@ def build_layout(
     goal: str,
     artifact_depth: str,
     slug: str | None = None,
+    slug_base: str | None = None,
     intent_source_kind: str = "plan-local",
     intent_source: str | None = None,
 ) -> WorkstreamLayout:
     root = resolve_repo_root(repo_root)
     display_goal, identity_goal = normalize_goal(goal)
     digest = hashlib.sha256(identity_goal.encode("utf-8")).hexdigest()[:10]
-    resolved_slug = validate_explicit_slug(slug) if slug else derive_slug(identity_goal, digest)
+    if slug is not None and slug_base is not None:
+        raise ResolutionError("use either explicit slug or semantic slug base, not both")
+    resolved_slug = (
+        validate_explicit_slug(slug)
+        if slug
+        else derive_slug(identity_goal, digest, slug_base)
+    )
     resolved_work_dir = resolve_work_dir(root, resolved_slug)
     if intent_source_kind == "plan-local":
         if intent_source is not None:
@@ -339,7 +398,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         choices=("light", "standard", "high-risk"),
     )
-    parser.add_argument("--slug", help="Explicit lowercase ASCII kebab-case slug")
+    slug_group = parser.add_mutually_exclusive_group()
+    slug_group.add_argument("--slug", help="Explicit lowercase ASCII kebab-case slug")
+    slug_group.add_argument(
+        "--slug-base",
+        help="Three to five semantic English tokens; resolver appends the goal hash",
+    )
     parser.add_argument(
         "--intent-source-kind",
         required=True,
@@ -366,6 +430,7 @@ def main(argv: list[str] | None = None) -> int:
             goal=args.goal,
             artifact_depth=args.artifact_depth,
             slug=args.slug,
+            slug_base=args.slug_base,
             intent_source_kind=args.intent_source_kind,
             intent_source=args.intent_source,
         )

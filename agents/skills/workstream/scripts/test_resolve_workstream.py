@@ -55,9 +55,35 @@ class ResolveWorkstreamTests(unittest.TestCase):
         self.assertEqual(first.slug, second.slug)
         self.assertEqual(first.goal_hash, second.goal_hash)
 
-    def test_non_ascii_goal_has_deterministic_fallback(self) -> None:
-        layout = self.build(goal="사용자 인증 추가")
-        self.assertRegex(layout.slug, r"^goal-[0-9a-f]{10}$")
+    def test_non_ascii_goal_requires_semantic_slug_base(self) -> None:
+        with self.assertRaisesRegex(
+            MODULE.ResolutionError,
+            "does not yield a descriptive ASCII slug",
+        ):
+            self.build(goal="사용자 인증 추가")
+        with self.assertRaisesRegex(
+            MODULE.ResolutionError,
+            "does not yield a descriptive ASCII slug",
+        ):
+            self.build(goal="상품 관리 API 구현")
+
+    def test_semantic_slug_base_preserves_non_ascii_goal_meaning(self) -> None:
+        layout = self.build(
+            goal="Ops 상품 API와 Admin UI 구현",
+            slug_base="ops-product-admin-ui",
+        )
+        self.assertEqual(
+            layout.slug,
+            f"ops-product-admin-ui-{layout.goal_hash}",
+        )
+
+    def test_semantic_slug_base_is_strict(self) -> None:
+        with self.assertRaisesRegex(MODULE.ResolutionError, "three to five"):
+            self.build(slug_base="api")
+        with self.assertRaisesRegex(MODULE.ResolutionError, "concrete domain"):
+            self.build(slug_base="ops-api-admin-ui")
+        with self.assertRaisesRegex(MODULE.ResolutionError, "either explicit slug"):
+            self.build(slug="account-email-change", slug_base="account-email-change")
 
     def test_explicit_slug_is_strict(self) -> None:
         self.assertEqual(self.build(slug="account-email-change").slug, "account-email-change")

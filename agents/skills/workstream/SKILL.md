@@ -77,9 +77,12 @@ persistent-data work remains High-risk.
 
 Before resolving any artifact path or task project, read
 `references/path-contract.md` completely and run
-`scripts/resolve_workstream.py`. Use its JSON output exactly. Never invent a
-slug, scan for repository plan conventions, choose a nearby writable directory,
-or add a collision suffix.
+`scripts/resolve_workstream.py`. Unless the user supplied a full slug, choose a
+three-to-five-token semantic English slug base from the settled Goal and pass
+it with `--slug-base`; include a concrete domain/object and outcome, especially
+when the Goal is non-English. Use the resolver's JSON output exactly. Never
+invent the final slug, calculate its hash, scan for repository plan conventions,
+choose a nearby writable directory, or add a collision suffix.
 
 ### Intent and Traceability
 
@@ -186,9 +189,11 @@ sufficient after resume or compaction.
      paths, then rerun with `--init` before writing the plan.
    - In a Git repository, ensure the root `.gitignore` contains the exact
      `/.tasks/` rule once before `--init`; use no other ignore location.
-   - Accept a non-default slug only when the user explicitly provides it. The
-     `.tasks/items/` root cannot be overridden. If resolution, collision, or
-     write checks fail, stop; do not fall back to another path.
+   - Accept a full-slug override only when the user explicitly provides it.
+     Otherwise pass the semantic slug base required by the path contract and
+     let the resolver append the Goal hash. The `.tasks/items/` root cannot be
+     overridden. If resolution, collision, semantic quality, or write checks
+     fail, stop; do not fall back to another path.
    - Translate intent into technical decisions, exact implementation surfaces,
      independently verifiable work items, validation, risks, and governance checks.
    - In `Constraints`, record only active context-preservation rules that must
