@@ -110,4 +110,8 @@ Use only for standard/high-risk work when no authoritative intent source exists:
 ```
 
 Keep exact commands and failure reasons. Append a new check row when rerun;
-never overwrite earlier evidence to hide a failure.
+never overwrite earlier evidence to hide a failure. For deterministic status
+snapshots, the last recorded row for a `VAL`, combined with any matching entry
+under `Accepted Gaps`, is its current result; all earlier rows remain evidence
+history. Never translate these results into an overall completion or
+remaining-effort percentage.

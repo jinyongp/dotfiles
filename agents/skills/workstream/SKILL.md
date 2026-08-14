@@ -116,6 +116,47 @@ handoff. The ledger preserves workflow continuity; Taskwarrior remains
 authoritative for individual task state. Never duplicate every task update into
 the ledger.
 
+### Deterministic Status Reporting
+
+Report observable state, not estimated progress. Never emit an overall
+percentage, weighted completion estimate, remaining-effort percentage, or
+`official progress` label. Task, WI, AC, VAL, and phase counts measure different
+things and must not be combined or presented as elapsed or remaining effort.
+
+Send a status snapshot immediately after any of these events:
+
+- a Taskwarrior task completes;
+- a planned `VAL` receives a new pass, fail, blocked, skipped, or
+  skipped-with-accepted-risk result;
+- the active phase or blocker changes;
+- the same planned check fails again after a fix attempt.
+
+Build every snapshot only from the current phase ledger, Taskwarrior queue, plan
+IDs, and recorded validation evidence. For a current `VAL` status, use its most
+recent evidence row plus any matching accepted-gap record while retaining
+earlier rows as history. Never invent
+sub-checkpoints, weights, completion fractions, or effort estimates during
+execution. If no planned check changed, report concrete evidence produced and
+say the task remains active without numeric movement.
+
+Use this shape, omitting empty lines:
+
+```text
+Status:
+- Phase: <ledger phase>
+- Completed: <task ID and title completed since prior snapshot|none>
+- Current: <active task ID and title|none>
+- Checks: <VAL-ID result[, ...]>; remaining <planned VAL IDs|none>
+- Blocker: <recorded blocker|none>
+- Next: <next exact action or ready task|closeout>
+```
+
+Do not show `done/total` by default. When the user explicitly asks for queue or
+check counts, label them `queue count` or `validation count`, omit percentages,
+and state that counts do not represent effort or time remaining. When
+convergence adds tasks or checks, state the exact IDs added; do not recalculate
+or reinterpret prior status as progress.
+
 ## Goal Tool
 
 If an agent goal tool is available, create a goal before starting execution work
@@ -263,8 +304,9 @@ sufficient after resume or compaction.
    - Refresh reports before using numeric IDs. Prefer UUIDs for multi-step updates.
    - Start or annotate tasks when useful. After a WI's mapped task-local
      acceptance checks pass, commit that work unit when operating in a Git
-     worktree, then mark the WI task done. Never wait on a standalone validation
-     task that depends on that WI.
+     worktree, then mark the WI task done and report a deterministic status
+     snapshot immediately.
+     Never wait on a standalone validation task that depends on that WI.
    - Respect dependencies and file conflicts. Keep edits scoped to the active
      task, intent, and plan.
 
@@ -285,7 +327,10 @@ sufficient after resume or compaction.
    - Write the canonical validation evidence to the resolver's `validation.md`.
      Record its path in the phase ledger. Do not reopen a completed WI to
      mirror standalone status unless evidence invalidates its task-local
-     acceptance; use convergence for corrective work.
+     acceptance; use convergence for corrective work. After completing any
+     standalone validation task, report a deterministic status snapshot
+     immediately. Also report when any planned VAL result changes or repeats
+     after a fix attempt, even if its Taskwarrior task remains active.
 
 8. Converge
    - After implementation and relevant validation, compare current code and
