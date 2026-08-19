@@ -23,7 +23,7 @@ dotfiles::usage() {
     $'uninstall\tuninstall\tRemove dotfiles-managed links and agent instruction blocks.' \
     $'list\tlist\tList direct install targets.' \
     $'themes\tthemes\tManage shell theme selection and dependencies.' \
-    $'agents\tagents\tManage external agent skills.' \
+    $'agents\tagents\tManage internal and external agent skills.' \
     $'update\tupdate\tFast-forward this dotfiles repository.' \
     $'path\tpath\tPrint the dotfiles repository path.' \
     $'doctor\tdoctor\tCheck the local dotfiles setup.' \
@@ -282,6 +282,7 @@ dotfiles::complete() {
   local context="${1:-commands}"
   local module_id="${2:-}"
   local platform=""
+  local skill_path skill_id
 
   export DOTFILES_ROOT
   # shellcheck disable=SC1091
@@ -304,7 +305,7 @@ install:run the interactive installer or direct install target
 uninstall:remove dotfiles-managed links and agent instruction blocks
 list:list direct install targets
 themes:manage shell theme selection and dependencies
-agents:manage external agent skills
+agents:manage internal and external agent skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
 doctor:check the local dotfiles setup
@@ -349,6 +350,14 @@ EOF
     external-skills)
       catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
       ;;
+    agent-skills)
+      for skill_path in "$DOTFILES_ROOT"/agents/skills/*; do
+        [[ -f "$skill_path/SKILL.md" ]] || continue
+        skill_id="${skill_path##*/}"
+        printf '%s:%s (internal)\n' "$skill_id" "$skill_id"
+      done
+      catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
+      ;;
   esac
 }
 
@@ -390,7 +399,7 @@ case "${1:-help}" in
       ui::validation_error "completion context required" \
         $'input\tcomplete' \
         $'usage\tdfx complete <context> [target]' \
-        $'expected\tcommands, targets, items, external-skills' \
+        $'expected\tcommands, targets, items, agent-skills, external-skills' \
         $'next\tThis command is used by shell completion integration.'
       exit 2
     fi

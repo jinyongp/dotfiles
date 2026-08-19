@@ -443,7 +443,7 @@ dotfiles::log_success() {
     return 0
   fi
 
-  ui::write stdout "$(ui::success "$1")"
+  ui::write stdout "$(ui::apply "done" green)  $(ui::body "$1")"
 }
 
 dotfiles::log_error() {

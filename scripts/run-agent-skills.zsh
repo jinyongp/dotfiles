@@ -23,7 +23,7 @@ agent_skills::usage() {
     "dotfiles agents sync [skill...]"
   ui::help_commands \
     $'list\tlist\tList internal and external skills with adapter install state.' \
-    $'sync\tsync\tFetch latest configured refs and update the local cache.'
+    $'sync\tsync\tUpdate external sources and reconcile skill links.'
 }
 
 case "$command_name" in
@@ -34,7 +34,7 @@ case "$command_name" in
     agents::list_external_skills "$@"
     ;;
   sync)
-    agents::sync_external_skills "$@"
+    agents::sync_skills "$@"
     ;;
   *)
     input_field=$'input\t'"$command_name"

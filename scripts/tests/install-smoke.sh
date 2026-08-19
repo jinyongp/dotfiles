@@ -682,7 +682,7 @@ install_smoke_test::assert_external_skill_symlink_guard() {
 }
 
 install_smoke_test::assert_external_skill_side_effect_guards() {
-  local repo_dir outside_dir
+  local repo_dir outside_dir sync_home
 
   install_smoke_test::reset_case_config
   install_smoke_test::setup_case "external-skill-side-effect-guards"
@@ -932,6 +932,69 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
     install_smoke_test::fail "agent skill symlink creation failure should fail link operation"
   fi
 
+  sync_home="$TMP_DIR/agent-sync-home"
+  mkdir -p "$sync_home/.codex/skills" "$sync_home/.claude/skills"
+  if ! HOME="$sync_home" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::detected_adapter_ids() { print -r -- "codex claude"; }
+      agents::sync_skills astro-solid-integration solidjs-development
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "internal agent skill sync should succeed without external fetch"
+  fi
+  [[ "$(readlink "$sync_home/.codex/skills/astro-solid-integration")" == "$DOTFILES_ROOT/agents/skills/astro-solid-integration" ]] || \
+    install_smoke_test::fail "internal sync should link Astro Solid skill for Codex"
+  [[ "$(readlink "$sync_home/.claude/skills/solidjs-development")" == "$DOTFILES_ROOT/agents/skills/solidjs-development" ]] || \
+    install_smoke_test::fail "internal sync should link SolidJS skill for Claude"
+
+  sync_home="$TMP_DIR/agent-sync-external-home"
+  mkdir -p "$sync_home/.codex/skills" "$TMP_DIR/external-cache/gate"
+  printf '%s\n' '---' 'name: gate' '---' >"$TMP_DIR/external-cache/gate/SKILL.md"
+  if ! HOME="$sync_home" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::detected_adapter_ids() { print -r -- "codex"; }
+      agents::sync_external_skills() { return 0; }
+      agents::external_skill_cache_valid() { return 0; }
+      agents::external_artifact_cache_dir() { print -r -- "${TMPDIR%/}/external-cache/$1"; }
+      agents::sync_skills gate
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "external agent skill sync should reconcile configured links"
+  fi
+  [[ "$(readlink "$sync_home/.codex/skills/gate")" == "$TMP_DIR/external-cache/gate" ]] || \
+    install_smoke_test::fail "external sync should link the refreshed cache for Codex"
+
+  sync_home="$TMP_DIR/agent-sync-conflict-home"
+  mkdir -p "$sync_home/.codex/skills/solidjs-development"
+  printf '%s\n' preserved >"$sync_home/.codex/skills/solidjs-development/marker"
+  if HOME="$sync_home" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::detected_adapter_ids() { print -r -- "codex"; }
+      agents::sync_skills solidjs-development
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "internal sync should fail on an existing materialized target"
+  fi
+  install_smoke_test::assert_file_contains "$sync_home/.codex/skills/solidjs-development/marker" preserved "internal sync should preserve conflicting targets"
+
   if DOTFILES_ROOT="$DOTFILES_ROOT" \
     DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
     TMPDIR="$TMP_DIR/" \
@@ -940,7 +1003,7 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
       source "$DOTFILES_ROOT/scripts/lib/common.zsh"
       source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
       source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
-      agents::sync_external_skills gate typo
+      agents::sync_skills gate typo
     ' >/dev/null 2>&1; then
     install_smoke_test::fail "mixed known and unknown external skill sync ids should fail"
   fi

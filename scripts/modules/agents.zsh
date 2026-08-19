@@ -742,6 +742,140 @@ agents::install_external_skills() {
   return "$failed"
 }
 
+agents::internal_skill_path() {
+  local skill_id="$1"
+  local skill_path="$DOTFILES_ROOT/agents/skills/$skill_id"
+
+  [[ -f "$skill_path/SKILL.md" ]] || return 1
+  print -r -- "$skill_path"
+}
+
+agents::external_skill_known() {
+  local selected_id="$1"
+  local artifact_id source_id source_path install_name adapters kind copy_policy
+
+  while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
+    [[ "$artifact_id" == "$selected_id" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    return 0
+  done < <(catalog::external_skill_artifact_records)
+
+  return 1
+}
+
+agents::selected_skill_ids_valid() {
+  local selected_id invalid=0
+
+  for selected_id in "$@"; do
+    if agents::internal_skill_path "$selected_id" >/dev/null 2>&1 || agents::external_skill_known "$selected_id"; then
+      continue
+    fi
+    dotfiles::log_warn "Unknown agent skill: $selected_id"
+    invalid=1
+  done
+
+  return "$invalid"
+}
+
+agents::reconcile_skill_link() {
+  local adapter_id="$1"
+  local source_path="$2"
+  local install_name="$3"
+  local target_dir target_path
+
+  target_dir="$(agents::adapter_skills_dir "$adapter_id")" || return 1
+  target_path="$target_dir/$install_name"
+  agents::set_adapter_target_state "$adapter_id" "$source_path" "$install_name"
+
+  case "$AGENTS_ADAPTER_TARGET_STATUS" in
+    linked)
+      dotfiles::record_reused_quiet "Agent skill link already in place: $(dotfiles::display_path "$target_path")"
+      return 0
+      ;;
+    conflict|materialized)
+      (( AGENTS_SYNC_CONFLICTS += 1 ))
+      dotfiles::log_warn "Preserving existing agent skill target: $target_path"
+      return 1
+      ;;
+  esac
+
+  dotfiles::ensure_dir "$target_dir"
+  if ! ln -s "$source_path" "$target_path"; then
+    return 1
+  fi
+  dotfiles::record_file_linked "$target_path" "$source_path"
+  dotfiles::log_success "Linked agent skill $install_name for $adapter_id"
+}
+
+agents::sync_internal_skill_links() {
+  local selected_ids=("$@")
+  local detected_ids source_path skill_id adapter_id failed=0
+
+  detected_ids="$(agents::detected_adapter_ids)"
+  [[ -n "$detected_ids" ]] || return 0
+
+  for source_path in "$DOTFILES_ROOT"/agents/skills/*(/N); do
+    skill_id="${source_path:t}"
+    agents::external_artifact_selected "$skill_id" "${selected_ids[@]}" || continue
+    for adapter_id in ${=detected_ids}; do
+      if ! agents::reconcile_skill_link "$adapter_id" "$source_path" "$skill_id"; then
+        failed=1
+      fi
+    done
+  done
+
+  return "$failed"
+}
+
+agents::sync_external_skill_links() {
+  local selected_ids=("$@")
+  local detected_ids artifact_id source_id source_path install_name adapters kind copy_policy
+  local row_source_id repo_url ref adapter_id cache_path failed=0
+
+  detected_ids="$(agents::detected_adapter_ids)"
+  [[ -n "$detected_ids" ]] || return 0
+
+  while IFS=$'\t' read -r artifact_id source_id source_path install_name adapters kind copy_policy; do
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    agents::external_artifact_selected "$artifact_id" "${selected_ids[@]}" || continue
+    repo_url=""
+    ref=""
+    while IFS=$'\t' read -r row_source_id repo_url ref; do
+      [[ "$row_source_id" == "$source_id" ]] || continue
+      break
+    done < <(catalog::external_skill_source_records)
+    if [[ -z "$repo_url" || -z "$ref" ]] || ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+      failed=1
+      continue
+    fi
+    cache_path="$(agents::external_artifact_cache_dir "$artifact_id")"
+    for adapter_id in ${=detected_ids}; do
+      agents::external_artifact_adapter_enabled "$adapters" "$adapter_id" || continue
+      if ! agents::reconcile_skill_link "$adapter_id" "$cache_path" "$install_name"; then
+        failed=1
+      fi
+    done
+  done < <(catalog::external_skill_artifact_records)
+
+  return "$failed"
+}
+
+agents::print_sync_summary() {
+  local linked="$1"
+  local updated="$2"
+  local reused="$3"
+  local conflicts="$4"
+
+  ui::is_json && return 0
+  printf '\n%s\n' "$(ui::section "Agent skills synced")"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "linked")" "$linked" 12)"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "updated")" "$updated" 12)"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "reused")" "$reused" 12)"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "conflicts")" "$conflicts" 12)"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "next")" "Start a new agent task to reload updated skills." 12)"
+}
+
 agents::sync_external_skills() {
   local selected_ids=("$@")
   local source_id repo_url ref synced_any=0 failed=0 sync_status
@@ -810,6 +944,55 @@ agents::external_selected_ids_valid() {
   done
 
   return "$invalid"
+}
+
+agents::sync_skills() {
+  local selected_ids=("$@")
+  local -a external_ids=()
+  local selected_id failed=0 external_requested=0
+  local linked_before reused_before updated_before linked updated reused
+
+  agents::selected_skill_ids_valid "${selected_ids[@]}" || return 1
+
+  if (( ${#selected_ids[@]} == 0 )); then
+    external_requested=1
+  else
+    for selected_id in "${selected_ids[@]}"; do
+      if agents::external_skill_known "$selected_id"; then
+        external_ids+=("$selected_id")
+        external_requested=1
+      fi
+    done
+  fi
+
+  linked_before=${#DOTFILES_RESULT_LINKED_FILES[@]}
+  reused_before=${#DOTFILES_RESULT_REUSED_ITEMS[@]}
+  updated_before=${#DOTFILES_RESULT_COMPLETED_WORK[@]}
+  typeset -g AGENTS_SYNC_CONFLICTS=0
+
+  if (( external_requested == 1 )); then
+    if (( ${#selected_ids[@]} == 0 )); then
+      agents::sync_external_skills || failed=1
+    else
+      agents::sync_external_skills "${external_ids[@]}" || failed=1
+    fi
+  fi
+
+  agents::sync_internal_skill_links "${selected_ids[@]}" || failed=1
+  if (( external_requested == 1 )); then
+    if (( ${#selected_ids[@]} == 0 )); then
+      agents::sync_external_skill_links || failed=1
+    else
+      agents::sync_external_skill_links "${external_ids[@]}" || failed=1
+    fi
+  fi
+
+  linked=$((${#DOTFILES_RESULT_LINKED_FILES[@]} - linked_before))
+  reused=$((${#DOTFILES_RESULT_REUSED_ITEMS[@]} - reused_before))
+  updated=$((${#DOTFILES_RESULT_COMPLETED_WORK[@]} - updated_before))
+  agents::print_sync_summary "$linked" "$updated" "$reused" "$AGENTS_SYNC_CONFLICTS"
+
+  return "$failed"
 }
 
 agents::print_json_string() {
@@ -933,27 +1116,54 @@ agents::print_json_adapter_targets() {
   print -rn -- "]"
 }
 
-agents::adapter_target_summary() {
+agents::human_status() {
+  local label="$1"
+  local state="$2"
+
+  case "$state" in
+    linked|materialized|installed) ui::apply "$label" green ;;
+    missing|not_installed) ui::apply "$label" magenta ;;
+    conflict) ui::apply "$label" red ;;
+    unavailable) ui::muted "$label" ;;
+    *) ui::body "$label" ;;
+  esac
+}
+
+agents::adapter_icon() {
+  local adapter_id="$1"
+
+  if ui::is_plain; then
+    print -rn -- "$adapter_id"
+    return 0
+  fi
+
+  case "$adapter_id" in
+    codex) print -rn -- $'\xee\xb2\x81' ;;
+    claude) print -rn -- $'\xee\xb2\x82' ;;
+    *) print -rn -- "$adapter_id" ;;
+  esac
+}
+
+agents::human_linked_adapters() {
   local adapters="$1"
   local source_path="$2"
   local install_name="$3"
-  local adapter_id
-  local -a summaries=()
+  local adapter_id separator="" linked_any=0 icon
 
   for adapter_id in ${(s:,:)adapters}; do
     [[ -n "$adapter_id" ]] || continue
     agents::set_adapter_target_state "$adapter_id" "$source_path" "$install_name"
-    case "$AGENTS_ADAPTER_TARGET_STATUS" in
-      linked) summaries+=("${adapter_id}:linked") ;;
-      materialized) summaries+=("${adapter_id}:materialized") ;;
-      conflict) summaries+=("${adapter_id}:conflict") ;;
-      missing) summaries+=("${adapter_id}:missing") ;;
-      unavailable) summaries+=("${adapter_id}:unavailable") ;;
-      *) summaries+=("${adapter_id}:${AGENTS_ADAPTER_TARGET_STATUS}") ;;
-    esac
+    [[ "$AGENTS_ADAPTER_TARGET_STATUS" == "linked" ]] || continue
+    icon="$(agents::adapter_icon "$adapter_id")"
+    print -n -- "$separator"
+    print -n -- "$icon"
+    separator=" "
+    linked_any=1
   done
 
-  print -r -- "${(j:, :)summaries}"
+  if (( linked_any == 0 )); then
+    ui::muted "nowhere"
+  fi
 }
 
 agents::print_skill_json_record() {
@@ -1019,7 +1229,7 @@ agents::print_skill_json_record() {
   print -n -- "  }"
 }
 
-agents::skill_human_rows() {
+agents::skill_human_record() {
   local id="$1"
   local inventory_kind="$2"
   local record_status="$3"
@@ -1031,18 +1241,46 @@ agents::skill_human_rows() {
   local adapters="${9}"
   local source_path="${10}"
   local target_source_path="${11}"
-  local adapter_summary source_detail revision_detail
+  local linked_adapters source_detail revision_detail display_path status_label
 
-  adapter_summary="$(agents::adapter_target_summary "$adapters" "$target_source_path" "$install_name")"
-  source_detail="$source"
-  [[ -n "$source_id" ]] && source_detail="$source_detail:$source_id"
-  [[ -n "$ref" ]] && source_detail="$source_detail@$ref"
+  linked_adapters="$(agents::human_linked_adapters "$adapters" "$target_source_path" "$install_name")"
+  source_detail="$source_id"
+  [[ -n "$source_detail" ]] || source_detail="$source"
   revision_detail="$revision"
   [[ -n "$revision_detail" ]] || revision_detail="unknown"
+  display_path="$source_path"
 
-  print -r -- "$(ui::align_pair "$(ui::code "$id")" "${inventory_kind}; ${record_status}; ${adapter_summary}" 22)"
-  print -r -- "$(ui::align_pair "$(ui::muted "source")" "${source_detail}; revision ${revision_detail}" 22)"
-  print -r -- "$(ui::align_pair "$(ui::muted "path")" "$source_path" 22)"
+  if [[ "$inventory_kind" == "internal" ]]; then
+    display_path="${source_path#$DOTFILES_ROOT/}"
+  fi
+
+  print -r -- "$(ui::list_item "$(ui::code "$id")")"
+  if [[ "$inventory_kind" == "external" ]]; then
+    status_label="$(agents::human_status "$record_status" "${record_status// /_}")"
+    print -r -- "    $(ui::align_pair "$(ui::muted "status")" "$status_label" 9)"
+  fi
+  print -r -- "    $(ui::align_pair "$(ui::muted "linked")" "$linked_adapters" 9)"
+  if [[ "$inventory_kind" == "external" ]]; then
+    if [[ "$revision_detail" != "unknown" ]]; then
+      revision_detail="${revision_detail[1,12]}"
+    fi
+    source_detail="${source_detail}@${revision_detail}"
+    [[ -n "$ref" ]] && source_detail="${source_detail} (${ref})"
+    print -r -- "    $(ui::align_pair "$(ui::muted "source")" "$source_detail" 9)"
+  fi
+  print -r -- "    $(ui::align_pair "$(ui::muted "path")" "$display_path" 9)"
+}
+
+agents::print_skill_human_section() {
+  local title="$1"
+  shift || true
+  local record
+
+  (( $# > 0 )) || return 0
+  printf '\n%s\n' "$(ui::section "$title")"
+  for record in "$@"; do
+    print -r -- "$record"
+  done
 }
 
 agents::list_external_skills() {
@@ -1051,8 +1289,8 @@ agents::list_external_skills() {
   local skill_id skill_path
   local listed=0 first_json=1 output_json=0
   local input_field="" usage_field=""
-  local -a human_rows=()
-  local human_line
+  local -a internal_records=() external_records=()
+  local human_record
 
   if (( $# > 0 )); then
     if typeset -f ui::validation_error >/dev/null 2>&1; then
@@ -1086,9 +1324,8 @@ agents::list_external_skills() {
       agents::print_skill_json_record "$skill_id" "internal" "available" "repository" "dotfiles" "" "" "$skill_id" "codex,claude" "preserve" "" "$skill_path" ""
       first_json=0
     else
-      while IFS= read -r human_line; do
-        human_rows+=("$human_line")
-      done < <(agents::skill_human_rows "$skill_id" "internal" "available" "repository" "dotfiles" "" "" "$skill_id" "codex,claude" "$skill_path" "$skill_path")
+      human_record="$(agents::skill_human_record "$skill_id" "internal" "available" "repository" "dotfiles" "" "" "$skill_id" "codex,claude" "$skill_path" "$skill_path")"
+      internal_records+=("$human_record")
     fi
   done
 
@@ -1125,9 +1362,8 @@ agents::list_external_skills() {
       continue
     fi
 
-    while IFS= read -r human_line; do
-      human_rows+=("$human_line")
-    done < <(agents::skill_human_rows "$artifact_id" "external" "${skill_status//_/ }" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$source_path" "$target_dir")
+    human_record="$(agents::skill_human_record "$artifact_id" "external" "${skill_status//_/ }" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$source_path" "$target_dir")"
+    external_records+=("$human_record")
   done < <(catalog::external_skill_artifact_records)
 
   if [[ "$output_json" -eq 1 ]]; then
@@ -1137,8 +1373,10 @@ agents::list_external_skills() {
     print -r -- "]"
   fi
 
-  if [[ "$output_json" -eq 0 && ${#human_rows[@]} -gt 0 ]]; then
-    ui::report_section "Agent skills:" "${human_rows[@]}"
+  if (( output_json == 0 && (${#internal_records[@]} > 0 || ${#external_records[@]} > 0) )); then
+    printf '\n%s\n' "$(ui::section "Agent skills")"
+    agents::print_skill_human_section "Internal" "${internal_records[@]}"
+    agents::print_skill_human_section "External" "${external_records[@]}"
   fi
 
   if (( listed == 0 )); then

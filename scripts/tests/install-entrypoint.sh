@@ -215,12 +215,20 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "impeccable-claude:impeccable (impeccable)"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
 
+  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_agent_skills" complete agent-skills
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "astro-solid-integration:astro-solid-integration (internal)"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "solidjs-development:solidjs-development (internal)"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "gate:gate (gate)"
+  install_entrypoint_test::assert_no_stderr "dotfiles_complete_agent_skills"
+
   install_entrypoint_test::run_dotfiles_command "dotfiles_agents_list" agents list
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "AGENT SKILLS"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "INTERNAL"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "EXTERNAL"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "planning"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "internal; available"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "linked    "
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "gate"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "external; not installed"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "status    not installed"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "humanize-korean"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "codex/skills/humanize-korean"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "impeccable"

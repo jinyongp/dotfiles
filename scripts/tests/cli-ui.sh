@@ -154,9 +154,118 @@ PY
     TERM="xterm-256color" \
     zsh -f -c 'dfx() { dotfiles "$@"; }; dfx agents list' >"$WORK_DIR/dfx_agents_list.out" 2>"$WORK_DIR/dfx_agents_list.err"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "AGENT SKILLS"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "INTERNAL"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "EXTERNAL"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "planning"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "codex:linked"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "claude:unavailable"
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" $'linked    \xee\xb2\x81'
+  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "nowhere"
+
+  python3 - "$WORK_DIR/dfx_agents_list.out" <<'PY'
+import sys
+
+lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
+assert lines.index("INTERNAL") < lines.index("EXTERNAL"), lines
+assert any(line.strip().lstrip("-• ") == "astro-solid-integration" for line in lines), lines
+assert any(line.strip().lstrip("-• ") == "gate" for line in lines), lines
+assert any(line.startswith("    linked    \uec81") for line in lines), lines
+assert any(line == "    path      agents/skills/astro-solid-integration" for line in lines), lines
+assert any(line.startswith("    source    gate@") and line.endswith(" (main)") for line in lines), lines
+assert not any("source    gate@main" in line or " · " in line for line in lines), lines
+assert not any(line.startswith("  - source") or line.startswith("  - path") for line in lines), lines
+assert not any("repository:dotfiles; revision unknown" in line for line in lines), lines
+PY
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    FORCE_COLOR=1 \
+    UI_ENV_STDOUT_IS_TTY=1 \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    dotfiles agents list >"$WORK_DIR/agents_inventory_color.out" 2>"$WORK_DIR/agents_inventory_color.err"
+
+  python3 - "$WORK_DIR/agents_inventory_color.out" <<'PY'
+import sys
+
+output = open(sys.argv[1], "rb").read()
+assert "\uec81".encode() in output
+assert b"\x1b[32m" + "\uec81".encode() not in output
+assert "\uec82".encode() not in output
+assert b"codex:linked" not in output
+assert b"codex:missing" not in output
+PY
+  [[ ! -s "$WORK_DIR/agents_inventory_color.err" ]] || cli_ui_test::fail "colored agents inventory should not emit stderr"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    DOTFILES_INSTALL_UI_MODE=plain \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    dotfiles agents list >"$WORK_DIR/agents_inventory_plain.out" 2>"$WORK_DIR/agents_inventory_plain.err"
+  cli_ui_test::assert_contains "$WORK_DIR/agents_inventory_plain.out" "linked    codex"
+  cli_ui_test::assert_not_contains "$WORK_DIR/agents_inventory_plain.out" $'\xee\xb2\x81'
+  [[ ! -s "$WORK_DIR/agents_inventory_plain.err" ]] || cli_ui_test::fail "plain agents inventory should not emit stderr"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    FORCE_COLOR=1 \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    zsh -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      dotfiles::log_success "Updated external agent skill gate to abc123"
+    ' >"$WORK_DIR/agents_sync_color.out" 2>"$WORK_DIR/agents_sync_color.err"
+
+  python3 - "$WORK_DIR/agents_sync_color.out" <<'PY'
+import sys
+
+output = open(sys.argv[1], "rb").read()
+assert b"\x1b[32mdone\x1b[0m  Updated external agent skill gate to abc123" in output
+assert b"\x1b[1;32m" not in output
+assert output.count(b"\x1b[32m") == 1
+PY
+  [[ ! -s "$WORK_DIR/agents_sync_color.err" ]] || cli_ui_test::fail "agents sync color rendering should not emit stderr"
+
+  env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    XDG_CONFIG_HOME="$CONFIG_DIR" \
+    DOTFILES_PLATFORM="macos" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_INSTALL_UI_MODE=json \
+    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    zsh -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      dotfiles::log_success "Updated external agent skill gate to abc123"
+    ' >"$WORK_DIR/agents_sync_json.out" 2>"$WORK_DIR/agents_sync_json.err"
+
+  python3 - "$WORK_DIR/agents_sync_json.out" <<'PY'
+import json
+import sys
+
+event = json.load(open(sys.argv[1], encoding="utf-8"))
+assert event["type"] == "success"
+assert event["data"]["message"] == "Updated external agent skill gate to abc123"
+PY
+  [[ ! -s "$WORK_DIR/agents_sync_json.err" ]] || cli_ui_test::fail "agents sync JSON rendering should not emit stderr"
 
   printf 'ok agents_inventory\n'
 }
@@ -177,7 +286,7 @@ install:run the interactive installer or direct install target
 uninstall:remove dotfiles-managed links and agent instruction blocks
 list:list direct install targets
 themes:manage shell theme selection and dependencies
-agents:manage external agent skills
+agents:manage internal and external agent skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
 doctor:check the local dotfiles setup
