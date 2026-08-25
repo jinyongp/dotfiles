@@ -166,6 +166,7 @@ Machine-local overrides and generated config live outside the repository.
 - Git path overrides: `~/.config/dotfiles/git/root.local.ini`
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
 AI agent setup is intentionally additive. `./install agents` keeps shared rule files in the repo-managed `agents/rules/` directory and shared skill sources in `agents/skills/`, then adds or updates a marked include block in `~/.codex/AGENTS.md`.
+For Codex, it also links `agents/codex/rules/dotfiles.rules` to `~/.codex/rules/dotfiles.rules`. Codex-managed approvals remain in `~/.codex/rules/default.rules` and are preserved. Run `dotfiles install agents codex` to apply or refresh the link, then restart Codex.
 For Codex, it also links the shared `caveman`, `git-commit`, `planning`, `review-loop`, and `taskwarrior` skills into `~/.codex/skills/<name>` when the target path does not already exist.
 External skills are declared as source records plus artifact records. Sources define the Git repository URL and ref. Artifacts define the skill path, install name, target adapters, kind, and copy policy. During `./install agents`, the installer downloads missing or stale external skill artifacts into `~/.config/dotfiles/agents/external-skills/<artifact>`, records the resolved revision and artifact metadata in `~/.config/dotfiles/agents/external-skills.lock`, and links each artifact only into its configured adapters. Artifacts that use repo-internal symlinks can opt into symlink materialization so cached skills stay self-contained. Run `dotfiles agents sync [skill...]` to refresh external cache entries and reconcile both repository-managed and external skill links. Existing conflicting targets are reported and preserved. The install command remains responsible for agent rule blocks such as `AGENTS.md` and `CLAUDE.md`.
 It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
@@ -208,6 +209,7 @@ checkout or dotfiles external skill cache:
 - `~/.gitconfig`
 - `~/.config/nvim`
 - `~/.codex/skills/<name>`
+- `~/.codex/rules/dotfiles.rules`
 - `~/.claude/skills/<name>`
 
 It also removes matching managed instruction blocks from `~/.codex/AGENTS.md`

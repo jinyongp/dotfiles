@@ -140,6 +140,23 @@ agents::codex_skills_dir() {
   print -r -- "$HOME/.codex/skills"
 }
 
+agents::codex_rules_dir() {
+  print -r -- "$HOME/.codex/rules"
+}
+
+agents::codex_rules_source_path() {
+  print -r -- "$DOTFILES_ROOT/agents/codex/rules/dotfiles.rules"
+}
+
+agents::install_codex_rules() {
+  local source_path target_path
+
+  source_path="$(agents::codex_rules_source_path)"
+  target_path="$(agents::codex_rules_dir)/dotfiles.rules"
+
+  agents::link_preserving_existing "$source_path" "$target_path" "Codex rules"
+}
+
 agents::claude_path() {
   print -r -- "$HOME/.claude/CLAUDE.md"
 }
@@ -197,18 +214,19 @@ agents::external_artifact_metadata_valid() {
 agents::link_preserving_existing() {
   local source_path="$1"
   local target_path="$2"
+  local item_label="${3:-Agent skill}"
 
   dotfiles::ensure_dir "${target_path:h}"
 
   if [[ -L "$target_path" && "$(readlink "$target_path")" == "$source_path" ]]; then
-    dotfiles::record_reused_quiet "Agent skill link already in place: $(dotfiles::display_path "$target_path")"
+    dotfiles::record_reused_quiet "$item_label link already in place: $(dotfiles::display_path "$target_path")"
     dotfiles::log_info "Already linked: $target_path"
     return 0
   fi
 
   if [[ -e "$target_path" || -L "$target_path" ]]; then
-    dotfiles::record_skipped_quiet "Agent skill already exists: $(dotfiles::display_path "$target_path")"
-    dotfiles::log_info "Preserving existing agent skill: $target_path"
+    dotfiles::record_skipped_quiet "$item_label already exists: $(dotfiles::display_path "$target_path")"
+    dotfiles::log_info "Preserving existing $item_label: $target_path"
     return 0
   fi
 
@@ -1392,6 +1410,7 @@ agents::install_adapter() {
   case "$adapter_id" in
     codex)
       agents::upsert_managed_block codex "$(agents::codex_path)" || failed=1
+      agents::install_codex_rules || failed=1
       agents::install_skills "$(agents::codex_skills_dir)" || failed=1
       agents::install_external_skills "$(agents::codex_skills_dir)" codex || failed=1
       ;;

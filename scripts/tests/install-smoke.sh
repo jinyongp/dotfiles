@@ -598,6 +598,8 @@ install_smoke_test::assert_direct_agents() {
     printf '%s\n' 'Use Browser Plugin for browser checks, not Playwright.'
   } >"$HOME_DIR/.codex/AGENTS.md"
   printf '%s\n' 'local-session' >"$HOME_DIR/.codex/sessions/session.jsonl"
+  mkdir -p "$HOME_DIR/.codex/rules"
+  printf '%s\n' 'keep local approvals' >"$HOME_DIR/.codex/rules/default.rules"
   mkdir -p "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references-store"
   printf '%s\n' 'stale humanize Korean skill' >"$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/SKILL.md"
   printf '%s\n' 'cached quick rules' >"$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references-store/quick-rules.md"
@@ -615,6 +617,8 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agents install should include BASE.md first for Codex"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$HOME_DIR/.codex/skills/caveman/SKILL.md" "agents install should preserve existing legacy includes"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "Use Browser Plugin for browser checks, not Playwright." "agents install should preserve existing legacy rules"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/rules/dotfiles.rules" "$DOTFILES_ROOT/agents/codex/rules/dotfiles.rules"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/rules/default.rules" "keep local approvals" "agents install should preserve Codex local approval rules"
   install_smoke_test::assert_file_contains "$HOME_DIR/.claude/CLAUDE.md" "<!-- dotfiles:agents:claude:start -->" "agents install should add managed Claude block"
   if grep -Fq -- "$DOTFILES_ROOT/agents/rules/PLANNING.md" "$HOME_DIR/.codex/AGENTS.md"; then
     install_smoke_test::fail "codex install should not always-read planning rules"
@@ -694,6 +698,23 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
   printf '%s\n' '---' 'name: outside' '---' >"$outside_dir/SKILL.md"
   printf '%s\n' 'cached gate skill' >"$DOTFILES_CONFIG_DIR/agents/external-skills/gate/SKILL.md"
   printf '%s\n' $'gate	legacy-revision	main	https://github.com/jinyongp/gate.git	skills/gate	2000-01-01T00:00:00Z' >"$DOTFILES_CONFIG_DIR/agents/external-skills.lock"
+
+  mkdir -p "$HOME_DIR/.codex/rules"
+  printf '%s\n' 'keep existing Codex rules' >"$HOME_DIR/.codex/rules/dotfiles.rules"
+  if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::install_codex_rules
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "existing Codex rules target should be preserved"
+  fi
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/rules/dotfiles.rules" "keep existing Codex rules" "Codex rules install should preserve an existing target"
 
   if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
     DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
@@ -1017,6 +1038,7 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
       source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
       source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
       agents::upsert_managed_block() { return 1; }
+      agents::install_codex_rules() { return 0; }
       agents::install_skills() { return 0; }
       agents::install_external_skills() { return 0; }
       module_agents_install_items codex

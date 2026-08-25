@@ -81,6 +81,12 @@ dotfiles::remove_managed_agent_links() {
   done
 }
 
+dotfiles::remove_managed_codex_rules() {
+  local path="$HOME/.codex/rules/dotfiles.rules"
+
+  dotfiles::remove_managed_symlink "$path" "$DOTFILES_ROOT/agents/codex/rules" "Codex rules link"
+}
+
 dotfiles::remove_managed_agent_block() {
   local adapter_id="$1"
   local target_path="$2"
@@ -158,6 +164,7 @@ dotfiles::uninstall() {
   done
 
   dotfiles::remove_managed_agent_links "$config_dir"
+  dotfiles::remove_managed_codex_rules
   dotfiles::remove_managed_agent_block codex "$HOME/.codex/AGENTS.md"
   dotfiles::remove_managed_agent_block claude "$HOME/.claude/CLAUDE.md"
 
