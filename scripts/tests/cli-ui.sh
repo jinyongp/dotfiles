@@ -104,7 +104,7 @@ path, root, home = sys.argv[1:]
 records = json.load(open(path, encoding="utf-8"))
 by_id = {record["id"]: record for record in records}
 
-for skill_id in ("planning", "review-loop", "taskwarrior", "git-commit", "caveman"):
+for skill_id in ("planning", "review-loop", "taskwarrior", "git-commit"):
     assert skill_id in by_id, skill_id
     assert by_id[skill_id]["kind"] == "internal"
     assert by_id[skill_id]["source"] == "repository"

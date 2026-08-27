@@ -107,7 +107,7 @@ install_execution_test::simple_step() {
 
 install_execution_test::quiet_step() {
   dotfiles::record_reused_quiet "Agent skill link already in place: ~/.codex/skills/git-commit"
-  dotfiles::record_skipped_quiet "Agent skill already exists: ~/.codex/skills/caveman"
+  dotfiles::record_skipped_quiet "Agent skill already exists: ~/.codex/skills/local-only"
 }
 
 install_execution_test::assert_successful_progress() {

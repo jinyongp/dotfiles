@@ -589,12 +589,12 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::setup_case "direct-agents"
 
   mkdir -p "$HOME_DIR/.codex/sessions" "$HOME_DIR/.codex/cache"
-  mkdir -p "$HOME_DIR/.codex/skills/caveman"
+  mkdir -p "$HOME_DIR/.codex/skills/local-only"
   printf '%s\n' '{"token":"keep"}' >"$HOME_DIR/.codex/auth.json"
-  printf '%s\n' 'local-caveman-skill' >"$HOME_DIR/.codex/skills/caveman/SKILL.md"
+  printf '%s\n' 'local-only-skill' >"$HOME_DIR/.codex/skills/local-only/SKILL.md"
   {
     printf '%s\n' '# Local Codex Rules'
-    printf '%s\n' "@$HOME_DIR/.codex/skills/caveman/SKILL.md"
+    printf '%s\n' "@$HOME_DIR/.codex/skills/local-only/SKILL.md"
     printf '%s\n' 'Use Browser Plugin for browser checks, not Playwright.'
   } >"$HOME_DIR/.codex/AGENTS.md"
   printf '%s\n' 'local-session' >"$HOME_DIR/.codex/sessions/session.jsonl"
@@ -615,7 +615,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "# Local Codex Rules" "agents install should preserve existing Codex AGENTS.md content"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "<!-- dotfiles:agents:codex:start -->" "agents install should add managed Codex block"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agents install should include BASE.md first for Codex"
-  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$HOME_DIR/.codex/skills/caveman/SKILL.md" "agents install should preserve existing legacy includes"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "@$HOME_DIR/.codex/skills/local-only/SKILL.md" "agents install should preserve existing legacy includes"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/AGENTS.md" "Use Browser Plugin for browser checks, not Playwright." "agents install should preserve existing legacy rules"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/rules/dotfiles.rules" "$DOTFILES_ROOT/agents/codex/rules/dotfiles.rules"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/rules/default.rules" "keep local approvals" "agents install should preserve Codex local approval rules"
@@ -646,7 +646,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'humanize-korean	smoke-im-not-ai-skill-revision	im-not-ai	main	https://github.com/epoko77-ai/im-not-ai.git	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks' "agents install should record external humanize-korean skill revision"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.agents/skills/impeccable	impeccable	codex	skill	preserve' "agents install should record external impeccable skill revision"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable-claude	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.claude/skills/impeccable	impeccable	claude	skill	preserve' "agents install should record external impeccable Claude skill revision"
-  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/caveman/SKILL.md" "local-caveman-skill" "agents install should preserve existing skill directories"
+  install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/local-only/SKILL.md" "local-only-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"

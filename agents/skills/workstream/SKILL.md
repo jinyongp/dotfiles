@@ -15,7 +15,6 @@ skills; it does not replace them.
 
 ## Skill Chain
 
-- `caveman`: preserve active terse style unless user says `stop caveman` or `normal mode`.
 - `survey`: load before planning when repository structure, commands, or validation paths are not already known.
 - `planning`: load for intake, specification, clarification, artifact analysis, tradeoffs, success criteria, and plan docs.
 - `queue`: load to convert plan work items into a Taskwarrior task draft.
@@ -185,10 +184,8 @@ of silently diverging. Close it only when the workstream is complete or truly
 blocked.
 
 Before creating a goal, read `references/goal-continuity.md` completely. Copy
-its common rules, the applicable goal-type termination rule, and, when caveman
-is active, its literal caveman payload into the objective. When caveman is
-active, load that skill first. Labels such as `caveman-style` or `terse` are not
-sufficient after resume or compaction.
+its common rules and the applicable goal-type termination rule into the
+objective.
 
 ## Flow
 

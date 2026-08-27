@@ -64,7 +64,6 @@ verification, review, and closeout contracts.
 
 ## Constraints
 
-- Caveman response mode remains active until the user disables it.
 - Keep `SKILL.md` concise and below the skill-creator 500-line guidance.
 - Use proportionate artifacts: small maintenance work must not require a full
   product specification.

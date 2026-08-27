@@ -74,7 +74,7 @@ install_report_test::main() {
   )
   DOTFILES_RESULT_SKIPPED_ITEMS=(
     "TypeScript editor tooling"
-    "Agent skill already exists: ~/.codex/skills/caveman"
+    "Agent skill already exists: ~/.codex/skills/local-only"
   )
   DOTFILES_RESULT_CREATED_FILES=()
   DOTFILES_RESULT_UPDATED_FILES=(
@@ -103,7 +103,7 @@ install_report_test::main() {
   install_report_test::assert_contains "$output" "Agent instruction blocks already current: Claude" "expected agent instruction block aggregation"
   install_report_test::assert_contains "$output" "SKIPPED" "missing skipped section"
   install_report_test::assert_contains "$output" "TypeScript editor tooling" "expected skipped item in report"
-  install_report_test::assert_contains "$output" "Existing agent skills preserved: ~/.codex/skills/caveman" "expected existing agent skill aggregation"
+  install_report_test::assert_contains "$output" "Existing agent skills preserved: ~/.codex/skills/local-only" "expected existing agent skill aggregation"
   install_report_test::assert_contains "$output" "FILE CHANGES" "missing file changes section"
   install_report_test::assert_contains "$output" "Updated: ~/.config/dotfiles/install.env, ~/.config/dotfiles/git/root.local.ini" "expected updated files aggregation"
   install_report_test::assert_contains "$output" "Git personal config" "missing git config section"

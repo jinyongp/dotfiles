@@ -2,7 +2,6 @@
 
 typeset -ga AGENTS_MANAGED_RULE_FILES=(
   BASE.md
-  CAVEMAN.md
 )
 
 module_agents_supported() {
