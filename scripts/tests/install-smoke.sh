@@ -623,6 +623,7 @@ install_smoke_test::assert_direct_agents() {
   if grep -Fq -- "$DOTFILES_ROOT/agents/rules/PLANNING.md" "$HOME_DIR/.codex/AGENTS.md"; then
     install_smoke_test::fail "codex install should not always-read planning rules"
   fi
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/dev-docs" "$DOTFILES_ROOT/agents/skills/dev-docs"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/planning" "$DOTFILES_ROOT/agents/skills/planning"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
@@ -630,6 +631,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/humanize-korean" "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/dev-docs" "$DOTFILES_ROOT/agents/skills/dev-docs"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable-claude"
