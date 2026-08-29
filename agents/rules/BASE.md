@@ -8,6 +8,13 @@ Do not overwrite user changes.
 Keep edits scoped to request.
 Run relevant validation when practical.
 
+## Canonical State
+
+Express preferences and selected designs as positive statements of the current
+state. Exclude rejected proposals, superseded alternatives, and expired
+constraints. Retain an exact prohibition only when it is necessary to preserve
+a durable safety, legal, compatibility, or data constraint.
+
 ## Context Hygiene
 
 Before persisting or forwarding a correction, rejection, or negative
