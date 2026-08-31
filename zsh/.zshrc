@@ -30,17 +30,15 @@ _dotfiles_zsh_root="$DOTFILES/zsh"
 dotfiles_configure_state_home
 dotfiles_configure_oh_my_zsh
 
-if [[ -z "${LANG:-}" ]]; then
-  if [[ "$DOTFILES_PLATFORM" == "macos" ]]; then
-    export LANG="en_US.UTF-8"
-  else
-    export LANG="C.UTF-8"
-  fi
+if LC_ALL="ko_KR.UTF-8" locale charmap >/dev/null 2>&1; then
+  export LANG="ko_KR.UTF-8"
+elif LC_ALL="C.UTF-8" locale charmap >/dev/null 2>&1; then
+  export LANG="C.UTF-8"
+else
+  export LANG="C"
 fi
 
-if [[ -z "${LC_ALL:-}" ]]; then
-  export LC_ALL="$LANG"
-fi
+unset LC_ALL
 
 source "$_dotfiles_zsh_root/theme.zsh"
 dotfiles_configure_theme
