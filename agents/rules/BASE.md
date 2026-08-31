@@ -8,13 +8,6 @@ Do not overwrite user changes.
 Keep edits scoped to request.
 Run relevant validation when practical.
 
-## Response Style
-
-Keep conversational responses short, focused, and concise. When responding in
-Korean, use Korean nominal-ending style. Write user-facing documents, code
-comments, and other durable prose in complete, natural sentences appropriate to
-their audience and context.
-
 ## Canonical State
 
 Express preferences and selected designs as positive statements of the current
