@@ -123,4 +123,5 @@ Never modify another project unless the user explicitly directs changes to that 
 
 ## Verify
 
-Turn plan into checks. Bug: identify/repro, fix root, validate regression. Validation change: valid + invalid. Refactor: preserve before/after. Multi-step: concise plan + per-step validation. Skipped/blocked validation: exact gap.
+Turn material risks into checks. First decide whether validation is necessary based on plausible failure, impact, useful signal, and cost. Do not add checks for trivial or mechanical changes solely because an item ended; group related small edits and validate at a meaningful behavior boundary. Bug: identify/repro, fix root, validate regression. Validation change: valid + invalid. Refactor: preserve before/after. Multi-step: concise plan + warranted per-step validation. Skipped/blocked required validation: exact gap.
+For sequential work with warranted checks, classify validation as per-item or pre-close integrated. Run lightweight checks before ending an item only when useful. Schedule justified heavyweight checks after all implementation items and before close, while keeping their commands, scope, and prerequisites ready after each item.

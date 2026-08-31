@@ -10,7 +10,10 @@ description: >
 
 # Verify
 
-Define the smallest checks that prove the change, then run what is practical.
+Run validation only when it can materially reduce uncertainty about a plausible
+failure. If no check adds meaningful signal relative to its cost, report
+`not-needed`. Otherwise define the smallest checks that prove the change, then
+run what is practical.
 Do not edit code unless the user asks or the active workflow already permits
 fixes.
 
@@ -19,6 +22,7 @@ fixes.
 1. Classify change
    - bugfix, feature, refactor, UI, API, database, config, docs, dependency, tooling.
    - Multiple types allowed. Validate each material risk.
+   - Identify a plausible failure and its impact. No material failure means validation is `not-needed`.
 
 2. Pick checks
    - Prefer repo-local scripts and existing test style.
@@ -33,7 +37,22 @@ fixes.
 4. Report result
    - Pass: name checks run.
    - Fail: include failing command and actionable cause.
+   - Not needed: explain why available checks would add no meaningful signal.
    - Skipped/blocked: exact gap and why it matters.
+
+## Cadence
+
+For sequential work items:
+
+- Group related small edits into meaningful work items. Do not validate per line, file, or save merely because an edit occurred.
+- Decide whether validation is needed for each meaningful work item before choosing checks.
+- Run lightweight targeted checks before ending an item only when they cover a plausible failure at reasonable cost.
+- Plan heavyweight checks only when integration, shared behavior, public contracts, or other material risk justifies their cost.
+- Classify warranted checks as per-item or pre-close integrated validation based on runtime, resource cost, setup cost, and coverage.
+- After each item, keep every planned heavyweight check ready: record its exact command, scope, required environment or data, and any setup already completed.
+- Defer heavyweight checks by default when later work does not depend on their result. Run them after all implementation items and before closeout.
+- Treat `not-needed` items as complete without running checks. When required final validation is pending, treat affected items as implementation-complete but not done until planned heavyweight checks pass.
+- If heavyweight validation fails, keep or return affected work to pending, fix the cause, then rerun affected targeted checks and the heavyweight validation.
 
 ## Matrix
 
@@ -87,10 +106,11 @@ Dependencies:
 Verify:
 - Change type: ...
 - Checks run: ...
-- Result: pass|fail|skipped|blocked
+- Result: pass|fail|not-needed|skipped|blocked
 - Gap: ...
 ```
 
-For `workstream`, validation must pass before marking affected Taskwarrior tasks
-done. Skipped or blocked validation keeps affected tasks pending or blocked
+For `workstream`, required validation must pass before marking affected
+Taskwarrior tasks done. `not-needed` work may be marked done without checks.
+Skipped or blocked required validation keeps affected tasks pending or blocked
 unless the user explicitly accepts deferral.

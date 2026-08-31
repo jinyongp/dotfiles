@@ -20,7 +20,9 @@ validation, or other quality workflows during closeout.
 1. Plan
    - Confirm `Goal` satisfied.
    - Confirm `Work Items` done or explicitly deferred.
-   - Confirm `Validation` run, skipped, or blocked with exact reason.
+   - Confirm `Validation` passed, was `not-needed`, or is skipped or blocked with exact reason.
+   - Confirm every required pre-close heavyweight check ran after the final implementation change and passed.
+   - Do not declare overall completion while required heavyweight validation is pending or failed.
    - Confirm unresolved decisions were not hidden in docs.
 
 2. Taskwarrior
@@ -36,8 +38,8 @@ validation, or other quality workflows during closeout.
    - Do not revert unrelated user changes.
 
 4. Commit readiness
-   - Ready only when validation passed and diff scope matches request.
-   - Skipped or blocked validation is not commit-ready unless the user explicitly accepts the residual risk.
+   - Ready only when required validation passed or was `not-needed`, and diff scope matches request.
+   - Skipped or blocked required validation is not commit-ready unless the user explicitly accepts the residual risk.
    - If user asks for commit, load `git-commit`.
 
 ## Output
@@ -46,7 +48,7 @@ validation, or other quality workflows during closeout.
 Close:
 - Plan: complete|partial|blocked
 - Tasks: clear|pending|blocked
-- Validation: pass|fail|skipped|blocked
+- Validation: pass|fail|not-needed|skipped|blocked
 - Git: clean|dirty-in-scope|dirty-mixed
 - Risk: ...
 - Next: ...
