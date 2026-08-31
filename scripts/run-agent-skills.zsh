@@ -17,13 +17,13 @@ source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
 source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
 
 agent_skills::usage() {
-  ui::help_start "dotfiles agents" "Manage internal and external agent skills."
+  ui::help_start "dotfiles agents" "Manage agent rules and skills."
   ui::help_usage \
     "dotfiles agents list" \
     "dotfiles agents sync [skill...]"
   ui::help_commands \
     $'list\tlist\tList internal and external skills with adapter install state.' \
-    $'sync\tsync\tUpdate external sources and reconcile skill links.'
+    $'sync\tsync\tRefresh detected agent rules and all skills; named skills stay scoped.'
 }
 
 case "$command_name" in

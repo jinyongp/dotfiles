@@ -113,7 +113,7 @@ Notes:
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`
 - direct `agents` installs shared AI agent rules for detected tools; pass `codex` to prepare Codex config even when the CLI is not installed
-- `dotfiles agents sync [skill...]` refreshes selected external sources and reconciles missing internal and external skill links for detected agents; existing conflicting files or directories are preserved
+- `dotfiles agents sync` refreshes managed instruction blocks and rules for detected agents, updates external sources, and reconciles internal and external skill links; `dotfiles agents sync <skill...>` keeps the operation scoped to the named skills and leaves instruction blocks unchanged; existing conflicting files or directories are preserved
 - `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/task` shim stays ahead in PATH and delegates to that binary
 
 ## Conditional Prompts
@@ -170,7 +170,7 @@ For Codex, it also links `agents/codex/rules/dotfiles.rules` to `~/.codex/rules/
 For Codex and Claude, it links every repository-managed skill under
 `agents/skills/<name>` into the matching `~/.codex/skills/<name>` or
 `~/.claude/skills/<name>` path when the target does not already exist.
-External skills are declared as source records plus artifact records. Sources define the Git repository URL and ref. Artifacts define the skill path, install name, target adapters, kind, and copy policy. During `./install agents`, the installer downloads missing or stale external skill artifacts into `~/.config/dotfiles/agents/external-skills/<artifact>`, records the resolved revision and artifact metadata in `~/.config/dotfiles/agents/external-skills.lock`, and links each artifact only into its configured adapters. Artifacts that use repo-internal symlinks can opt into symlink materialization so cached skills stay self-contained. Run `dotfiles agents sync [skill...]` to refresh external cache entries and reconcile both repository-managed and external skill links. Existing conflicting targets are reported and preserved. The install command remains responsible for agent rule blocks such as `AGENTS.md` and `CLAUDE.md`.
+External skills are declared as source records plus artifact records. Sources define the Git repository URL and ref. Artifacts define the skill path, install name, target adapters, kind, and copy policy. During `./install agents`, the installer downloads missing or stale external skill artifacts into `~/.config/dotfiles/agents/external-skills/<artifact>`, records the resolved revision and artifact metadata in `~/.config/dotfiles/agents/external-skills.lock`, and links each artifact only into its configured adapters. Artifacts that use repo-internal symlinks can opt into symlink materialization so cached skills stay self-contained. Run `dotfiles agents sync` to refresh detected agent instruction blocks and rules, external cache entries, and repository-managed and external skill links. Pass skill names to refresh only those skills without changing instruction blocks. Existing conflicting targets are reported and preserved.
 It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
 
 Project-local task mode is opt-in per repository. When `.tasks/taskrc` exists in

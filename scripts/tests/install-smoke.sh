@@ -977,6 +977,50 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
     install_smoke_test::fail "internal sync should link Astro Solid skill for Codex"
   [[ "$(readlink "$sync_home/.claude/skills/solidjs-development")" == "$DOTFILES_ROOT/agents/skills/solidjs-development" ]] || \
     install_smoke_test::fail "internal sync should link SolidJS skill for Claude"
+  [[ ! -e "$sync_home/.codex/AGENTS.md" ]] || \
+    install_smoke_test::fail "scoped skill sync should not update Codex instructions"
+  [[ ! -e "$sync_home/.claude/CLAUDE.md" ]] || \
+    install_smoke_test::fail "scoped skill sync should not update Claude instructions"
+  [[ ! -e "$sync_home/.codex/rules/dotfiles.rules" ]] || \
+    install_smoke_test::fail "scoped skill sync should not update Codex rules"
+
+  sync_home="$TMP_DIR/agent-sync-rules-home"
+  mkdir -p "$sync_home/.codex/rules" "$sync_home/.claude"
+  printf '%s\n' \
+    "keep codex local" \
+    "<!-- dotfiles:agents:codex:start -->" \
+    "@/tmp/old-codex-rule.md" \
+    "<!-- dotfiles:agents:codex:end -->" >"$sync_home/.codex/AGENTS.md"
+  printf '%s\n' \
+    "keep claude local" \
+    "<!-- dotfiles:agents:claude:start -->" \
+    "@/tmp/old-claude-rule.md" \
+    "<!-- dotfiles:agents:claude:end -->" >"$sync_home/.claude/CLAUDE.md"
+  if ! HOME="$sync_home" \
+    DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::detected_adapter_ids() { print -r -- "codex claude"; }
+      agents::sync_external_skills() { return 0; }
+      agents::sync_internal_skill_links() { return 0; }
+      agents::sync_external_skill_links() { return 0; }
+      agents::sync_skills
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "unscoped agent sync should refresh detected agent rules"
+  fi
+  install_smoke_test::assert_file_contains "$sync_home/.codex/AGENTS.md" "keep codex local" "agent sync should preserve local Codex instructions"
+  install_smoke_test::assert_file_contains "$sync_home/.codex/AGENTS.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agent sync should refresh the Codex managed block"
+  install_smoke_test::assert_file_contains "$sync_home/.claude/CLAUDE.md" "keep claude local" "agent sync should preserve local Claude instructions"
+  install_smoke_test::assert_file_contains "$sync_home/.claude/CLAUDE.md" "@$DOTFILES_ROOT/agents/rules/BASE.md" "agent sync should refresh the Claude managed block"
+  if grep -Fq -- "/tmp/old-" "$sync_home/.codex/AGENTS.md" "$sync_home/.claude/CLAUDE.md"; then
+    install_smoke_test::fail "agent sync should remove stale managed rule entries"
+  fi
+  install_smoke_test::assert_symlink_target "$sync_home/.codex/rules/dotfiles.rules" "$DOTFILES_ROOT/agents/codex/rules/dotfiles.rules"
 
   sync_home="$TMP_DIR/agent-sync-external-home"
   mkdir -p "$sync_home/.codex/skills" "$TMP_DIR/external-cache/gate"

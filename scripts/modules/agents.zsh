@@ -878,6 +878,27 @@ agents::sync_external_skill_links() {
   return "$failed"
 }
 
+agents::sync_detected_agent_rules() {
+  local detected_ids adapter_id failed=0
+
+  detected_ids="$(agents::detected_adapter_ids)"
+  [[ -n "$detected_ids" ]] || return 0
+
+  for adapter_id in ${=detected_ids}; do
+    case "$adapter_id" in
+      codex)
+        agents::upsert_managed_block codex "$(agents::codex_path)" || failed=1
+        agents::install_codex_rules || failed=1
+        ;;
+      claude)
+        agents::upsert_managed_block claude "$(agents::claude_path)" || failed=1
+        ;;
+    esac
+  done
+
+  return "$failed"
+}
+
 agents::print_sync_summary() {
   local linked="$1"
   local updated="$2"
@@ -885,12 +906,12 @@ agents::print_sync_summary() {
   local conflicts="$4"
 
   ui::is_json && return 0
-  printf '\n%s\n' "$(ui::section "Agent skills synced")"
+  printf '\n%s\n' "$(ui::section "Agent state synced")"
   printf '  %s\n' "$(ui::align_pair "$(ui::muted "linked")" "$linked" 12)"
   printf '  %s\n' "$(ui::align_pair "$(ui::muted "updated")" "$updated" 12)"
   printf '  %s\n' "$(ui::align_pair "$(ui::muted "reused")" "$reused" 12)"
   printf '  %s\n' "$(ui::align_pair "$(ui::muted "conflicts")" "$conflicts" 12)"
-  printf '  %s\n' "$(ui::align_pair "$(ui::muted "next")" "Start a new agent task to reload updated skills." 12)"
+  printf '  %s\n' "$(ui::align_pair "$(ui::muted "next")" "Start a new agent task to reload updated rules and skills." 12)"
 }
 
 agents::sync_external_skills() {
@@ -986,6 +1007,10 @@ agents::sync_skills() {
   reused_before=${#DOTFILES_RESULT_REUSED_ITEMS[@]}
   updated_before=${#DOTFILES_RESULT_COMPLETED_WORK[@]}
   typeset -g AGENTS_SYNC_CONFLICTS=0
+
+  if (( ${#selected_ids[@]} == 0 )); then
+    agents::sync_detected_agent_rules || failed=1
+  fi
 
   if (( external_requested == 1 )); then
     if (( ${#selected_ids[@]} == 0 )); then

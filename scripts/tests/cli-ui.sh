@@ -286,7 +286,7 @@ install:run the interactive installer or direct install target
 uninstall:remove dotfiles-managed links and agent instruction blocks
 list:list direct install targets
 themes:manage shell theme selection and dependencies
-agents:manage internal and external agent skills
+agents:manage agent rules and skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
 doctor:check the local dotfiles setup
