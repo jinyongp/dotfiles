@@ -119,6 +119,7 @@ Minimum steps/code. No unrequested feature, speculative config, one-off abstract
 ## Edit
 
 Touch request scope only. Match style. Mention unrelated dead code; don't delete unless asked. Remove only code made unused by change. Every changed line traces to goal.
+Never modify another project unless the user explicitly directs changes to that project in the current request.
 
 ## Verify
 
