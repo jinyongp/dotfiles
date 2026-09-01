@@ -88,6 +88,58 @@ dotfiles_configure_base_toolchain() {
   dotfiles_configure_pnpm_home
 }
 
+dotfiles_resolve_locale() {
+  emulate -L zsh
+
+  local available_locale available_key preferred_locale preferred_key
+  local -a available_locales preferred_locales
+
+  available_locales=("${(@f)$(LC_ALL=C LANG=C locale -a 2>/dev/null)}")
+  preferred_locales=("ko_KR.UTF-8" "C.UTF-8" "C")
+
+  for preferred_locale in "${preferred_locales[@]}"; do
+    preferred_key="${(L)preferred_locale}"
+    preferred_key="${preferred_key//-/}"
+
+    for available_locale in "${available_locales[@]}"; do
+      available_key="${(L)available_locale}"
+      available_key="${available_key//-/}"
+
+      if [[ "$available_key" == "$preferred_key" ]]; then
+        print -r -- "$available_locale"
+        return 0
+      fi
+    done
+  done
+
+  print -r -- "C"
+}
+
+dotfiles_configure_locale() {
+  local resolved_locale
+  local -a locale_categories
+
+  resolved_locale="$(dotfiles_resolve_locale)"
+  locale_categories=(
+    LC_ALL
+    LC_CTYPE
+    LC_NUMERIC
+    LC_TIME
+    LC_COLLATE
+    LC_MONETARY
+    LC_MESSAGES
+    LC_PAPER
+    LC_NAME
+    LC_ADDRESS
+    LC_TELEPHONE
+    LC_MEASUREMENT
+    LC_IDENTIFICATION
+  )
+
+  unset "${locale_categories[@]}"
+  export LANG="${resolved_locale:-C}"
+}
+
 dotfiles_ensure_writable_dir() {
   local dir_path="$1"
 

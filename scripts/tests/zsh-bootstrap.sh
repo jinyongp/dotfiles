@@ -31,6 +31,7 @@ zsh_bootstrap_test::setup_fixture() {
   NPM_GLOBAL_BIN="$HOME_DIR/Library/Application Support/npm-global/bin"
   FNM_INSTALL_DIR="$HOME_DIR/Library/Application Support/fnm"
   VSCODE_SHELL_INTEGRATION_SCRIPT="$WORK_DIR/vscode-shellIntegration-rc.zsh"
+  FAKE_LOCALE_LIST=$'C\nC.utf8\nko_KR.utf8'
 
   mkdir -p \
     "$HOME_DIR" \
@@ -59,6 +60,14 @@ zsh_bootstrap_test::setup_fixture() {
     '  printf "export PATH=\"%s/bin:$PATH\"\n" "$FAKE_BREW_PREFIX"' \
     '  printf "export MANPATH=\"%s/share/man:$MANPATH\"\n" "$FAKE_BREW_PREFIX"' \
     '  printf "export INFOPATH=\"%s/share/info:$INFOPATH\"\n" "$FAKE_BREW_PREFIX"' \
+    '  exit 0' \
+    'fi' \
+    'exit 1'
+
+  zsh_bootstrap_test::write_executable "$INITIAL_BIN/locale" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "-a" ]; then' \
+    '  printf "%s\n" "$FAKE_LOCALE_LIST"' \
     '  exit 0' \
     'fi' \
     'exit 1'
@@ -167,6 +176,7 @@ zsh_bootstrap_test::run_zsh() {
     TMPDIR="$TEST_TMPDIR/" \
     FAKE_BREW_PREFIX="$FAKE_BREW_PREFIX" \
     FNM_TEST_ROOT="$FNM_TEST_ROOT" \
+    FAKE_LOCALE_LIST="$FAKE_LOCALE_LIST" \
     VSCODE_SHELL_INTEGRATION_SCRIPT="$VSCODE_SHELL_INTEGRATION_SCRIPT" \
     "$ZSH_BIN" "$@" >"$output_file" 2>"$error_file"
 }
@@ -252,6 +262,61 @@ zsh_bootstrap_test::assert_bootstrap_guard_not_exported() {
 
   zsh_bootstrap_test::run_zsh "$name" -c 'if env | grep -q "^DOTFILES_BOOTSTRAP_LOADED="; then print -r -- guard-exported; exit 1; fi; print -r -- guard-ok'
   zsh_bootstrap_test::assert_output "$name" "guard-ok"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
+zsh_bootstrap_test::assert_locale_configuration() {
+  local name="locale_configuration"
+
+  FAKE_LOCALE_LIST=$'C\nC.utf8\nko_KR.utf8'
+  zsh_bootstrap_test::run_zsh "$name" -c '
+    export LANG="missing_LOCALE"
+    export LC_ALL="missing_LOCALE"
+    export LC_CTYPE="missing_LOCALE"
+    export LC_MESSAGES="missing_LOCALE"
+    dotfiles_configure_locale
+
+    print -r -- "LANG=$LANG"
+    for locale_var in LC_ALL LC_CTYPE LC_MESSAGES; do
+      if (( ${+parameters[$locale_var]} )); then
+        print -r -- "$locale_var=set"
+      else
+        print -r -- "$locale_var=unset"
+      fi
+    done
+  '
+
+  zsh_bootstrap_test::assert_output "$name" $'LANG=ko_KR.utf8\nLC_ALL=unset\nLC_CTYPE=unset\nLC_MESSAGES=unset'
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
+zsh_bootstrap_test::assert_locale_fallbacks() {
+  local name="locale_c_utf8_fallback"
+
+  FAKE_LOCALE_LIST=$'C\nC.utf8'
+  zsh_bootstrap_test::run_zsh "$name" -c 'print -r -- "$LANG"'
+  zsh_bootstrap_test::assert_output "$name" "C.utf8"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+
+  name="locale_c_fallback"
+  FAKE_LOCALE_LIST="C"
+  zsh_bootstrap_test::run_zsh "$name" -c 'print -r -- "$LANG"'
+  zsh_bootstrap_test::assert_output "$name" "C"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok locale_fallbacks\n'
+}
+
+zsh_bootstrap_test::assert_machine_locale_override() {
+  local name="machine_locale_override"
+
+  FAKE_LOCALE_LIST=$'C\nC.utf8\nko_KR.utf8'
+  printf '%s\n' 'export LANG="C"' >"$HOME_DIR/.config/dotfiles/env.zsh"
+  zsh_bootstrap_test::run_zsh "$name" -c 'print -r -- "$LANG"'
+  rm -f "$HOME_DIR/.config/dotfiles/env.zsh"
+
+  zsh_bootstrap_test::assert_output "$name" "C"
   zsh_bootstrap_test::assert_no_stderr "$name"
   printf 'ok %s\n' "$name"
 }
@@ -436,6 +501,9 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_noninteractive_fnm_package_engines
   zsh_bootstrap_test::assert_noninteractive_fnm_mode
   zsh_bootstrap_test::assert_bootstrap_guard_not_exported
+  zsh_bootstrap_test::assert_locale_configuration
+  zsh_bootstrap_test::assert_locale_fallbacks
+  zsh_bootstrap_test::assert_machine_locale_override
   zsh_bootstrap_test::assert_set_e_direct_bootstrap
   zsh_bootstrap_test::assert_shared_runtime_paths
   zsh_bootstrap_test::assert_task_shim_project_local
