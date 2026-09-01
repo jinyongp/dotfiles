@@ -22,6 +22,12 @@ if ! typeset -f dotfiles::execution_record_event_quiet >/dev/null 2>&1; then
   }
 fi
 
+if ! typeset -f dotfiles::execution_run_foreground >/dev/null 2>&1; then
+  dotfiles::execution_run_foreground() {
+    "$@"
+  }
+fi
+
 typeset -g DOTFILES_CONFIG_DIR="${DOTFILES_CONFIG_DIR:-$(dotfiles::config_dir)}"
 typeset -g DOTFILES_INSTALL_ENV="${DOTFILES_INSTALL_ENV:-$(dotfiles::install_env_path)}"
 typeset -g DOTFILES_ENV_ZSH="${DOTFILES_ENV_ZSH:-$(dotfiles::env_zsh_path)}"

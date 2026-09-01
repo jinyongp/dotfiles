@@ -13,6 +13,7 @@ XDG_CONFIG_HOME="$HOME/.config"
 DOTFILES_CONFIG_DIR="$XDG_CONFIG_HOME/dotfiles"
 INITIAL_BIN="$WORK_DIR/bin"
 STATE_DIR="$WORK_DIR/state"
+SHELLS_FILE="$STATE_DIR/shells"
 
 export DOTFILES_ROOT HOME XDG_CONFIG_HOME DOTFILES_CONFIG_DIR
 export PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin"
@@ -20,6 +21,7 @@ export SMOKE_STATE_DIR="$STATE_DIR"
 export SMOKE_INITIAL_BIN="$INITIAL_BIN"
 export SMOKE_GETENT_SHELL="/bin/bash"
 export SMOKE_CHSH_SHOULD_FAIL="0"
+export DOTFILES_LOGIN_SHELLS_FILE="$SHELLS_FILE"
 
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -220,6 +222,7 @@ platform_module_test::reset_state() {
   DOTFILES_EXECUTION_STEP_ACTIVE=0
   SMOKE_GETENT_SHELL="/bin/bash"
   SMOKE_CHSH_SHOULD_FAIL="0"
+  print -r -- "$INITIAL_BIN/zsh" >"$SHELLS_FILE"
 }
 
 platform_module_test::assert_apt_package_install() {
@@ -257,6 +260,23 @@ platform_module_test::assert_default_shell_failure_warns() {
   platform_module_test::assert_contains "$output" "Failed to change the default shell automatically." "missing chsh failure warning"
   platform_module_test::assert_contains "$output" "Run this manually later: chsh -s $INITIAL_BIN/zsh" "missing manual chsh follow-up"
   print -- "ok default_shell_failure_warns"
+}
+
+platform_module_test::assert_unregistered_default_shell_warns() {
+  local output_file="$WORK_DIR/chsh-unregistered.out"
+  local output=""
+
+  platform_module_test::reset_state
+  print -r -- "/bin/bash" >"$SHELLS_FILE"
+
+  shell::ensure_default_shell >"$output_file" 2>&1
+  output="$(platform_module_test::normalize_file "$output_file")"
+
+  platform_module_test::assert_contains "$output" "$INITIAL_BIN/zsh is not registered in /etc/shells" "missing unregistered shell warning"
+  platform_module_test::assert_contains "$output" "sudo tee -a /etc/shells" "missing shell registration command"
+  platform_module_test::assert_contains "$output" "Then run: chsh -s '$INITIAL_BIN/zsh'" "missing follow-up chsh command"
+  [[ ! -f "$STATE_DIR/chsh.log" ]] || platform_module_test::fail "chsh should not run for an unregistered login shell"
+  print -- "ok unregistered_default_shell_warns"
 }
 
 platform_module_test::assert_oh_my_zsh_module_wsl() {
@@ -303,6 +323,7 @@ platform_module_test::main() {
   platform_module_test::assert_apt_package_install
   platform_module_test::assert_default_shell_success
   platform_module_test::assert_default_shell_failure_warns
+  platform_module_test::assert_unregistered_default_shell_warns
   platform_module_test::assert_oh_my_zsh_module_wsl
   platform_module_test::assert_theme_powerlevel10k_bootstrap
   platform_module_test::assert_theme_skip_states

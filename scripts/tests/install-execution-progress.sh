@@ -110,6 +110,13 @@ install_execution_test::quiet_step() {
   dotfiles::record_skipped_quiet "Agent skill already exists: ~/.codex/skills/local-only"
 }
 
+install_execution_test::foreground_step() {
+  print -u2 -- "hidden before foreground command"
+  dotfiles::execution_run_foreground /bin/sh -c \
+    'printf "%s\n" "visible foreground stdout"; printf "%s\n" "visible foreground stderr" >&2'
+  print -u2 -- "hidden after foreground command"
+}
+
 install_execution_test::assert_successful_progress() {
   local output_file="$WORK_DIR/success.out"
   local output=""
@@ -237,6 +244,27 @@ install_execution_test::assert_quiet_events() {
   install_execution_test::assert_not_contains "$output" "Agent skill link already in place" "quiet reused event should not be printed inline"
   install_execution_test::assert_not_contains "$output" "Agent skill already exists" "quiet skipped event should not be printed inline"
   print -- "ok quiet_events"
+}
+
+install_execution_test::assert_foreground_command_output() {
+  local output_file="$WORK_DIR/foreground.out"
+  local output=""
+
+  install_execution_test::reset_state
+  DOTFILES_INSTALL_UI_MODE=auto
+  TERM=xterm-256color
+
+  {
+    dotfiles::execution_run_step shell "Shell" install_execution_test::foreground_step
+  } >"$output_file" 2>&1
+
+  output="$(install_execution_test::normalize_file "$output_file")"
+
+  install_execution_test::assert_contains "$output" "visible foreground stdout" "foreground stdout should bypass the step log"
+  install_execution_test::assert_contains "$output" "visible foreground stderr" "foreground stderr should bypass the step log"
+  install_execution_test::assert_not_contains "$output" "hidden before foreground command" "ordinary stderr should remain hidden before a foreground command"
+  install_execution_test::assert_not_contains "$output" "hidden after foreground command" "ordinary stderr should remain hidden after a foreground command"
+  print -- "ok foreground_command_output"
 }
 
 install_execution_test::assert_invalid_mode_falls_back_to_auto() {
@@ -391,6 +419,7 @@ install_execution_test::main() {
   install_execution_test::assert_failure_progress_under_errexit
   install_execution_test::assert_plain_mode
   install_execution_test::assert_quiet_events
+  install_execution_test::assert_foreground_command_output
   install_execution_test::assert_invalid_mode_falls_back_to_auto
   install_execution_test::assert_json_mode
   install_execution_test::assert_json_failure_mode

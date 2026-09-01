@@ -57,6 +57,22 @@ shell::install_oh_my_zsh_plugins() {
   done
 }
 
+shell::login_shell_is_registered() {
+  local candidate_shell="$1"
+  local shells_file="${DOTFILES_LOGIN_SHELLS_FILE:-/etc/shells}"
+  local registered_shell
+
+  [[ -r "$shells_file" ]] || return 1
+
+  while IFS= read -r registered_shell; do
+    if [[ "$registered_shell" == "$candidate_shell" ]]; then
+      return 0
+    fi
+  done < "$shells_file"
+
+  return 1
+}
+
 shell::ensure_default_shell() {
   local zsh_bin current_shell
 
@@ -79,7 +95,16 @@ shell::ensure_default_shell() {
     return 0
   fi
 
-  if chsh -s "$zsh_bin" "$USER"; then
+  dotfiles::execution_record_event checking "default shell configuration"
+
+  if ! shell::login_shell_is_registered "$zsh_bin"; then
+    dotfiles::log_warn "Cannot set the default shell because $zsh_bin is not registered in /etc/shells."
+    dotfiles::log_warn "Register it first: printf '%s\\n' '$zsh_bin' | sudo tee -a /etc/shells"
+    dotfiles::log_warn "Then run: chsh -s '$zsh_bin'"
+    return 0
+  fi
+
+  if dotfiles::execution_run_foreground chsh -s "$zsh_bin" "$USER"; then
     dotfiles::record_completed_work "Changed the default shell to $(dotfiles::display_path "$zsh_bin")"
     dotfiles::log_success "Changed default shell to $zsh_bin"
   else

@@ -58,6 +58,17 @@ dotfiles::execution_write() {
   print -u "$fd" -r -- "$text"
 }
 
+dotfiles::execution_run_foreground() {
+  if [[ "$DOTFILES_EXECUTION_STEP_ACTIVE" -eq 1 ]] \
+    && ! dotfiles::execution_is_json_mode \
+    && [[ -n "$DOTFILES_EXECUTION_TTY_FD" && -n "$DOTFILES_EXECUTION_TTY_ERR_FD" ]]; then
+    "$@" >&$DOTFILES_EXECUTION_TTY_FD 2>&$DOTFILES_EXECUTION_TTY_ERR_FD
+    return $?
+  fi
+
+  "$@"
+}
+
 dotfiles::execution_header_marker() {
   ui::symbol question
 }
