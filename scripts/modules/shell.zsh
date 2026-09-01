@@ -118,7 +118,7 @@ shell::ensure_default_shell() {
     fi
   fi
 
-  if dotfiles::execution_run_foreground chsh -s "$zsh_bin" "$USER"; then
+  if dotfiles::execution_run_foreground dotfiles::run_as_root chsh -s "$zsh_bin" "$USER"; then
     dotfiles::record_completed_work "Changed the default shell to $(dotfiles::display_path "$zsh_bin")"
     dotfiles::log_success "Changed default shell to $zsh_bin"
   else

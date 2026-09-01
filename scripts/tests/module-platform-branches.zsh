@@ -43,6 +43,7 @@ platform_module_test::setup_fake_commands() {
   platform_module_test::write_executable "$INITIAL_BIN/unzip" '#!/bin/sh' 'exit 0'
   platform_module_test::write_executable "$INITIAL_BIN/sudo" \
     '#!/bin/sh' \
+    'printf "%s\n" "$*" >> "${SMOKE_STATE_DIR}/sudo.log"' \
     '[ "${SMOKE_SUDO_SHOULD_FAIL:-0}" = "1" ] && exit 1' \
     'exec "$@"'
 
@@ -249,6 +250,7 @@ platform_module_test::assert_default_shell_success() {
 
   shell::ensure_default_shell >/dev/null
   platform_module_test::assert_file_contains "$STATE_DIR/chsh.log" "-s $INITIAL_BIN/zsh" "expected chsh invocation"
+  platform_module_test::assert_file_contains "$STATE_DIR/sudo.log" "chsh -s $INITIAL_BIN/zsh $USER" "expected chsh to reuse sudo authentication"
   print -- "ok default_shell_success"
 }
 

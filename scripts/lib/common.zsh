@@ -462,12 +462,12 @@ dotfiles::log_error() {
 dotfiles::run_as_root() {
   if [[ "$(id -u)" -eq 0 ]]; then
     "$@"
-    return 0
+    return $?
   fi
 
   if command -v sudo >/dev/null 2>&1; then
     sudo "$@"
-    return 0
+    return $?
   fi
 
   dotfiles::log_error "This step requires root privileges, but sudo is not available."
