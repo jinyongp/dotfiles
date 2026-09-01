@@ -63,7 +63,7 @@ install_remote::load_ui() {
   fi
 
   if [[ -f "$DOTFILES_DIR/scripts/lib/ui/errors.sh" ]]; then
-    # shellcheck disable=SC1090
+    # shellcheck source=/dev/null
     source "$DOTFILES_DIR/scripts/lib/ui/errors.sh"
   fi
 }
@@ -131,6 +131,6 @@ install_remote::main() {
   exec "$DOTFILES_DIR/install" "$@"
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+if [[ ${#BASH_SOURCE[@]} -eq 0 || "${BASH_SOURCE[0]}" == "$0" ]]; then
   install_remote::main "$@"
 fi
