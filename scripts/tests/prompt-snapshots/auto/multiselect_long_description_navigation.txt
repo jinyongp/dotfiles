@@ -13,6 +13,7 @@
 ◆  Select installation modules.
    Install the oh-my-zsh framework and
    optional plugins.
+
      ◻ Dotfiles
    › ◻ oh-my-zsh
      ◻ Neovim
@@ -23,6 +24,7 @@
 ◆  Select installation modules.
    Install Neovim with search tooling and
    optional TypeScript editor extras.
+
      ◻ Dotfiles
      ◻ oh-my-zsh
    › ◻ Neovim
@@ -33,6 +35,7 @@
 ◆  Select installation modules.
    Install the oh-my-zsh framework and
    optional plugins.
+
      ◻ Dotfiles
    › ◻ oh-my-zsh
      ◻ Neovim

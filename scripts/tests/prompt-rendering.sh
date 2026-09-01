@@ -170,6 +170,7 @@ prompt_test::set_keys() {
 
 prompt_test::install_overrides() {
   PROMPT_TEST__RENDER_COUNT=0
+  PROMPT_TEST__STABLE_FRAME_LINES=0
   PROMPT_TEST_COLUMNS="${PROMPT_TEST_COLUMNS:-80}"
   PROMPT_TEST_LINES="${PROMPT_TEST_LINES:-24}"
 
@@ -211,6 +212,13 @@ prompt_test::install_overrides() {
 
     prompt::clear_rendered_block
     PROMPT_TEST__RENDER_COUNT=$((PROMPT_TEST__RENDER_COUNT + 1))
+    if [[ "${PROMPT_TEST_REQUIRE_STABLE_HEIGHT:-0}" == "1" ]]; then
+      if [[ "$PROMPT_TEST__STABLE_FRAME_LINES" -eq 0 ]]; then
+        PROMPT_TEST__STABLE_FRAME_LINES="$#"
+      elif [[ "$#" -ne "$PROMPT_TEST__STABLE_FRAME_LINES" ]]; then
+        prompt_test::fail "render block height changed: $PROMPT_TEST__STABLE_FRAME_LINES -> $#"
+      fi
+    fi
 
     printf '[[ render %s ]]\n' "$PROMPT_TEST__RENDER_COUNT"
     for line in "$@"; do
@@ -301,6 +309,7 @@ prompt_test::case_select_with_disabled_and_status() {
   local records=()
 
   PROMPT_TEST_COLUMNS=36
+  PROMPT_TEST_REQUIRE_STABLE_HEIGHT=1
   records[0]="$(prompt_test::record "starship" "starship" "Currently active shell theme." "1" "0" "current")"
   records[1]="$(prompt_test::record "powerlevel10k" "powerlevel10k" "Installed already, but unavailable until oh-my-zsh is enabled." "0" "1" "installed")"
   records[2]="$(prompt_test::record "default" "default" "Use the default shell prompt styling." "0" "0")"
@@ -330,6 +339,7 @@ prompt_test::case_multiselect_long_description_navigation() {
   local records=()
 
   PROMPT_TEST_COLUMNS=44
+  PROMPT_TEST_REQUIRE_STABLE_HEIGHT=1
   records[0]="$(prompt_test::record "dotfiles" "Dotfiles" "Link shell and editor configuration files, then prepare machine-local Git configuration files." "0" "0")"
   records[1]="$(prompt_test::record "oh_my_zsh" "oh-my-zsh" "Install the oh-my-zsh framework and optional plugins." "0" "0")"
   records[2]="$(prompt_test::record "neovim" "Neovim" "Install Neovim with search tooling and optional TypeScript editor extras." "0" "0")"
@@ -359,6 +369,7 @@ prompt_test::case_multiselect_with_scroll_indicators() {
   local records=()
 
   PROMPT_TEST_LINES=12
+  PROMPT_TEST_REQUIRE_STABLE_HEIGHT=1
   records[0]="$(prompt_test::record "git" "git" "Required for cloning and repo workflows." "0" "0")"
   records[1]="$(prompt_test::record "fnm" "fnm" "Fast Node.js version manager." "0" "0")"
   records[2]="$(prompt_test::record "eza" "eza" "Modern replacement for ls." "0" "0")"

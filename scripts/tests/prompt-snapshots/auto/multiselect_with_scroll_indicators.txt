@@ -1,6 +1,7 @@
 [[ render 1 ]]
 ◆  Select base CLI packages.
    Required for cloning and repo workflows.
+
    › ◻ git
      ◻ fnm
      ◻ eza
@@ -10,6 +11,7 @@
 [[ render 2 ]]
 ◆  Select base CLI packages.
    Fast Node.js version manager.
+
      ◻ git
    › ◻ fnm
      ◻ eza

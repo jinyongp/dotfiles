@@ -3,6 +3,7 @@
    packages.
    Smarter cd with
    frecency.
+
      ◻ git
      ◻ corepack
    › ◼ zoxide
