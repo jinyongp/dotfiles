@@ -1,52 +1,86 @@
 [[ render 1 ]]
->  Select base CLI packages.
-   Smarter cd with frecency.
+>  Select base CLI
+   packages.
+   Smarter cd with
+   frecency.
      [ ] git
-     [ ] corepack [installed]
+     [ ] corepack
    > [x] zoxide
-     [ ] starship [current]
+     [ ] starship
      [ ] eza
-   Use Up/Down to move, Space to toggle, Enter to confirm.
+   Use Up/Down to
+   move, Space
+   to toggle,
+   Enter to
+   confirm.
 
 [[ render 2 ]]
->  Select base CLI packages.
-   Already active in the current shell.
+>  Select base CLI
+   packages.
+   Already active
+   in the current
+   shell.
      [ ] git
-     [ ] corepack [installed]
+     [ ] corepack
      [x] zoxide
-   > [ ] starship [current]
+   > [ ] starship
      [ ] eza
-   Use Up/Down to move, Space to toggle, Enter to confirm.
+   Use Up/Down to
+   move, Space
+   to toggle,
+   Enter to
+   confirm.
 
 [[ render 3 ]]
->  Select base CLI packages.
-   Already active in the current shell.
+>  Select base CLI
+   packages.
+   Already active
+   in the current
+   shell.
      [ ] git
-     [ ] corepack [installed]
+     [ ] corepack
      [x] zoxide
-   > [ ] starship [current]
+   > [ ] starship
      [ ] eza
-   Use Up/Down to move, Space to toggle, Enter to confirm.
+   Use Up/Down to
+   move, Space
+   to toggle,
+   Enter to
+   confirm.
 
 [[ render 4 ]]
->  Select base CLI packages.
-   Modern replacement for ls.
+>  Select base CLI
+   packages.
+   Modern
+   replacement for
+   ls.
      [ ] git
-     [ ] corepack [installed]
+     [ ] corepack
      [x] zoxide
-     [ ] starship [current]
+     [ ] starship
    > [ ] eza
-   Use Up/Down to move, Space to toggle, Enter to confirm.
+   Use Up/Down to
+   move, Space
+   to toggle,
+   Enter to
+   confirm.
 
 [[ render 5 ]]
->  Select base CLI packages.
-   Modern replacement for ls.
+>  Select base CLI
+   packages.
+   Modern
+   replacement for
+   ls.
      [ ] git
-     [ ] corepack [installed]
+     [ ] corepack
      [x] zoxide
-     [ ] starship [current]
+     [ ] starship
    > [x] eza
-   Use Up/Down to move, Space to toggle, Enter to confirm.
+   Use Up/Down to
+   move, Space
+   to toggle,
+   Enter to
+   confirm.
 
 =  Select base CLI packages.
    zoxide, eza

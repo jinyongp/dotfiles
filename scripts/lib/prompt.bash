@@ -624,9 +624,9 @@ prompt::select() {
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines current_description_line rendered_option
+  local key rendered_lines current_description_lines description_line rendered_option
+  local header_lines footer_lines block_line
   local status_align_width=0
-  local header_line footer_line blank_line
   local inline_status=0
 
   prompt::require_human_input select "$question" || return 64
@@ -654,14 +654,13 @@ prompt::select() {
 
   prompt::uses_inline_status && inline_status=1
 
-  header_line="$(prompt::question_header "$question")"
-  footer_line="$(prompt::footer_line "$hint")"
-  blank_line="$(prompt::blank_line)"
+  header_lines="$(prompt::question_block "$question")"
+  footer_lines="$(prompt::footer_block "$hint")"
 
   index=0
   while [[ "$index" -lt "${#labels[@]}" ]]; do
     if [[ -n "${descriptions[$index]}" ]]; then
-      description_lines[index]="$(prompt::description_line "${descriptions[$index]}")"
+      description_lines[index]="$(prompt::description_block "${descriptions[$index]}")"
     else
       description_lines[index]=""
     fi
@@ -690,9 +689,15 @@ prompt::select() {
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$header_line"
-    current_description_line="${description_lines[$current_index]}"
-    [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
+    while IFS= read -r block_line; do
+      rendered_lines[${#rendered_lines[@]}]="$block_line"
+    done <<<"$header_lines"
+    current_description_lines="${description_lines[$current_index]}"
+    if [[ -n "$current_description_lines" ]]; then
+      while IFS= read -r description_line; do
+        rendered_lines[${#rendered_lines[@]}]="$description_line"
+      done <<<"$current_description_lines"
+    fi
 
     index=0
     while [[ "$index" -lt "${#labels[@]}" ]]; do
@@ -704,7 +709,9 @@ prompt::select() {
       index=$((index + 1))
     done
 
-    rendered_lines[${#rendered_lines[@]}]="$footer_line"
+    while IFS= read -r block_line; do
+      rendered_lines[${#rendered_lines[@]}]="$block_line"
+    done <<<"$footer_lines"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"
@@ -758,12 +765,12 @@ prompt::multiselect() {
   local current_index=0
   local index=0
   local record id label description is_selected is_disabled status
-  local key rendered_lines current_description_line rendered_option
+  local key rendered_lines current_description_lines description_line rendered_option
+  local header_lines footer_lines block_line
   local selected_ids="" selected_labels=""
-  local total_lines reserved_lines visible_count
+  local total_lines reserved_lines visible_count description_line_count footer_line_count
   local window_start window_end remaining_above remaining_below
   local status_align_width=0
-  local header_line footer_line blank_line
   local inline_status=0
 
   prompt::require_human_input multiselect "$question" || return 64
@@ -792,15 +799,18 @@ prompt::multiselect() {
 
   prompt::uses_inline_status && inline_status=1
 
-  header_line="$(prompt::question_header "$question")"
-  footer_line="$(prompt::footer_line "$hint")"
-  blank_line="$(prompt::blank_line)"
+  header_lines="$(prompt::question_block "$question")"
+  footer_lines="$(prompt::footer_block "$hint")"
   total_lines="$(prompt::terminal_lines)"
+  footer_line_count=0
+  while IFS= read -r block_line; do
+    footer_line_count=$((footer_line_count + 1))
+  done <<<"$footer_lines"
 
   index=0
   while [[ "$index" -lt "${#labels[@]}" ]]; do
     if [[ -n "${descriptions[$index]}" ]]; then
-      description_lines[index]="$(prompt::description_line "${descriptions[$index]}")"
+      description_lines[index]="$(prompt::description_block "${descriptions[$index]}")"
     else
       description_lines[index]=""
     fi
@@ -833,13 +843,21 @@ prompt::multiselect() {
 
   while true; do
     rendered_lines=()
-    rendered_lines[${#rendered_lines[@]}]="$header_line"
-    current_description_line="${description_lines[$current_index]}"
-    [[ -n "$current_description_line" ]] && rendered_lines[${#rendered_lines[@]}]="$current_description_line"
+    while IFS= read -r block_line; do
+      rendered_lines[${#rendered_lines[@]}]="$block_line"
+    done <<<"$header_lines"
+    current_description_lines="${description_lines[$current_index]}"
+    description_line_count=0
+    if [[ -n "$current_description_lines" ]]; then
+      while IFS= read -r description_line; do
+        rendered_lines[${#rendered_lines[@]}]="$description_line"
+        description_line_count=$((description_line_count + 1))
+      done <<<"$current_description_lines"
+    fi
 
     reserved_lines=7
-    [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + 1))
-    [[ -n "$current_description_line" ]] && reserved_lines=$((reserved_lines + 1))
+    [[ -n "$hint" ]] && reserved_lines=$((reserved_lines + footer_line_count))
+    reserved_lines=$((reserved_lines + description_line_count))
     visible_count=$((total_lines - reserved_lines))
     if [[ "$visible_count" -lt 1 ]]; then
       visible_count=1
@@ -888,7 +906,9 @@ prompt::multiselect() {
       rendered_lines[${#rendered_lines[@]}]="$(prompt::scroll_indicator_line "↓" "$remaining_below")"
     fi
 
-    rendered_lines[${#rendered_lines[@]}]="$footer_line"
+    while IFS= read -r block_line; do
+      rendered_lines[${#rendered_lines[@]}]="$block_line"
+    done <<<"$footer_lines"
 
     prompt::render_block "${rendered_lines[@]}"
     key="$(prompt::read_key)"

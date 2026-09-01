@@ -32,6 +32,7 @@ prompt_test::case_names() {
     "select_with_disabled_and_status" \
     "select_wrap_navigation" \
     "multiselect_basic" \
+    "multiselect_long_description_navigation" \
     "multiselect_with_scroll_indicators" \
     "multiselect_with_disabled_rows" \
     "multiselect_wrap_navigation"
@@ -97,7 +98,7 @@ prompt_test::assert_plain_expectations() {
     || prompt_test::fail "plain mode should not emit italic or underline ANSI sequences"
 
   case "$case_name" in
-    select_basic|select_with_disabled_and_status|multiselect_basic|multiselect_with_scroll_indicators|multiselect_with_disabled_rows)
+    select_basic|select_with_disabled_and_status|multiselect_basic|multiselect_long_description_navigation|multiselect_with_scroll_indicators|multiselect_with_disabled_rows)
       grep -Fq "Up/Down" "$actual_file" \
         || prompt_test::fail "plain mode should render ASCII navigation hints"
       ;;
@@ -206,13 +207,17 @@ prompt_test::install_overrides() {
   }
 
   prompt::render_block() {
-    local line
+    local line visible_line
 
     prompt::clear_rendered_block
     PROMPT_TEST__RENDER_COUNT=$((PROMPT_TEST__RENDER_COUNT + 1))
 
     printf '[[ render %s ]]\n' "$PROMPT_TEST__RENDER_COUNT"
     for line in "$@"; do
+      [[ "$line" != *$'\n'* ]] || prompt_test::fail "render block received an embedded newline"
+      visible_line="$(prompt::strip_ansi "$line")"
+      [[ "${#visible_line}" -lt "$PROMPT_TEST_COLUMNS" ]] \
+        || prompt_test::fail "render line reached terminal wrap boundary: $visible_line"
       printf '%s\n' "$line"
     done
 
@@ -316,6 +321,21 @@ prompt_test::case_multiselect_basic() {
 
   prompt_test::set_keys "space" "down" "down" "space" "enter"
   prompt::multiselect result "Select base CLI packages." "Use ↑/↓ to move, Space to toggle, Enter to confirm." "${records[@]}"
+
+  printf '[[ value ]]\n%s\n' "$result"
+}
+
+prompt_test::case_multiselect_long_description_navigation() {
+  local result=""
+  local records=()
+
+  PROMPT_TEST_COLUMNS=44
+  records[0]="$(prompt_test::record "dotfiles" "Dotfiles" "Link shell and editor configuration files, then prepare machine-local Git configuration files." "0" "0")"
+  records[1]="$(prompt_test::record "oh_my_zsh" "oh-my-zsh" "Install the oh-my-zsh framework and optional plugins." "0" "0")"
+  records[2]="$(prompt_test::record "neovim" "Neovim" "Install Neovim with search tooling and optional TypeScript editor extras." "0" "0")"
+
+  prompt_test::set_keys "down" "down" "up" "enter"
+  prompt::multiselect result "Select installation modules." "Use ↑/↓ to move, Space to toggle, Enter to confirm." "${records[@]}"
 
   printf '[[ value ]]\n%s\n' "$result"
 }
@@ -427,6 +447,9 @@ prompt_test::run_case() {
       ;;
     multiselect_basic)
       prompt_test::case_multiselect_basic
+      ;;
+    multiselect_long_description_navigation)
+      prompt_test::case_multiselect_long_description_navigation
       ;;
     multiselect_with_scroll_indicators)
       prompt_test::case_multiselect_with_scroll_indicators

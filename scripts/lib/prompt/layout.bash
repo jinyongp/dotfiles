@@ -77,8 +77,68 @@ prompt::blank_line() {
   printf ''
 }
 
+prompt::wrap_text_lines() {
+  local text="$1"
+  local width="$2"
+  local line=""
+  local word=""
+  local chunk=""
+  local words=()
+
+  [[ -n "$text" ]] || return 0
+  if [[ "$width" -lt 1 ]]; then
+    width=1
+  fi
+
+  IFS=' ' read -r -a words <<<"$text"
+  for word in "${words[@]}"; do
+    while [[ "${#word}" -gt "$width" ]]; do
+      if [[ -n "$line" ]]; then
+        printf '%s\n' "$line"
+        line=""
+      fi
+
+      chunk="${word:0:$width}"
+      word="${word:$width}"
+      printf '%s\n' "$chunk"
+    done
+
+    if [[ -z "$line" ]]; then
+      line="$word"
+    elif [[ $(( ${#line} + ${#word} + 1 )) -le "$width" ]]; then
+      line="$line $word"
+    else
+      printf '%s\n' "$line"
+      line="$word"
+    fi
+  done
+
+  if [[ -n "$line" ]]; then
+    printf '%s\n' "$line"
+  fi
+}
+
 prompt::question_header() {
   printf '%s  %s' "$(prompt::accent "$(prompt::question_marker)")" "$(prompt::title "$1")"
+}
+
+prompt::question_block() {
+  local text="$1"
+  local columns width line
+  local is_first=1
+
+  columns="$(prompt::terminal_columns)"
+  width=$((columns - 4))
+
+  while IFS= read -r line; do
+    if [[ "$is_first" -eq 1 ]]; then
+      prompt::question_header "$line"
+      is_first=0
+    else
+      printf '\n'
+      prompt::line "$(prompt::title "$line")"
+    fi
+  done < <(prompt::wrap_text_lines "$text" "$width")
 }
 
 prompt::completed_header() {
@@ -91,6 +151,25 @@ prompt::hint_line() {
 
 prompt::description_line() {
   prompt::line "$(prompt::description "$1")"
+}
+
+prompt::description_block() {
+  local text="$1"
+  local columns width line
+  local is_first=1
+
+  [[ -n "$text" ]] || return 0
+
+  columns="$(prompt::terminal_columns)"
+  width=$((columns - 4))
+
+  while IFS= read -r line; do
+    if [[ "$is_first" -eq 0 ]]; then
+      printf '\n'
+    fi
+    prompt::description_line "$line"
+    is_first=0
+  done < <(prompt::wrap_text_lines "$text" "$width")
 }
 
 prompt::default_line() {
@@ -166,6 +245,31 @@ prompt::footer_line() {
   fi
 }
 
+prompt::footer_block() {
+  local hint="${1:-}"
+  local columns width line
+  local is_first=1
+
+  if [[ -z "$hint" ]]; then
+    prompt::footer_line ""
+    return 0
+  fi
+
+  columns="$(prompt::terminal_columns)"
+  width=$((columns - 4))
+  if prompt::is_plain_mode && [[ "$hint" == *"↑/↓"* ]]; then
+    width=$((width - 4))
+  fi
+
+  while IFS= read -r line; do
+    if [[ "$is_first" -eq 0 ]]; then
+      printf '\n'
+    fi
+    prompt::footer_line "$line"
+    is_first=0
+  done < <(prompt::wrap_text_lines "$hint" "$width")
+}
+
 prompt::format_completed_line() {
   local line="$1"
   local label value nested_label nested_value
@@ -219,16 +323,27 @@ prompt::render_option_line() {
 
   rendered_status="$(prompt::badge "$status_text")"
   if prompt::uses_inline_status; then
+    visible_status="$(prompt::badge_text "$status_text")"
+    columns="$(prompt::terminal_columns)"
     if [[ "$align_width" -gt 0 ]]; then
       padding_width=$((align_width - ${#visible_left} + 1))
       if [[ "$padding_width" -lt 1 ]]; then
         padding_width=1
       fi
-      printf -v padding '%*s' "$padding_width" ''
-      printf '%s%s%s' "$left_text" "$padding" "$rendered_status"
     else
-      printf '%s %s' "$left_text" "$rendered_status"
+      padding_width=1
     fi
+
+    if [[ $(( ${#visible_left} + padding_width + ${#visible_status} )) -ge "$columns" ]]; then
+      padding_width=1
+    fi
+    if [[ $(( ${#visible_left} + padding_width + ${#visible_status} )) -ge "$columns" ]]; then
+      printf '%s' "$left_text"
+      return 0
+    fi
+
+    printf -v padding '%*s' "$padding_width" ''
+    printf '%s%s%s' "$left_text" "$padding" "$rendered_status"
     return 0
   fi
 

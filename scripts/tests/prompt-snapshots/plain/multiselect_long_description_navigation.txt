@@ -1,0 +1,45 @@
+[[ render 1 ]]
+>  Select installation modules.
+   Link shell and editor configuration
+   files, then prepare machine-local Git
+   configuration files.
+   > [ ] Dotfiles
+     [ ] oh-my-zsh
+     [ ] Neovim
+   Use Up/Down to move, Space to toggle,
+   Enter to confirm.
+
+[[ render 2 ]]
+>  Select installation modules.
+   Install the oh-my-zsh framework and
+   optional plugins.
+     [ ] Dotfiles
+   > [ ] oh-my-zsh
+     [ ] Neovim
+   Use Up/Down to move, Space to toggle,
+   Enter to confirm.
+
+[[ render 3 ]]
+>  Select installation modules.
+   Install Neovim with search tooling and
+   optional TypeScript editor extras.
+     [ ] Dotfiles
+     [ ] oh-my-zsh
+   > [ ] Neovim
+   Use Up/Down to move, Space to toggle,
+   Enter to confirm.
+
+[[ render 4 ]]
+>  Select installation modules.
+   Install the oh-my-zsh framework and
+   optional plugins.
+     [ ] Dotfiles
+   > [ ] oh-my-zsh
+     [ ] Neovim
+   Use Up/Down to move, Space to toggle,
+   Enter to confirm.
+
+=  Select installation modules.
+   No selections
+
+[[ value ]]
