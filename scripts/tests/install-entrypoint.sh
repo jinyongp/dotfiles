@@ -92,6 +92,45 @@ install_entrypoint_test::assert_no_stderr() {
   fi
 }
 
+install_entrypoint_test::run_with_pty() {
+  local output_file="$1"
+  shift || true
+
+  python3 - "$output_file" "$@" <<'PY'
+import errno
+import os
+import pty
+import sys
+
+output_file = sys.argv[1]
+command = sys.argv[2:]
+pid, fd = pty.fork()
+
+if pid == 0:
+    os.execvp(command[0], command)
+
+chunks = []
+while True:
+    try:
+        chunk = os.read(fd, 4096)
+    except OSError as error:
+        if error.errno == errno.EIO:
+            break
+        raise
+    if not chunk:
+        break
+    chunks.append(chunk)
+
+_, status = os.waitpid(pid, 0)
+with open(output_file, "wb") as handle:
+    handle.write(b"".join(chunks))
+
+if os.WIFEXITED(status):
+    raise SystemExit(os.WEXITSTATUS(status))
+raise SystemExit(128 + os.WTERMSIG(status))
+PY
+}
+
 install_entrypoint_test::assert_syntax() {
   local file
 
@@ -419,6 +458,61 @@ PY
   printf 'ok install_remote_json_dirty_repo\n'
 }
 
+install_entrypoint_test::assert_install_remote_piped_tty() {
+  local source_repo="$WORK_DIR/install-remote-source"
+  local checkout_dir="$WORK_DIR/install-remote-checkout"
+  local runner_file="$WORK_DIR/install-remote-piped-runner.bash"
+  local output_file="$WORK_DIR/install-remote-piped.out"
+
+  mkdir -p "$source_repo"
+  git -C "$source_repo" init -q
+  git -C "$source_repo" symbolic-ref HEAD refs/heads/main
+  git -C "$source_repo" config user.name "Dotfiles Test"
+  git -C "$source_repo" config user.email "dotfiles@example.invalid"
+
+  cat >"$source_repo/install" <<'BASH'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ ! -t 0 ]]; then
+  printf 'fake installer stdin is not a TTY\n' >&2
+  exit 1
+fi
+
+printf 'remote installer received TTY\n'
+BASH
+  chmod +x "$source_repo/install"
+  git -C "$source_repo" add install
+  git -C "$source_repo" commit -q -m "test: add fake installer"
+
+  cat >"$runner_file" <<'BASH'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+cat "$BOOTSTRAP_PATH" | bash
+BASH
+  chmod +x "$runner_file"
+
+  install_entrypoint_test::run_with_pty "$output_file" \
+    env -i \
+    HOME="$HOME_DIR" \
+    USER="${USER:-dotfiles}" \
+    LOGNAME="${USER:-dotfiles}" \
+    DOTFILES_REPO="$source_repo" \
+    DOTFILES_DIR="$checkout_dir" \
+    DOTFILES_REF=main \
+    BOOTSTRAP_PATH="$DOTFILES_ROOT/scripts/install-remote.bash" \
+    PATH="/usr/bin:/bin:/usr/sbin:/sbin" \
+    TERM="xterm-256color" \
+    bash "$runner_file"
+
+  install_entrypoint_test::assert_contains "$output_file" "remote installer received TTY"
+  install_entrypoint_test::assert_not_contains "$output_file" "fake installer stdin is not a TTY"
+  printf 'ok install_remote_piped_tty\n'
+}
+
 install_entrypoint_test::main() {
   install_entrypoint_test::setup_fixture
   install_entrypoint_test::assert_syntax
@@ -429,6 +523,7 @@ install_entrypoint_test::main() {
   install_entrypoint_test::assert_structured_direct_errors
   install_entrypoint_test::assert_modes
   install_entrypoint_test::assert_install_remote_json_dirty_repo
+  install_entrypoint_test::assert_install_remote_piped_tty
 }
 
 install_entrypoint_test::main "$@"

@@ -123,12 +123,22 @@ install_remote::clone_or_update_repo() {
   git -C "$DOTFILES_DIR" pull --ff-only origin "$DOTFILES_REF"
 }
 
+install_remote::run_installer() {
+  if (( $# == 0 )) && [[ ! -t 0 ]] && [[ "$(install_remote::ui_mode)" != "json" ]]; then
+    if { exec 3</dev/tty; } 2>/dev/null; then
+      exec "$DOTFILES_DIR/install" <&3 3<&-
+    fi
+  fi
+
+  exec "$DOTFILES_DIR/install" "$@"
+}
+
 install_remote::main() {
   install_remote::require_command git
   install_remote::require_command bash
 
   install_remote::clone_or_update_repo
-  exec "$DOTFILES_DIR/install" "$@"
+  install_remote::run_installer "$@"
 }
 
 if [[ ${#BASH_SOURCE[@]} -eq 0 || "${BASH_SOURCE[0]}" == "$0" ]]; then
