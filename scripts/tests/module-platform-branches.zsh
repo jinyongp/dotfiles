@@ -21,6 +21,7 @@ export SMOKE_STATE_DIR="$STATE_DIR"
 export SMOKE_INITIAL_BIN="$INITIAL_BIN"
 export SMOKE_GETENT_SHELL="/bin/bash"
 export SMOKE_CHSH_SHOULD_FAIL="0"
+export SMOKE_SUDO_SHOULD_FAIL="0"
 export DOTFILES_LOGIN_SHELLS_FILE="$SHELLS_FILE"
 
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -40,7 +41,10 @@ platform_module_test::setup_fake_commands() {
   platform_module_test::write_executable "$INITIAL_BIN/zsh" '#!/bin/sh' 'exit 0'
   platform_module_test::write_executable "$INITIAL_BIN/curl" '#!/bin/sh' 'exit 0'
   platform_module_test::write_executable "$INITIAL_BIN/unzip" '#!/bin/sh' 'exit 0'
-  platform_module_test::write_executable "$INITIAL_BIN/sudo" '#!/bin/sh' 'exec "$@"'
+  platform_module_test::write_executable "$INITIAL_BIN/sudo" \
+    '#!/bin/sh' \
+    '[ "${SMOKE_SUDO_SHOULD_FAIL:-0}" = "1" ] && exit 1' \
+    'exec "$@"'
 
   platform_module_test::write_executable "$INITIAL_BIN/git" \
     '#!/bin/sh' \
@@ -222,6 +226,7 @@ platform_module_test::reset_state() {
   DOTFILES_EXECUTION_STEP_ACTIVE=0
   SMOKE_GETENT_SHELL="/bin/bash"
   SMOKE_CHSH_SHOULD_FAIL="0"
+  SMOKE_SUDO_SHOULD_FAIL="0"
   print -r -- "$INITIAL_BIN/zsh" >"$SHELLS_FILE"
 }
 
@@ -262,21 +267,34 @@ platform_module_test::assert_default_shell_failure_warns() {
   print -- "ok default_shell_failure_warns"
 }
 
-platform_module_test::assert_unregistered_default_shell_warns() {
-  local output_file="$WORK_DIR/chsh-unregistered.out"
+platform_module_test::assert_unregistered_default_shell_is_registered() {
+  platform_module_test::reset_state
+  print -r -- "/bin/bash" >"$SHELLS_FILE"
+
+  shell::ensure_default_shell >/dev/null
+
+  platform_module_test::assert_file_contains "$SHELLS_FILE" "$INITIAL_BIN/zsh" "missing registered login shell"
+  platform_module_test::assert_file_contains "$STATE_DIR/chsh.log" "-s $INITIAL_BIN/zsh" "expected chsh after registering the login shell"
+  platform_module_test::assert_contains "$(print -l -- "${DOTFILES_RESULT_COMPLETED_WORK[@]}")" "Registered $INITIAL_BIN/zsh in /etc/shells" "missing login shell registration result"
+  print -- "ok unregistered_default_shell_is_registered"
+}
+
+platform_module_test::assert_login_shell_registration_failure_warns() {
+  local output_file="$WORK_DIR/chsh-registration-failure.out"
   local output=""
 
   platform_module_test::reset_state
   print -r -- "/bin/bash" >"$SHELLS_FILE"
+  SMOKE_SUDO_SHOULD_FAIL="1"
 
   shell::ensure_default_shell >"$output_file" 2>&1
   output="$(platform_module_test::normalize_file "$output_file")"
 
-  platform_module_test::assert_contains "$output" "$INITIAL_BIN/zsh is not registered in /etc/shells" "missing unregistered shell warning"
-  platform_module_test::assert_contains "$output" "sudo tee -a /etc/shells" "missing shell registration command"
+  platform_module_test::assert_contains "$output" "Failed to register $INITIAL_BIN/zsh in /etc/shells" "missing registration failure warning"
+  platform_module_test::assert_contains "$output" "sudo tee -a /etc/shells" "missing manual registration command"
   platform_module_test::assert_contains "$output" "Then run: chsh -s '$INITIAL_BIN/zsh'" "missing follow-up chsh command"
-  [[ ! -f "$STATE_DIR/chsh.log" ]] || platform_module_test::fail "chsh should not run for an unregistered login shell"
-  print -- "ok unregistered_default_shell_warns"
+  [[ ! -f "$STATE_DIR/chsh.log" ]] || platform_module_test::fail "chsh should not run after registration failure"
+  print -- "ok login_shell_registration_failure_warns"
 }
 
 platform_module_test::assert_oh_my_zsh_module_wsl() {
@@ -323,7 +341,8 @@ platform_module_test::main() {
   platform_module_test::assert_apt_package_install
   platform_module_test::assert_default_shell_success
   platform_module_test::assert_default_shell_failure_warns
-  platform_module_test::assert_unregistered_default_shell_warns
+  platform_module_test::assert_unregistered_default_shell_is_registered
+  platform_module_test::assert_login_shell_registration_failure_warns
   platform_module_test::assert_oh_my_zsh_module_wsl
   platform_module_test::assert_theme_powerlevel10k_bootstrap
   platform_module_test::assert_theme_skip_states
