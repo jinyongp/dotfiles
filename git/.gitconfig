@@ -19,7 +19,7 @@
 	templateDir = ~/.dotfiles/git
 [pager]
 	branch = false
-	diff = diff-so-fancy | less --tabs=2 -RFX
+	diff = "sh -c 'if command -v diff-so-fancy >/dev/null 2>&1; then diff-so-fancy | less --tabs=2 -RFX; else less --tabs=2 -RFX; fi'"
 [core]
 	editor = vim
 	autocrlf = input
@@ -41,7 +41,7 @@
 [mergetool "code"]
 	cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
 [interactive]
-	diffFilter = diff-so-fancy --patch
+	diffFilter = "sh -c 'if command -v diff-so-fancy >/dev/null 2>&1; then exec diff-so-fancy --patch; else exec cat; fi'"
 [include]
 	path = ~/.config/dotfiles/git/root.local.ini
 [include]
