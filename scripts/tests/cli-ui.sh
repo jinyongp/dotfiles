@@ -80,7 +80,7 @@ cli_ui_test::assert_agents_inventory() {
   mkdir -p "$codex_skills"
   ln -s "$DOTFILES_ROOT/agents/skills/planning" "$codex_skills/planning"
   mkdir -p "$codex_skills/review-loop"
-  ln -s "$WORK_DIR/not-the-taskwarrior-skill" "$codex_skills/taskwarrior"
+  ln -s "$WORK_DIR/not-the-devtools-skill" "$codex_skills/devtools"
 
   env -i \
     HOME="$HOME_DIR" \
@@ -104,7 +104,7 @@ path, root, home = sys.argv[1:]
 records = json.load(open(path, encoding="utf-8"))
 by_id = {record["id"]: record for record in records}
 
-for skill_id in ("planning", "review-loop", "taskwarrior", "git-commit"):
+for skill_id in ("planning", "review-loop", "git-commit"):
     assert skill_id in by_id, skill_id
     assert by_id[skill_id]["kind"] == "internal"
     assert by_id[skill_id]["source"] == "repository"
@@ -117,6 +117,10 @@ assert by_id["impeccable"]["kind"] == "external"
 assert by_id["impeccable"]["source"] == "external"
 assert by_id["impeccable-claude"]["kind"] == "external"
 assert by_id["impeccable-claude"]["source"] == "external"
+assert by_id["devtools"]["kind"] == "external"
+assert by_id["devtools"]["source"] == "external"
+assert by_id["devtools"]["ref"] == "latest"
+assert by_id["devtools"]["repoUrl"] == "https://github.com/jinyongp/devtools"
 
 def target_status(skill_id, adapter):
     targets = by_id[skill_id]["adapterTargets"]
@@ -131,9 +135,9 @@ review_loop = target_status("review-loop", "codex")
 assert review_loop["status"] == "materialized"
 assert review_loop["linkType"] == "directory"
 
-taskwarrior = target_status("taskwarrior", "codex")
-assert taskwarrior["status"] == "conflict"
-assert taskwarrior["linkType"] == "symlink"
+devtools = target_status("devtools", "codex")
+assert devtools["status"] == "conflict"
+assert devtools["linkType"] == "symlink"
 
 git_commit = target_status("git-commit", "codex")
 assert git_commit["status"] == "missing"

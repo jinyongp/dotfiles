@@ -141,6 +141,7 @@ install_smoke_test::reset_case_config() {
   SMOKE_INSTALL_ENABLE_OH_MY_ZSH="0"
   SMOKE_CHSH_SHOULD_FAIL="0"
   SMOKE_GETENT_SHELL="/bin/bash"
+  SMOKE_DEVTOOLS_VERSION="0.10.0"
 }
 
 install_smoke_test::setup_case() {
@@ -163,6 +164,9 @@ install_smoke_test::setup_case() {
   APT_LOG_FILE="$STATE_DIR/apt-get.log"
   GIT_LOG_FILE="$STATE_DIR/git.log"
   CHSH_LOG_FILE="$STATE_DIR/chsh.log"
+  SMOKE_DEVTOOLS_RELEASE_DIR="$STATE_DIR/devtools-release"
+  SMOKE_DEVTOOLS_ARCHIVE="$STATE_DIR/devtools-skill_0.10.0.tar.gz"
+  SMOKE_DEVTOOLS_CHECKSUM="$STATE_DIR/devtools-skill_0.10.0.tar.gz.sha256"
 
   mkdir -p \
     "$HOME_DIR" \
@@ -180,6 +184,17 @@ install_smoke_test::setup_case() {
   : "${SMOKE_INSTALL_ENABLE_OH_MY_ZSH:=0}"
   : "${SMOKE_CHSH_SHOULD_FAIL:=0}"
   : "${SMOKE_GETENT_SHELL:=/bin/bash}"
+  : "${SMOKE_DEVTOOLS_VERSION:=0.10.0}"
+
+  mkdir -p "$SMOKE_DEVTOOLS_RELEASE_DIR/devtools"
+  printf '%s\n' '---' 'name: devtools' 'description: smoke devtools skill' '---' '' '# devtools' >"$SMOKE_DEVTOOLS_RELEASE_DIR/devtools/SKILL.md"
+  tar -czf "$SMOKE_DEVTOOLS_ARCHIVE" -C "$SMOKE_DEVTOOLS_RELEASE_DIR" devtools
+  if command -v sha256sum >/dev/null 2>&1; then
+    smoke_devtools_digest="$(sha256sum "$SMOKE_DEVTOOLS_ARCHIVE" | awk '{ print $1 }')"
+  else
+    smoke_devtools_digest="$(shasum -a 256 "$SMOKE_DEVTOOLS_ARCHIVE" | awk '{ print $1 }')"
+  fi
+  printf '%s  %s\n' "$smoke_devtools_digest" "$(basename "$SMOKE_DEVTOOLS_ARCHIVE")" >"$SMOKE_DEVTOOLS_CHECKSUM"
 
   cat >"$DOTFILES_CONFIG_DIR/install.env" <<EOF
 export DOTFILES_PACKAGE_MANAGER=${SMOKE_INSTALL_PACKAGE_MANAGER}
@@ -347,23 +362,45 @@ install_smoke_test::write_fake_commands() {
 
   install_smoke_test::write_executable "$INITIAL_BIN/pnpm" '#!/bin/sh' 'exit 0'
 
+  install_smoke_test::write_executable "$INITIAL_BIN/devtools" \
+    '#!/bin/sh' \
+    'if [ "${1:-}" = "--version" ]; then' \
+    '  printf "{\"schema_version\":1,\"name\":\"devtools\",\"version\":\"%s\"}\n" "${SMOKE_DEVTOOLS_VERSION}"' \
+    '  exit 0' \
+    'fi' \
+    'exit 2'
+
   install_smoke_test::write_executable "$INITIAL_BIN/curl" \
     '#!/bin/sh' \
     'log_file="${SMOKE_STATE_DIR}/curl.log"' \
     'destination=""' \
     'previous=""' \
+    'url=""' \
     'printf "%s\n" "$*" >> "$log_file"' \
     'for arg in "$@"; do' \
+    '  url="$arg"' \
     '  if [ "$previous" = "-o" ]; then' \
     '    destination="$arg"' \
-    '    break' \
     '  fi' \
     '  previous="$arg"' \
     'done' \
-    'if [ -n "$destination" ]; then' \
-    '  printf "#!/bin/sh\nexit 0\n" > "$destination"' \
-    '  chmod +x "$destination"' \
-    'fi' \
+    'case "$url" in' \
+    '  */releases/latest/download/version.txt)' \
+    '    printf "%s\n" "0.10.0"' \
+    '    ;;' \
+    '  */releases/download/v0.10.0/devtools-skill_0.10.0.tar.gz)' \
+    '    cp "$SMOKE_DEVTOOLS_ARCHIVE" "$destination"' \
+    '    ;;' \
+    '  */releases/download/v0.10.0/devtools-skill_0.10.0.tar.gz.sha256)' \
+    '    cp "$SMOKE_DEVTOOLS_CHECKSUM" "$destination"' \
+    '    ;;' \
+    '  *)' \
+    '    if [ -n "$destination" ]; then' \
+    '      printf "#!/bin/sh\nexit 0\n" > "$destination"' \
+    '      chmod +x "$destination"' \
+    '    fi' \
+    '    ;;' \
+    'esac' \
     'exit 0'
 
   install_smoke_test::write_executable "$INITIAL_BIN/unzip" '#!/bin/sh' 'exit 0'
@@ -474,6 +511,9 @@ install_smoke_test::with_env() {
     SMOKE_INITIAL_BIN="$INITIAL_BIN" \
     SMOKE_CHSH_SHOULD_FAIL="$SMOKE_CHSH_SHOULD_FAIL" \
     SMOKE_GETENT_SHELL="$SMOKE_GETENT_SHELL" \
+    SMOKE_DEVTOOLS_VERSION="$SMOKE_DEVTOOLS_VERSION" \
+    SMOKE_DEVTOOLS_ARCHIVE="$SMOKE_DEVTOOLS_ARCHIVE" \
+    SMOKE_DEVTOOLS_CHECKSUM="$SMOKE_DEVTOOLS_CHECKSUM" \
     REAL_ZSH_BIN="$REAL_ZSH_BIN" \
     "$@"
 }
@@ -590,6 +630,9 @@ install_smoke_test::assert_direct_agents() {
 
   mkdir -p "$HOME_DIR/.codex/sessions" "$HOME_DIR/.codex/cache"
   mkdir -p "$HOME_DIR/.codex/skills/local-only"
+  mkdir -p "$HOME_DIR/.claude/skills"
+  ln -s "$DOTFILES_ROOT/agents/skills/devtools" "$HOME_DIR/.codex/skills/devtools"
+  ln -s "$DOTFILES_ROOT/agents/skills/devtools" "$HOME_DIR/.claude/skills/devtools"
   printf '%s\n' '{"token":"keep"}' >"$HOME_DIR/.codex/auth.json"
   printf '%s\n' 'local-only-skill' >"$HOME_DIR/.codex/skills/local-only/SKILL.md"
   {
@@ -627,7 +670,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/planning" "$DOTFILES_ROOT/agents/skills/planning"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/review-loop" "$DOTFILES_ROOT/agents/skills/review-loop"
-  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/taskwarrior" "$DOTFILES_ROOT/agents/skills/taskwarrior"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/devtools" "$DOTFILES_CONFIG_DIR/agents/external-skills/devtools"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/humanize-korean" "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable"
@@ -635,6 +678,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/dev-docs" "$DOTFILES_ROOT/agents/skills/dev-docs"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/minify" "$DOTFILES_ROOT/agents/skills/minify"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/git-commit" "$DOTFILES_ROOT/agents/skills/git-commit"
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/devtools" "$DOTFILES_CONFIG_DIR/agents/external-skills/devtools"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/gate" "$DOTFILES_CONFIG_DIR/agents/external-skills/gate"
   install_smoke_test::assert_symlink_target "$HOME_DIR/.claude/skills/impeccable" "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable-claude"
   install_smoke_test::assert_not_exists "$HOME_DIR/.claude/skills/humanize-korean"
@@ -642,6 +686,7 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/SKILL.md" "smoke humanize Korean skill" "agents install should download external humanize-korean skill"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable/SKILL.md" "smoke impeccable skill" "agents install should download external impeccable skill"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/impeccable-claude/SKILL.md" "smoke impeccable Claude skill" "agents install should download external impeccable Claude skill"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/devtools/SKILL.md" "smoke devtools skill" "agents install should download the versioned devtools skill"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references/quick-rules.md" "smoke quick rules" "agents install should materialize external humanize-korean references"
   if [[ -L "$DOTFILES_CONFIG_DIR/agents/external-skills/humanize-korean/references" ]]; then
     install_smoke_test::fail "humanize-korean references should be materialized, not symlinked"
@@ -650,12 +695,47 @@ install_smoke_test::assert_direct_agents() {
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'humanize-korean	smoke-im-not-ai-skill-revision	im-not-ai	main	https://github.com/epoko77-ai/im-not-ai.git	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks' "agents install should record external humanize-korean skill revision"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.agents/skills/impeccable	impeccable	codex	skill	preserve' "agents install should record external impeccable skill revision"
   install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'impeccable-claude	smoke-impeccable-skill-revision	impeccable	main	https://github.com/pbakaus/impeccable.git	.claude/skills/impeccable	impeccable	claude	skill	preserve' "agents install should record external impeccable Claude skill revision"
+  install_smoke_test::assert_file_contains "$DOTFILES_CONFIG_DIR/agents/external-skills.lock" $'devtools\t0.10.0\tdevtools\tlatest\thttps://github.com/jinyongp/devtools\tdevtools\tdevtools\tcodex,claude\tskill\tpreserve' "agents install should record the devtools release version"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/skills/local-only/SKILL.md" "local-only-skill" "agents install should preserve existing skill directories"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/auth.json" '"token":"keep"' "codex install should preserve auth.json"
   install_smoke_test::assert_file_contains "$HOME_DIR/.codex/sessions/session.jsonl" "local-session" "codex install should preserve sessions"
   install_smoke_test::assert_login_zsh_not_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
   printf 'ok direct_agents\n'
+}
+
+install_smoke_test::assert_devtools_release_guards() {
+  install_smoke_test::reset_case_config
+  SMOKE_DEVTOOLS_VERSION="0.9.0"
+  install_smoke_test::setup_case "devtools-version-guard"
+
+  if install_smoke_test::with_env "$REAL_ZSH_BIN" -f -c '
+    source "$DOTFILES_ROOT/scripts/lib/style.sh"
+    source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+    source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+    source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+    agents::sync_external_skills devtools
+  ' >/dev/null 2>&1; then
+    install_smoke_test::fail "devtools skill sync should reject a release that does not match the installed CLI"
+  fi
+  install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/agents/external-skills/devtools"
+
+  install_smoke_test::reset_case_config
+  install_smoke_test::setup_case "devtools-checksum-guard"
+  printf '%064d  %s\n' 0 "$(basename "$SMOKE_DEVTOOLS_ARCHIVE")" >"$SMOKE_DEVTOOLS_CHECKSUM"
+
+  if install_smoke_test::with_env "$REAL_ZSH_BIN" -f -c '
+    source "$DOTFILES_ROOT/scripts/lib/style.sh"
+    source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+    source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+    source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+    agents::sync_external_skills devtools
+  ' >/dev/null 2>&1; then
+    install_smoke_test::fail "devtools skill sync should reject a checksum mismatch"
+  fi
+  install_smoke_test::assert_not_exists "$DOTFILES_CONFIG_DIR/agents/external-skills/devtools"
+  install_smoke_test::assert_git_status_unchanged
+  printf 'ok devtools_release_guards\n'
 }
 
 install_smoke_test::assert_external_skill_symlink_guard() {
@@ -694,6 +774,64 @@ install_smoke_test::assert_external_skill_side_effect_guards() {
 
   install_smoke_test::reset_case_config
   install_smoke_test::setup_case "external-skill-side-effect-guards"
+
+  mkdir -p "$HOME_DIR/.codex/skills"
+  ln -s "$DOTFILES_ROOT/agents/skills/devtools" "$HOME_DIR/.codex/skills/devtools"
+  if DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      rm() { return 1; }
+      agents::remove_stale_internal_skill_link "$HOME/.codex/skills/devtools" devtools
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "stale internal skill link removal failure should propagate"
+  fi
+  install_smoke_test::assert_symlink_target "$HOME_DIR/.codex/skills/devtools" "$DOTFILES_ROOT/agents/skills/devtools"
+  if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    HOME="$HOME_DIR" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      agents::sync_internal_skill_links devtools
+      (( ${#DOTFILES_RESULT_UPDATED_FILES[@]} == 0 && ${#DOTFILES_RESULT_LINKED_FILES[@]} == 0 ))
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "an empty internal skill directory should not trigger link work"
+  fi
+
+  if ! DOTFILES_ROOT="$DOTFILES_ROOT" \
+    DOTFILES_CONFIG_DIR="$DOTFILES_CONFIG_DIR" \
+    TMPDIR="$TMP_DIR/" \
+    HOME="$HOME_DIR" \
+    PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+    SMOKE_DEVTOOLS_VERSION="0.10.0" \
+    "$REAL_ZSH_BIN" -f -c '
+      source "$DOTFILES_ROOT/scripts/lib/style.sh"
+      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
+      source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
+      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
+      curl() {
+        if [[ "$*" == *version.txt* ]]; then
+          print -r -- 0.10.0
+          return 0
+        fi
+        : >"$TMPDIR/release-download-attempted"
+        return 1
+      }
+      mktemp() { return 1; }
+      if agents::sync_external_skills devtools; then
+        return 1
+      fi
+      [[ ! -e "$TMPDIR/release-download-attempted" ]]
+    ' >/dev/null 2>&1; then
+    install_smoke_test::fail "release sync should stop before downloading when temporary directory creation fails"
+  fi
 
   repo_dir="$TMP_DIR/repo"
   outside_dir="$TMP_DIR/outside-skill"
@@ -1267,6 +1405,7 @@ install_smoke_test::main() {
   install_smoke_test::assert_themes_use
   install_smoke_test::assert_direct_neovim
   install_smoke_test::assert_direct_agents
+  install_smoke_test::assert_devtools_release_guards
   install_smoke_test::assert_external_skill_symlink_guard
   install_smoke_test::assert_external_skill_side_effect_guards
   install_smoke_test::assert_direct_packages

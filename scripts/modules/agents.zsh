@@ -210,6 +210,35 @@ agents::external_artifact_metadata_valid() {
   return 0
 }
 
+agents::external_source_metadata_valid() {
+  local source_id="$1"
+  local source_type="$2"
+  local source_url="$3"
+  local selector="$4"
+  local archive_template="$5"
+  local checksum_template="$6"
+  local version_command="$7"
+
+  agents::external_token_valid "$source_id" || return 1
+  [[ "$source_url" == https://* ]] || return 1
+  agents::external_token_valid "$selector" || return 1
+
+  case "$source_type" in
+    git)
+      [[ "$archive_template" == "-" && "$checksum_template" == "-" && "$version_command" == "-" ]]
+      ;;
+    github-release)
+      [[ "$source_url" == https://github.com/*/* ]] || return 1
+      [[ "$archive_template" == *'{version}'* && "$checksum_template" == *'{version}'* ]] || return 1
+      [[ "$archive_template" != */* && "$checksum_template" != */* ]] || return 1
+      [[ "$version_command" == "-" ]] || agents::external_token_valid "$version_command"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
 agents::link_preserving_existing() {
   local source_path="$1"
   local target_path="$2"
@@ -234,6 +263,21 @@ agents::link_preserving_existing() {
   fi
   dotfiles::record_file_linked "$target_path" "$source_path"
   dotfiles::log_success "Linked $target_path"
+}
+
+agents::remove_stale_internal_skill_link() {
+  local target_path="$1"
+  local install_name="$2"
+  local legacy_source="$DOTFILES_ROOT/agents/skills/$install_name"
+
+  [[ ! -f "$legacy_source/SKILL.md" ]] || return 0
+  [[ -L "$target_path" && "$(readlink "$target_path" 2>/dev/null || true)" == "$legacy_source" ]] || return 0
+  if ! rm "$target_path"; then
+    dotfiles::log_warn "Could not remove stale internal agent skill link: $target_path"
+    return 1
+  fi
+  dotfiles::record_file_updated "$target_path"
+  dotfiles::log_info "Removed stale internal agent skill link: $target_path"
 }
 
 agents::install_skills() {
@@ -390,6 +434,7 @@ agents::record_external_skill_version() {
   local adapters="$8"
   local kind="$9"
   local copy_policy="${10}"
+  local digest="${11:-}"
   local lock_path tmp_file timestamp
 
   lock_path="$(agents::external_skills_lock_path)"
@@ -404,7 +449,7 @@ agents::record_external_skill_version() {
     fi
   fi
 
-  if ! print -r -- "${artifact_id}	${revision}	${source_id}	${ref}	${repo_url}	${source_path}	${install_name}	${adapters}	${kind}	${copy_policy}	${timestamp}" >>"$tmp_file"; then
+  if ! print -r -- "${artifact_id}	${revision}	${source_id}	${ref}	${repo_url}	${source_path}	${install_name}	${adapters}	${kind}	${copy_policy}	${timestamp}	${digest}" >>"$tmp_file"; then
     rm -f "$tmp_file"
     return 1
   fi
@@ -521,6 +566,7 @@ agents::copy_external_artifact() {
   local adapters="$9"
   local kind="${10}"
   local copy_policy="${11}"
+  local digest="${12:-}"
   local source_dir target_dir stage_dir backup_dir
 
   if ! agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
@@ -598,7 +644,7 @@ agents::copy_external_artifact() {
     dotfiles::log_warn "Skipping external agent skill because cache promotion failed: $artifact_id"
     return 1
   fi
-  if ! agents::record_external_skill_version "$artifact_id" "$revision" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+  if ! agents::record_external_skill_version "$artifact_id" "$revision" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" "$digest"; then
     rm -rf "$target_dir"
     if [[ -e "$backup_dir" || -L "$backup_dir" ]]; then
       mv "$backup_dir" "$target_dir" >/dev/null 2>&1 || true
@@ -630,7 +676,7 @@ agents::clone_external_source() {
   return 0
 }
 
-agents::sync_external_source_artifacts() {
+agents::sync_git_external_source_artifacts() {
   local source_id="$1"
   local repo_url="$2"
   local ref="$3"
@@ -667,16 +713,191 @@ agents::sync_external_source_artifacts() {
   return "$failed"
 }
 
+agents::release_archive_safe() {
+  local archive_path="$1"
+  local listing_file="$2"
+  local member=""
+
+  if ! tar -tzf "$archive_path" >"$listing_file" || [[ ! -s "$listing_file" ]]; then
+    return 1
+  fi
+
+  while IFS= read -r member; do
+    member="${member%/}"
+    agents::external_relative_path_valid "$member" || return 1
+  done <"$listing_file"
+
+  tar -tvzf "$archive_path" | awk '
+    {
+      type = substr($1, 1, 1)
+      if (type != "-" && type != "d") exit 1
+    }
+  '
+}
+
+agents::release_source_version_matches_command() {
+  local source_id="$1"
+  local version="$2"
+  local version_command="$3"
+  local command_output=""
+  local command_version=""
+
+  [[ "$version_command" != "-" ]] || return 0
+  command -v "$version_command" >/dev/null 2>&1 || return 0
+
+  command_output="$("$version_command" --version 2>/dev/null || true)"
+  command_version="$(print -r -- "$command_output" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')"
+  if [[ -z "$command_version" || "$command_version" != "$version" ]]; then
+    dotfiles::log_warn "External agent skill $source_id requires matching CLI version $version; found ${command_version:-unknown}."
+    return 1
+  fi
+}
+
+agents::sync_release_external_source_artifacts() {
+  local source_id="$1"
+  local source_url="$2"
+  local channel="$3"
+  local archive_template="$4"
+  local checksum_template="$5"
+  local version_command="$6"
+  shift 6 || true
+  local selected_ids=("$@")
+  local artifact_id row_source_id source_path install_name adapters kind copy_policy
+  local download_root archive_path checksum_path listing_path extract_root
+  local version="" archive_name="" checksum_name="" expected_digest="" actual_digest="" checksum_entry="" extra=""
+  local failed=0 synced_any=0
+
+  agents::external_source_has_selected_artifacts "$source_id" "${selected_ids[@]}" || return 2
+  if ! command -v curl >/dev/null 2>&1 || ! command -v tar >/dev/null 2>&1; then
+    dotfiles::log_warn "External release skill source requires curl and tar: $source_id"
+    return 1
+  fi
+
+  version="$(curl -fsSL "$source_url/releases/$channel/download/version.txt" 2>/dev/null || true)"
+  if ! agents::external_token_valid "$version"; then
+    dotfiles::log_warn "External release skill source returned an invalid version: $source_id"
+    return 1
+  fi
+  agents::release_source_version_matches_command "$source_id" "$version" "$version_command" || return 1
+
+  archive_name="${archive_template//\{version\}/$version}"
+  checksum_name="${checksum_template//\{version\}/$version}"
+  agents::external_token_valid "$archive_name" || return 1
+  agents::external_token_valid "$checksum_name" || return 1
+
+  if ! dotfiles::ensure_dir "$(agents::external_skills_dir)"; then
+    dotfiles::log_warn "External release skill cache directory is unavailable: $source_id"
+    return 1
+  fi
+  if ! download_root="$(mktemp -d "$(agents::external_skills_dir)/.${source_id}.release.XXXXXX")"; then
+    dotfiles::log_warn "External release skill temporary directory is unavailable: $source_id"
+    return 1
+  fi
+  archive_path="$download_root/$archive_name"
+  checksum_path="$download_root/$checksum_name"
+  listing_path="$download_root/archive.list"
+  extract_root="$download_root/extracted"
+
+  if ! curl -fsSL -o "$archive_path" "$source_url/releases/download/v${version}/$archive_name" ||
+    ! curl -fsSL -o "$checksum_path" "$source_url/releases/download/v${version}/$checksum_name"; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill download failed: $source_id"
+    return 1
+  fi
+
+  read -r expected_digest checksum_entry extra <"$checksum_path" || true
+  if [[ ${#expected_digest} -ne 64 || "$expected_digest" == *[^0-9a-fA-F]* || "$checksum_entry" != "$archive_name" || -n "$extra" ]]; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill checksum file is invalid: $source_id"
+    return 1
+  fi
+
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual_digest="$(sha256sum "$archive_path" | awk '{ print $1 }')"
+  elif command -v shasum >/dev/null 2>&1; then
+    actual_digest="$(shasum -a 256 "$archive_path" | awk '{ print $1 }')"
+  else
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill checksum verification is unavailable: $source_id"
+    return 1
+  fi
+  if [[ "${actual_digest:l}" != "${expected_digest:l}" ]]; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill checksum mismatch: $source_id"
+    return 1
+  fi
+
+  if ! agents::release_archive_safe "$archive_path" "$listing_path"; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill archive is unsafe: $source_id"
+    return 1
+  fi
+  if ! dotfiles::ensure_dir "$extract_root"; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill extraction directory is unavailable: $source_id"
+    return 1
+  fi
+  if ! tar -xzf "$archive_path" -C "$extract_root"; then
+    rm -rf "$download_root"
+    dotfiles::log_warn "External release skill extraction failed: $source_id"
+    return 1
+  fi
+
+  while IFS=$'\t' read -r artifact_id row_source_id source_path install_name adapters kind copy_policy; do
+    [[ "$row_source_id" == "$source_id" ]] || continue
+    [[ "$kind" == "skill" ]] || continue
+    agents::external_artifact_metadata_valid "$artifact_id" "$row_source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
+    agents::external_artifact_selected "$artifact_id" "${selected_ids[@]}" || continue
+    synced_any=1
+    if ! agents::copy_external_artifact "$extract_root" "$version" "$source_id" "$source_url" "$channel" "$artifact_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" "$expected_digest"; then
+      failed=1
+    fi
+  done < <(catalog::external_skill_artifact_records)
+
+  rm -rf "$download_root"
+  (( synced_any == 1 )) || return 2
+  return "$failed"
+}
+
+agents::sync_external_source_artifacts() {
+  local source_id="$1"
+  local source_type="$2"
+  local source_url="$3"
+  local selector="$4"
+  local archive_template="$5"
+  local checksum_template="$6"
+  local version_command="$7"
+  shift 7 || true
+
+  agents::external_source_metadata_valid "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" || return 1
+  case "$source_type" in
+    git)
+      command -v git >/dev/null 2>&1 || {
+        dotfiles::log_warn "External Git skill source requires git: $source_id"
+        return 1
+      }
+      agents::sync_git_external_source_artifacts "$source_id" "$source_url" "$selector" "$@"
+      ;;
+    github-release)
+      agents::sync_release_external_source_artifacts "$source_id" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" "$@"
+      ;;
+  esac
+}
+
 agents::install_external_source_artifacts() {
   local adapter_id="$1"
   local target_skills_dir="$2"
   local source_id="$3"
-  local repo_url="$4"
-  local ref="$5"
+  local source_type="$4"
+  local source_url="$5"
+  local selector="$6"
+  local archive_template="$7"
+  local checksum_template="$8"
+  local version_command="$9"
   local artifact_id row_source_id source_path install_name adapters kind copy_policy
-  local target_dir source_path_cached target_path clone_root repo_dir revision needs_sync=0 failed=0
+  local source_path_cached target_path sync_status=0 needs_sync=0 failed=0
   local -a artifact_rows=()
-  local -a sync_rows=()
+  local -a sync_ids=()
   local row
 
   while IFS=$'\t' read -r artifact_id row_source_id source_path install_name adapters kind copy_policy; do
@@ -687,11 +908,11 @@ agents::install_external_source_artifacts() {
     row="${artifact_id}	${source_path}	${install_name}	${adapters}	${kind}	${copy_policy}"
     artifact_rows+=("$row")
 
-    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$selector" "$source_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       dotfiles::record_reused_quiet "External agent skill cached copy: $artifact_id"
       dotfiles::log_info "Using cached external agent skill: $artifact_id"
     else
-      sync_rows+=("$row")
+      sync_ids+=("$artifact_id")
       needs_sync=1
     fi
   done < <(catalog::external_skill_artifact_records)
@@ -699,40 +920,21 @@ agents::install_external_source_artifacts() {
   (( ${#artifact_rows[@]} > 0 )) || return 0
 
   if (( needs_sync == 1 )); then
-    if ! command -v git >/dev/null 2>&1; then
-      for row in "${sync_rows[@]}"; do
-        IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
-        dotfiles::record_skipped "External agent skill $artifact_id because git is unavailable"
-        dotfiles::log_warn "Skipping external agent skill because git is unavailable: $artifact_id"
-      done
+    agents::sync_external_source_artifacts "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" "${sync_ids[@]}" || sync_status=$?
+    if (( sync_status != 0 )); then
       failed=1
-    else
-      dotfiles::ensure_dir "$(agents::external_skills_dir)"
-      clone_root="$(mktemp -d "$(agents::external_skills_dir)/.${source_id}.clone.XXXXXX")"
-      repo_dir="$clone_root/repo"
-      if agents::clone_external_source "$source_id" "$repo_url" "$ref" "$clone_root"; then
-        revision="$(git -C "$repo_dir" rev-parse HEAD 2>/dev/null || true)"
-        for row in "${sync_rows[@]}"; do
-          IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
-          if ! agents::copy_external_artifact "$repo_dir" "$revision" "$source_id" "$repo_url" "$ref" "$artifact_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
-            failed=1
-          fi
-        done
-      else
-        failed=1
-      fi
-      rm -rf "$clone_root"
     fi
   fi
 
   for row in "${artifact_rows[@]}"; do
     IFS=$'\t' read -r artifact_id source_path install_name adapters kind copy_policy <<<"$row"
-    if ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    if ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$selector" "$source_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       failed=1
       continue
     fi
     source_path_cached="$(agents::external_artifact_cache_dir "$artifact_id")"
     target_path="$target_skills_dir/$install_name"
+    agents::remove_stale_internal_skill_link "$target_path" "$install_name" || failed=1
     if ! agents::link_preserving_existing "$source_path_cached" "$target_path"; then
       failed=1
     fi
@@ -744,14 +946,14 @@ agents::install_external_source_artifacts() {
 agents::install_external_skills() {
   local target_skills_dir="$1"
   local adapter_id="$2"
-  local source_id repo_url ref failed=0
+  local source_id source_type source_url selector archive_template checksum_template version_command failed=0
 
-  while IFS=$'\t' read -r source_id repo_url ref; do
+  while IFS=$'\t' read -r source_id source_type source_url selector archive_template checksum_template version_command; do
     [[ -n "$source_id" ]] || continue
     [[ "$source_id" == \#* ]] && continue
-    [[ -n "$repo_url" && -n "$ref" ]] || continue
+    agents::external_source_metadata_valid "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" || continue
 
-    if ! agents::install_external_source_artifacts "$adapter_id" "$target_skills_dir" "$source_id" "$repo_url" "$ref"; then
+    if ! agents::install_external_source_artifacts "$adapter_id" "$target_skills_dir" "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command"; then
       failed=1
     fi
   done < <(catalog::external_skill_source_records)
@@ -802,6 +1004,7 @@ agents::reconcile_skill_link() {
 
   target_dir="$(agents::adapter_skills_dir "$adapter_id")" || return 1
   target_path="$target_dir/$install_name"
+  agents::remove_stale_internal_skill_link "$target_path" "$install_name" || return 1
   agents::set_adapter_target_state "$adapter_id" "$source_path" "$install_name"
 
   case "$AGENTS_ADAPTER_TARGET_STATUS" in
@@ -832,6 +1035,7 @@ agents::sync_internal_skill_links() {
   [[ -n "$detected_ids" ]] || return 0
 
   for source_path in "$DOTFILES_ROOT"/agents/skills/*(/N); do
+    [[ -f "$source_path/SKILL.md" ]] || continue
     skill_id="${source_path:t}"
     agents::external_artifact_selected "$skill_id" "${selected_ids[@]}" || continue
     for adapter_id in ${=detected_ids}; do
@@ -847,7 +1051,7 @@ agents::sync_internal_skill_links() {
 agents::sync_external_skill_links() {
   local selected_ids=("$@")
   local detected_ids artifact_id source_id source_path install_name adapters kind copy_policy
-  local row_source_id repo_url ref adapter_id cache_path failed=0
+  local row_source_id source_type source_url selector archive_template checksum_template version_command adapter_id cache_path failed=0
 
   detected_ids="$(agents::detected_adapter_ids)"
   [[ -n "$detected_ids" ]] || return 0
@@ -856,13 +1060,13 @@ agents::sync_external_skill_links() {
     [[ "$kind" == "skill" ]] || continue
     agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
     agents::external_artifact_selected "$artifact_id" "${selected_ids[@]}" || continue
-    repo_url=""
-    ref=""
-    while IFS=$'\t' read -r row_source_id repo_url ref; do
+    source_url=""
+    selector=""
+    while IFS=$'\t' read -r row_source_id source_type source_url selector archive_template checksum_template version_command; do
       [[ "$row_source_id" == "$source_id" ]] || continue
       break
     done < <(catalog::external_skill_source_records)
-    if [[ -z "$repo_url" || -z "$ref" ]] || ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    if [[ -z "$source_url" || -z "$selector" ]] || ! agents::external_skill_cache_valid "$artifact_id" "$source_id" "$selector" "$source_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       failed=1
       continue
     fi
@@ -916,24 +1120,19 @@ agents::print_sync_summary() {
 
 agents::sync_external_skills() {
   local selected_ids=("$@")
-  local source_id repo_url ref synced_any=0 failed=0 sync_status
+  local source_id source_type source_url selector archive_template checksum_template version_command synced_any=0 failed=0 sync_status
 
   if ! agents::external_selected_ids_valid "${selected_ids[@]}"; then
     return 1
   fi
 
-  if ! command -v git >/dev/null 2>&1; then
-    dotfiles::log_warn "Cannot sync external agent skills because git is unavailable."
-    return 1
-  fi
-
-  while IFS=$'\t' read -r source_id repo_url ref; do
+  while IFS=$'\t' read -r source_id source_type source_url selector archive_template checksum_template version_command; do
     [[ -n "$source_id" ]] || continue
     [[ "$source_id" == \#* ]] && continue
-    [[ -n "$repo_url" && -n "$ref" ]] || continue
+    agents::external_source_metadata_valid "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" || continue
 
     sync_status=0
-    agents::sync_external_source_artifacts "$source_id" "$repo_url" "$ref" "${selected_ids[@]}" || sync_status=$?
+    agents::sync_external_source_artifacts "$source_id" "$source_type" "$source_url" "$selector" "$archive_template" "$checksum_template" "$version_command" "${selected_ids[@]}" || sync_status=$?
     case "$sync_status" in
       0)
         synced_any=1
@@ -1327,7 +1526,7 @@ agents::print_skill_human_section() {
 
 agents::list_external_skills() {
   local artifact_id source_id source_path install_name adapters kind copy_policy revision skill_status target_dir
-  local row_source_id row_repo_url row_ref repo_url ref
+  local row_source_id row_source_type row_source_url row_selector row_archive_template row_checksum_template row_version_command source_url selector
   local skill_id skill_path
   local listed=0 first_json=1 output_json=0
   local input_field="" usage_field=""
@@ -1376,19 +1575,19 @@ agents::list_external_skills() {
     [[ "$artifact_id" == \#* ]] && continue
     [[ "$kind" == "skill" ]] || continue
     agents::external_artifact_metadata_valid "$artifact_id" "$source_id" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy" || continue
-    repo_url=""
-    ref=""
-    while IFS=$'\t' read -r row_source_id row_repo_url row_ref; do
+    source_url=""
+    selector=""
+    while IFS=$'\t' read -r row_source_id row_source_type row_source_url row_selector row_archive_template row_checksum_template row_version_command; do
       [[ "$row_source_id" == "$source_id" ]] || continue
-      repo_url="$row_repo_url"
-      ref="$row_ref"
+      source_url="$row_source_url"
+      selector="$row_selector"
       break
     done < <(catalog::external_skill_source_records)
-    [[ -n "$repo_url" && -n "$ref" ]] || continue
+    [[ -n "$source_url" && -n "$selector" ]] || continue
 
     target_dir="$(agents::external_artifact_cache_dir "$artifact_id")"
     revision="$(agents::external_skill_lock_revision "$artifact_id")"
-    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$ref" "$repo_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
+    if agents::external_skill_cache_valid "$artifact_id" "$source_id" "$selector" "$source_url" "$source_path" "$install_name" "$adapters" "$kind" "$copy_policy"; then
       skill_status="installed"
     else
       skill_status="not_installed"
@@ -1399,12 +1598,12 @@ agents::list_external_skills() {
       if (( first_json == 0 )); then
         print -r -- ","
       fi
-      agents::print_skill_json_record "$artifact_id" "external" "$skill_status" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$copy_policy" "$repo_url" "$source_path" "$target_dir"
+      agents::print_skill_json_record "$artifact_id" "external" "$skill_status" "external" "$source_id" "$selector" "${revision:-unknown}" "$install_name" "$adapters" "$copy_policy" "$source_url" "$source_path" "$target_dir"
       first_json=0
       continue
     fi
 
-    human_record="$(agents::skill_human_record "$artifact_id" "external" "${skill_status//_/ }" "external" "$source_id" "$ref" "${revision:-unknown}" "$install_name" "$adapters" "$source_path" "$target_dir")"
+    human_record="$(agents::skill_human_record "$artifact_id" "external" "${skill_status//_/ }" "external" "$source_id" "$selector" "${revision:-unknown}" "$install_name" "$adapters" "$source_path" "$target_dir")"
     external_records+=("$human_record")
   done < <(catalog::external_skill_artifact_records)
 

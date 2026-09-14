@@ -84,13 +84,18 @@ EOF
 
 # Columns:
 # 1. source id
-# 2. Git repository URL
-# 3. ref
+# 2. source type (git | github-release)
+# 3. source URL
+# 4. ref or release channel
+# 5. release archive template, or -
+# 6. release checksum template, or -
+# 7. companion command for version matching, or -
 catalog_data::external_skill_source_rows() {
   cat <<'EOF'
-gate	https://github.com/jinyongp/gate.git	main
-im-not-ai	https://github.com/epoko77-ai/im-not-ai.git	main
-impeccable	https://github.com/pbakaus/impeccable.git	main
+gate	git	https://github.com/jinyongp/gate.git	main	-	-	-
+im-not-ai	git	https://github.com/epoko77-ai/im-not-ai.git	main	-	-	-
+impeccable	git	https://github.com/pbakaus/impeccable.git	main	-	-	-
+devtools	github-release	https://github.com/jinyongp/devtools	latest	devtools-skill_{version}.tar.gz	devtools-skill_{version}.tar.gz.sha256	devtools
 EOF
 }
 
@@ -108,5 +113,6 @@ gate	gate	skills/gate	gate	codex,claude	skill	preserve
 humanize-korean	im-not-ai	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks
 impeccable	impeccable	.agents/skills/impeccable	impeccable	codex	skill	preserve
 impeccable-claude	impeccable	.claude/skills/impeccable	impeccable	claude	skill	preserve
+devtools	devtools	devtools	devtools	codex,claude	skill	preserve
 EOF
 }

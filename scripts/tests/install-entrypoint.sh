@@ -252,6 +252,7 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "humanize-korean:humanize-korean (im-not-ai)"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "impeccable:impeccable (impeccable)"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "impeccable-claude:impeccable (impeccable)"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "devtools:devtools (devtools)"
   install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
 
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_agent_skills" complete agent-skills
@@ -272,6 +273,8 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "codex/skills/humanize-korean"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "impeccable"
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" ".agents/skills/impeccable"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "devtools"
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "source    devtools@unknown (latest)"
   install_entrypoint_test::assert_no_stderr "dotfiles_agents_list"
 
   install_entrypoint_test::run_dotfiles_command_json "dotfiles_agents_list_json" agents list
@@ -285,6 +288,8 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"copyPolicy": "materialize_repo_symlinks"'
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "impeccable"'
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "impeccable-claude"'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "devtools"'
+  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"ref": "latest"'
   install_entrypoint_test::assert_no_stderr "dotfiles_agents_list_json"
 
   if install_entrypoint_test::run_dotfiles_command_json "dotfiles_agents_list_json_flag" agents list --json; then
