@@ -1,7 +1,0 @@
-interface:
-  display_name: "Workstream"
-  short_description: "Run deterministic spec-to-close implementation work"
-  default_prompt: "Use $workstream to run this change with deterministic identity, artifacts, tasking, verification, convergence, and closeout."
-
-policy:
-  allow_implicit_invocation: false

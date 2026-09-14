@@ -1,7 +1,7 @@
 interface:
   display_name: "Queue"
-  short_description: "Convert plans and checklists into Taskwarrior tasks"
-  default_prompt: "Use $queue to convert this plan into a Taskwarrior task draft."
+  short_description: "Convert plans and checklists into a task queue"
+  default_prompt: "Use $queue to convert this plan into a task queue draft."
 
 policy:
   allow_implicit_invocation: true

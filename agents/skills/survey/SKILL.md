@@ -3,7 +3,7 @@ name: survey
 description: >
   Map a repository or working directory before implementation. Use when the
   user asks to survey, scan, inspect, orient, 구조 파악, 훑어보기, 작업 전
-  파악, or when workstream needs a pre-implementation map of project structure,
+  파악, or needs a pre-implementation map of project structure,
   package manager, commands, tests, local apps, ownership boundaries, and risk
   areas. Produces concise findings and recommended next checks without making
   code changes.
@@ -67,8 +67,8 @@ Survey:
 - Suggested checks: ...
 ```
 
-For `workstream`, feed these findings into the plan. Do not create tasks from
-survey findings unless the user asks or the workstream queue phase starts.
+Feed these findings into the plan. Create tasks from survey findings only when
+the user asks.
 
 ## Guardrails
 

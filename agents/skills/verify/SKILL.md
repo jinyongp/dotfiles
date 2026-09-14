@@ -3,7 +3,7 @@ name: verify
 description: >
   Choose and run validation for code, docs, config, UI, API, database, refactor,
   and bugfix work. Use when the user asks to verify, validate, test, confirm,
-  check, 검증, 확인, 테스트, or when workstream needs a consistent validation
+  check, 검증, 확인, 테스트, or needs a consistent validation
   matrix before marking tasks done. Produces focused checks, pass/fail criteria,
   and exact skipped or blocked validation gaps.
 ---
@@ -110,7 +110,6 @@ Verify:
 - Gap: ...
 ```
 
-For `workstream`, required validation must pass before marking affected
-Taskwarrior tasks done. `not-needed` work may be marked done without checks.
+Required validation must pass before marking affected work done. `not-needed` work may be marked done without checks.
 Skipped or blocked required validation keeps affected tasks pending or blocked
 unless the user explicitly accepts deferral.
