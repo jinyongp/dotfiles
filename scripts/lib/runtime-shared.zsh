@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 dotfiles::__printf_line() {
   printf '%s\n' "$1"
@@ -62,6 +62,36 @@ dotfiles::brew_bin_path() {
     dotfiles::__printf_line "$HOME/.linuxbrew/bin/brew"
     return 0
   fi
+
+  return 1
+}
+
+dotfiles::find_zsh() {
+  local candidate=""
+
+  if command -v zsh >/dev/null 2>&1; then
+    command -v zsh
+    return 0
+  fi
+
+  if [[ "${SHELL:-}" == */zsh && -x "${SHELL:-}" ]]; then
+    dotfiles::__printf_line "$SHELL"
+    return 0
+  fi
+
+  for candidate in \
+    /bin/zsh \
+    /usr/bin/zsh \
+    /opt/homebrew/bin/zsh \
+    /usr/local/bin/zsh \
+    /home/linuxbrew/.linuxbrew/bin/zsh \
+    "$HOME/.linuxbrew/bin/zsh"
+  do
+    if [[ -x "$candidate" ]]; then
+      dotfiles::__printf_line "$candidate"
+      return 0
+    fi
+  done
 
   return 1
 }

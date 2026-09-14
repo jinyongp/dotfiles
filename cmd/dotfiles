@@ -6,6 +6,7 @@ DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
 source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
+source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"
 
 dotfiles::usage() {
   ui::help_start "dotfiles" "Manage this dotfiles repository and installer."
@@ -382,7 +383,14 @@ case "${1:-help}" in
     ;;
   agents)
     shift
-    exec "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" "$@"
+    zsh_bin="$(dotfiles::find_zsh || true)"
+    if [[ -z "$zsh_bin" ]]; then
+      ui::validation_error "zsh runtime unavailable" \
+        $'expected\tzsh installed by the dotfiles installer' \
+        $'next\tdfx install agents codex'
+      exit 1
+    fi
+    exec "$zsh_bin" "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" "$@"
     ;;
   themes)
     shift

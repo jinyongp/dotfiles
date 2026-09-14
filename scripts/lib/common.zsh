@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 if ! typeset -f dotfiles_style >/dev/null 2>&1 && [[ -n "${DOTFILES_ROOT:-}" && -f "$DOTFILES_ROOT/scripts/lib/style.sh" ]]; then
   source "$DOTFILES_ROOT/scripts/lib/style.sh"

@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 module_fonts_supported() {
   platform::is_macos

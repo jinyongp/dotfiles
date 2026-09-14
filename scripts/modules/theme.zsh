@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 theme::install_starship_fallback() {
   local installer_url installer_path bin_dir

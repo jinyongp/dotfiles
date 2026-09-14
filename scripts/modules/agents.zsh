@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 typeset -ga AGENTS_MANAGED_RULE_FILES=(
   BASE.md

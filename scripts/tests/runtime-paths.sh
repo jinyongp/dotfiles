@@ -4,7 +4,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-ZSH_BIN="${ZSH_BIN:-/bin/zsh}"
+ZSH_BIN="${ZSH_BIN:-$(command -v zsh || true)}"
 
 runtime_paths_test::fail() {
   printf 'runtime-paths: %s\n' "$1" >&2

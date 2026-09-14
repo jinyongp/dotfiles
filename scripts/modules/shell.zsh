@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 shell::ensure_core_tools() {
   package_manager::ensure_command curl curl 1

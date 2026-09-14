@@ -8,7 +8,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DOTFILES_ROOT="$(cd -- "$SCRIPT_DIR/../.." && pwd)"
-REAL_ZSH_BIN="${REAL_ZSH_BIN:-/bin/zsh}"
+REAL_ZSH_BIN="${REAL_ZSH_BIN:-$(command -v zsh || true)}"
 SCRIPT_BIN="${SCRIPT_BIN:-$(command -v script || true)}"
 ROOT_WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/install-smoke.XXXXXX")"
 BASE_GIT_STATUS="$(git -C "$DOTFILES_ROOT" status --porcelain 2>/dev/null || true)"

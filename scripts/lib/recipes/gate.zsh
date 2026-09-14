@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 package_recipe::gate_install() {
   local logical_name="${1:-gate}"

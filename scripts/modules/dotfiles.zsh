@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 source "$DOTFILES_ROOT/scripts/lib/git-config.sh"
 

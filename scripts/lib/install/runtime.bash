@@ -95,28 +95,7 @@ install::find_brew() {
 }
 
 install::find_zsh() {
-  local candidate
-
-  if command -v zsh >/dev/null 2>&1; then
-    command -v zsh
-    return 0
-  fi
-
-  for candidate in \
-    /bin/zsh \
-    /usr/bin/zsh \
-    /opt/homebrew/bin/zsh \
-    /usr/local/bin/zsh \
-    /home/linuxbrew/.linuxbrew/bin/zsh \
-    "$HOME/.linuxbrew/bin/zsh"
-  do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
+  dotfiles::find_zsh
 }
 
 install::run_as_root() {

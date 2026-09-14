@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 typeset -gi DOTFILES_APT_READY=0
 typeset -gi DOTFILES_BREW_READY=0

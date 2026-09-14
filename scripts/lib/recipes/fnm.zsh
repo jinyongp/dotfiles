@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 package_recipe::fnm_install_dir() {
   dotfiles::fnm_install_dir

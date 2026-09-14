@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 dotfiles::write_install_env() {
   local env_file_exists=0

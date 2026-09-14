@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/usr/bin/env zsh
 
 package_recipe::typescript_install() {
   local logical_name="${1:-typescript}"
