@@ -1,7 +1,0 @@
-interface:
-  display_name: "Git Commit"
-  short_description: "Repository-aware commit grouping and commit message drafting."
-  default_prompt: "Use $git-commit to inspect the current Git worktree, protect
-    risky files, regroup staged and unstaged changes into coherent commits, and
-    commit all in-scope changes with messages matching recent repository
-    history."

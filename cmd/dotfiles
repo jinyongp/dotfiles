@@ -13,18 +13,15 @@ dotfiles::usage() {
   ui::help_usage \
     "dotfiles install [target] [item...]" \
     "dotfiles uninstall -y" \
-    "dotfiles agents list" \
-    "dotfiles agents sync [skill...]" \
     "dotfiles list" \
     "dotfiles update" \
     "dotfiles doctor" \
     "dotfiles path"
   ui::help_commands \
     $'install\tinstall\tRun the interactive installer or a direct install target.' \
-    $'uninstall\tuninstall\tRemove dotfiles-managed links and agent instruction blocks.' \
+    $'uninstall\tuninstall\tRemove dotfiles-managed links.' \
     $'list\tlist\tList direct install targets.' \
     $'themes\tthemes\tManage shell theme selection and dependencies.' \
-    $'agents\tagents\tManage agent rules and skills.' \
     $'update\tupdate\tFast-forward this dotfiles repository.' \
     $'path\tpath\tPrint the dotfiles repository path.' \
     $'doctor\tdoctor\tCheck the local dotfiles setup.' \
@@ -62,60 +59,9 @@ dotfiles::remove_managed_symlink() {
   fi
 }
 
-dotfiles::remove_managed_agent_links() {
-  local config_dir="$1"
-  local dir path target
-
-  for dir in "$HOME/.codex/skills" "$HOME/.claude/skills"; do
-    [[ -d "$dir" ]] || continue
-    for path in "$dir"/*; do
-      [[ -e "$path" || -L "$path" ]] || continue
-      [[ -L "$path" ]] || continue
-
-      target="$(readlink "$path")"
-      if dotfiles::is_under_path "$target" "$DOTFILES_ROOT/agents/skills" ||
-        dotfiles::is_under_path "$target" "$config_dir/agents/external-skills"; then
-        rm "$path"
-        printf '%s\n' "$(ui::status completed "removed agent skill link: $path")"
-      fi
-    done
-  done
-}
-
-dotfiles::remove_managed_codex_rules() {
-  local path="$HOME/.codex/rules/dotfiles.rules"
-
-  dotfiles::remove_managed_symlink "$path" "$DOTFILES_ROOT/agents/codex/rules" "Codex rules link"
-}
-
-dotfiles::remove_managed_agent_block() {
-  local adapter_id="$1"
-  local target_path="$2"
-  local start="<!-- dotfiles:agents:${adapter_id}:start -->"
-  local end="<!-- dotfiles:agents:${adapter_id}:end -->"
-  local tmp_file=""
-
-  [[ -f "$target_path" ]] || return 0
-  grep -Fqx -- "$start" "$target_path" || return 0
-
-  tmp_file="$(mktemp "${target_path}.tmp.XXXXXX")"
-  if ! awk -v start="$start" -v end="$end" '
-    $0 == start { skipping = 1; next }
-    $0 == end { skipping = 0; next }
-    skipping != 1 { print }
-  ' "$target_path" >"$tmp_file"; then
-    rm -f "$tmp_file"
-    return 1
-  fi
-
-  mv "$tmp_file" "$target_path"
-  printf '%s\n' "$(ui::status completed "removed agent instruction block: $target_path")"
-}
-
 dotfiles::uninstall() {
   local yes=0
   local arg=""
-  local config_dir=""
   local path=""
   local -a managed_paths=()
 
@@ -125,7 +71,7 @@ dotfiles::uninstall() {
         yes=1
         ;;
       -h|--help)
-        ui::help_start "dotfiles uninstall" "Remove dotfiles-managed links and agent instruction blocks."
+        ui::help_start "dotfiles uninstall" "Remove dotfiles-managed links."
         ui::help_options \
           $'-y, --yes\tyes\tRun uninstall without an interactive confirmation.'
         return 0
@@ -142,12 +88,11 @@ dotfiles::uninstall() {
   if [[ "$yes" != "1" ]]; then
     ui::input_required "uninstall requires explicit confirmation" \
       $'usage\tdotfiles uninstall -y' \
-      $'removes\tmanaged symlinks and agent instruction blocks' \
+      $'removes\tmanaged symlinks' \
       $'preserves\tpackages, apps, fonts, themes, backups, and local config'
     return 2
   fi
 
-  config_dir="$(dotfiles::config_dir)"
   managed_paths=(
     "$HOME/.zshenv"
     "$HOME/.zprofile"
@@ -164,10 +109,6 @@ dotfiles::uninstall() {
     dotfiles::remove_managed_symlink "$path" "$DOTFILES_ROOT" "managed link"
   done
 
-  dotfiles::remove_managed_agent_links "$config_dir"
-  dotfiles::remove_managed_codex_rules
-  dotfiles::remove_managed_agent_block codex "$HOME/.codex/AGENTS.md"
-  dotfiles::remove_managed_agent_block claude "$HOME/.claude/CLAUDE.md"
 
   printf '%s\n' "$(ui::status completed "uninstall finished")"
   printf '%s\n' "$(ui::status note "preserved packages, apps, fonts, themes, backups, and local config")"
@@ -290,7 +231,6 @@ dotfiles::complete() {
   local context="${1:-commands}"
   local module_id="${2:-}"
   local platform=""
-  local skill_path skill_id
 
   export DOTFILES_ROOT
   # shellcheck disable=SC1091
@@ -310,10 +250,9 @@ dotfiles::complete() {
     commands)
       cat <<'EOF'
 install:run the interactive installer or direct install target
-uninstall:remove dotfiles-managed links and agent instruction blocks
+uninstall:remove dotfiles-managed links
 list:list direct install targets
 themes:manage shell theme selection and dependencies
-agents:manage agent rules and skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
 doctor:check the local dotfiles setup
@@ -327,10 +266,6 @@ vim:alias for neovim
 nvim:alias for neovim
 omz:alias for oh_my_zsh
 desktop-apps:alias for desktop_apps
-codex:alias for agents codex
-codex-cli:alias for agents codex
-claude:alias for agents claude
-claude-cli:alias for agents claude
 EOF
       if [[ "$platform" == "macos" ]]; then
         cat <<'EOF'
@@ -341,7 +276,6 @@ EOF
     items)
       case "$module_id" in
         packages) catalog::package_records brew | dotfiles::complete_records ;;
-        agents) catalog::agent_records | dotfiles::complete_records ;;
         oh_my_zsh|omz) catalog::omz_plugin_records | dotfiles::complete_records ;;
         fonts) catalog::font_records | dotfiles::complete_records ;;
         desktop_apps|desktop-apps) catalog::desktop_app_records | dotfiles::complete_records ;;
@@ -354,17 +288,6 @@ list:list available shell themes
 use:set the saved shell theme and install dependencies
 install:install dependencies for the saved shell theme
 EOF
-      ;;
-    external-skills)
-      catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
-      ;;
-    agent-skills)
-      for skill_path in "$DOTFILES_ROOT"/agents/skills/*; do
-        [[ -f "$skill_path/SKILL.md" ]] || continue
-        skill_id="${skill_path##*/}"
-        printf '%s:%s (internal)\n' "$skill_id" "$skill_id"
-      done
-      catalog::external_skill_artifact_records | awk -F '\t' '{ printf "%s:%s (%s)\n", $1, $4, $2 }'
       ;;
   esac
 }
@@ -380,17 +303,6 @@ case "${1:-help}" in
   uninstall)
     shift
     dotfiles::uninstall "$@"
-    ;;
-  agents)
-    shift
-    zsh_bin="$(dotfiles::find_zsh || true)"
-    if [[ -z "$zsh_bin" ]]; then
-      ui::validation_error "zsh runtime unavailable" \
-        $'expected\tzsh installed by the dotfiles installer' \
-        $'next\tdfx install agents codex'
-      exit 1
-    fi
-    exec "$zsh_bin" "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" "$@"
     ;;
   themes)
     shift
@@ -414,7 +326,7 @@ case "${1:-help}" in
       ui::validation_error "completion context required" \
         $'input\tcomplete' \
         $'usage\tdfx complete <context> [target]' \
-        $'expected\tcommands, targets, items, agent-skills, external-skills' \
+        $'expected\tcommands, targets, items, theme-commands' \
         $'next\tThis command is used by shell completion integration.'
       exit 2
     fi

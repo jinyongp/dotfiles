@@ -1,7 +1,0 @@
-interface:
-  display_name: "Astro + Solid Integration"
-  short_description: "Build and review Astro applications using Solid islands"
-  default_prompt: "Use $astro-solid-integration to implement or review this Astro and SolidJS change."
-
-policy:
-  allow_implicit_invocation: true

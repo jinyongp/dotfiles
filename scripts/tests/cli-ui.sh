@@ -72,208 +72,6 @@ cli_ui_test::assert_json_file() {
   python3 -m json.tool "$1" >/dev/null
 }
 
-cli_ui_test::assert_agents_inventory() {
-  local output_file="$WORK_DIR/agents_inventory.out"
-  local error_file="$WORK_DIR/agents_inventory.err"
-  local codex_skills="$HOME_DIR/.codex/skills"
-
-  mkdir -p "$codex_skills"
-  ln -s "$DOTFILES_ROOT/agents/skills/planning" "$codex_skills/planning"
-  mkdir -p "$codex_skills/review-loop"
-  ln -s "$WORK_DIR/not-the-devtools-skill" "$codex_skills/devtools"
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    DOTFILES_INSTALL_UI_MODE="json" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    dotfiles agents list >"$output_file" 2>"$error_file"
-
-  cli_ui_test::assert_json_file "$output_file"
-  [[ ! -s "$error_file" ]] || cli_ui_test::fail "agents inventory JSON should not emit stderr"
-
-  python3 - "$output_file" "$DOTFILES_ROOT" "$HOME_DIR" <<'PY'
-import json
-import sys
-
-path, root, home = sys.argv[1:]
-records = json.load(open(path, encoding="utf-8"))
-by_id = {record["id"]: record for record in records}
-
-for skill_id in ("planning", "review-loop", "git-commit"):
-    assert skill_id in by_id, skill_id
-    assert by_id[skill_id]["kind"] == "internal"
-    assert by_id[skill_id]["source"] == "repository"
-    assert by_id[skill_id]["sourcePath"].startswith(root + "/agents/skills/")
-
-assert by_id["gate"]["kind"] == "external"
-assert by_id["gate"]["source"] == "external"
-assert "adapterTargets" in by_id["gate"]
-assert by_id["impeccable"]["kind"] == "external"
-assert by_id["impeccable"]["source"] == "external"
-assert by_id["impeccable-claude"]["kind"] == "external"
-assert by_id["impeccable-claude"]["source"] == "external"
-assert by_id["devtools"]["kind"] == "external"
-assert by_id["devtools"]["source"] == "external"
-assert by_id["devtools"]["ref"] == "latest"
-assert by_id["devtools"]["repoUrl"] == "https://github.com/jinyongp/devtools"
-
-def target_status(skill_id, adapter):
-    targets = by_id[skill_id]["adapterTargets"]
-    return next(item for item in targets if item["adapter"] == adapter)
-
-planning = target_status("planning", "codex")
-assert planning["status"] == "linked"
-assert planning["linkType"] == "symlink"
-assert planning["linkTarget"] == root + "/agents/skills/planning"
-
-review_loop = target_status("review-loop", "codex")
-assert review_loop["status"] == "materialized"
-assert review_loop["linkType"] == "directory"
-
-devtools = target_status("devtools", "codex")
-assert devtools["status"] == "conflict"
-assert devtools["linkType"] == "symlink"
-
-git_commit = target_status("git-commit", "codex")
-assert git_commit["status"] == "missing"
-assert git_commit["adapterAvailable"] is True
-
-claude = target_status("git-commit", "claude")
-assert claude["status"] == "unavailable"
-assert claude["adapterAvailable"] is False
-PY
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    zsh -f -c 'dfx() { dotfiles "$@"; }; dfx agents list' >"$WORK_DIR/dfx_agents_list.out" 2>"$WORK_DIR/dfx_agents_list.err"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "AGENT SKILLS"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "INTERNAL"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "EXTERNAL"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "planning"
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" $'linked    \xee\xb2\x81'
-  cli_ui_test::assert_contains "$WORK_DIR/dfx_agents_list.out" "nowhere"
-
-  python3 - "$WORK_DIR/dfx_agents_list.out" <<'PY'
-import sys
-
-lines = open(sys.argv[1], encoding="utf-8").read().splitlines()
-assert lines.index("INTERNAL") < lines.index("EXTERNAL"), lines
-assert any(line.strip().lstrip("-• ") == "astro-solid-integration" for line in lines), lines
-assert any(line.strip().lstrip("-• ") == "gate" for line in lines), lines
-assert any(line.startswith("    linked    \uec81") for line in lines), lines
-assert any(line == "    path      agents/skills/astro-solid-integration" for line in lines), lines
-assert any(line.startswith("    source    gate@") and line.endswith(" (main)") for line in lines), lines
-assert not any("source    gate@main" in line or " · " in line for line in lines), lines
-assert not any(line.startswith("  - source") or line.startswith("  - path") for line in lines), lines
-assert not any("repository:dotfiles; revision unknown" in line for line in lines), lines
-PY
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    FORCE_COLOR=1 \
-    UI_ENV_STDOUT_IS_TTY=1 \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    dotfiles agents list >"$WORK_DIR/agents_inventory_color.out" 2>"$WORK_DIR/agents_inventory_color.err"
-
-  python3 - "$WORK_DIR/agents_inventory_color.out" <<'PY'
-import sys
-
-output = open(sys.argv[1], "rb").read()
-assert "\uec81".encode() in output
-assert b"\x1b[32m" + "\uec81".encode() not in output
-assert "\uec82".encode() not in output
-assert b"codex:linked" not in output
-assert b"codex:missing" not in output
-PY
-  [[ ! -s "$WORK_DIR/agents_inventory_color.err" ]] || cli_ui_test::fail "colored agents inventory should not emit stderr"
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    DOTFILES_INSTALL_UI_MODE=plain \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    dotfiles agents list >"$WORK_DIR/agents_inventory_plain.out" 2>"$WORK_DIR/agents_inventory_plain.err"
-  cli_ui_test::assert_contains "$WORK_DIR/agents_inventory_plain.out" "linked    codex"
-  cli_ui_test::assert_not_contains "$WORK_DIR/agents_inventory_plain.out" $'\xee\xb2\x81'
-  [[ ! -s "$WORK_DIR/agents_inventory_plain.err" ]] || cli_ui_test::fail "plain agents inventory should not emit stderr"
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    DOTFILES_ROOT="$DOTFILES_ROOT" \
-    FORCE_COLOR=1 \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    zsh -f -c '
-      source "$DOTFILES_ROOT/scripts/lib/style.sh"
-      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
-      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
-      dotfiles::log_success "Updated external agent skill gate to abc123"
-    ' >"$WORK_DIR/agents_sync_color.out" 2>"$WORK_DIR/agents_sync_color.err"
-
-  python3 - "$WORK_DIR/agents_sync_color.out" <<'PY'
-import sys
-
-output = open(sys.argv[1], "rb").read()
-assert b"\x1b[32mdone\x1b[0m  Updated external agent skill gate to abc123" in output
-assert b"\x1b[1;32m" not in output
-assert output.count(b"\x1b[32m") == 1
-PY
-  [[ ! -s "$WORK_DIR/agents_sync_color.err" ]] || cli_ui_test::fail "agents sync color rendering should not emit stderr"
-
-  env -i \
-    HOME="$HOME_DIR" \
-    USER="${USER:-dotfiles}" \
-    LOGNAME="${USER:-dotfiles}" \
-    XDG_CONFIG_HOME="$CONFIG_DIR" \
-    DOTFILES_PLATFORM="macos" \
-    DOTFILES_ROOT="$DOTFILES_ROOT" \
-    DOTFILES_INSTALL_UI_MODE=json \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
-    TERM="xterm-256color" \
-    zsh -f -c '
-      source "$DOTFILES_ROOT/scripts/lib/style.sh"
-      source "$DOTFILES_ROOT/scripts/lib/common.zsh"
-      source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
-      dotfiles::log_success "Updated external agent skill gate to abc123"
-    ' >"$WORK_DIR/agents_sync_json.out" 2>"$WORK_DIR/agents_sync_json.err"
-
-  python3 - "$WORK_DIR/agents_sync_json.out" <<'PY'
-import json
-import sys
-
-event = json.load(open(sys.argv[1], encoding="utf-8"))
-assert event["type"] == "success"
-assert event["data"]["message"] == "Updated external agent skill gate to abc123"
-PY
-  [[ ! -s "$WORK_DIR/agents_sync_json.err" ]] || cli_ui_test::fail "agents sync JSON rendering should not emit stderr"
-
-  printf 'ok agents_inventory\n'
-}
-
 cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_help dotfiles help
   cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_help.out" "Usage:"
@@ -287,10 +85,9 @@ cli_ui_test::assert_dotfiles() {
   cli_ui_test::run_cmd dotfiles_complete_commands dotfiles complete commands
   diff -u "$WORK_DIR/dotfiles_complete_commands.out" - <<'EOF'
 install:run the interactive installer or direct install target
-uninstall:remove dotfiles-managed links and agent instruction blocks
+uninstall:remove dotfiles-managed links
 list:list direct install targets
 themes:manage shell theme selection and dependencies
-agents:manage agent rules and skills
 update:fast-forward this dotfiles repository
 path:print the dotfiles repository path
 doctor:check the local dotfiles setup
@@ -316,11 +113,6 @@ EOF
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_complete_theme_items.out" "none:none"
   cli_ui_test::assert_contains "$DOTFILES_ROOT/zsh/completions/_dotfiles" "_describe -V -t commands"
 
-  cli_ui_test::run_cmd dotfiles_agents_help dotfiles agents
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_help.out" "COMMANDS"
-  cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_agents_help.out" "DOTFILES_INSTALL_UI_MODE"
-  [[ ! -s "$WORK_DIR/dotfiles_agents_help.err" ]] || cli_ui_test::fail "dotfiles agents emitted stderr"
-
   cli_ui_test::run_cmd dotfiles_themes_help dotfiles themes
   cli_ui_test::assert_contains "$WORK_DIR/dotfiles_themes_help.out" "COMMANDS"
   cli_ui_test::assert_not_contains "$WORK_DIR/dotfiles_themes_help.out" "DOTFILES_INSTALL_UI_MODE"
@@ -344,20 +136,6 @@ EOF
   cli_ui_test::assert_not_contains "$WORK_DIR/dfx_help_list.out" "Usage:"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "Install targets"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "usage: dfx install <target> [item...]"
-
-  cli_ui_test::run_cmd_json dotfiles_agents_json dotfiles agents list
-  cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_agents_json.out"
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "gate"'
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "impeccable"'
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "impeccable-claude"'
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"id": "planning"'
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"kind": "internal"'
-  cli_ui_test::assert_contains "$WORK_DIR/dotfiles_agents_json.out" '"adapterTargets":'
-
-  if cli_ui_test::run_cmd_json dotfiles_agents_json_flag dotfiles agents list --json; then
-    cli_ui_test::fail "dotfiles agents list --json unexpectedly succeeded"
-  fi
-  cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_agents_json_flag.err"
 
   fake_git_path="$WORK_DIR/fake-git"
   mkdir -p "$fake_git_path"
@@ -385,40 +163,20 @@ EOF
 }
 
 cli_ui_test::assert_uninstall() {
-  local codex_agents="$HOME_DIR/.codex/AGENTS.md"
-  local claude_agents="$HOME_DIR/.claude/CLAUDE.md"
-  local codex_skills="$HOME_DIR/.codex/skills"
-  local codex_rules="$HOME_DIR/.codex/rules"
-  local claude_skills="$HOME_DIR/.claude/skills"
-  local external_cache="$CONFIG_DIR/dotfiles/agents/external-skills/gate"
   local fake_brew_path=""
 
-  mkdir -p "$HOME_DIR/.config" "$codex_skills" "$codex_rules" "$claude_skills" "$external_cache" "$HOME_DIR/.codex" "$HOME_DIR/.claude"
+  mkdir -p "$HOME_DIR/.config"
+  mkdir -p "$HOME_DIR/.codex/skills/local" "$HOME_DIR/.claude/skills/local"
+  printf '%s\n' 'local Codex rules' >"$HOME_DIR/.codex/AGENTS.md"
+  printf '%s\n' 'local Claude rules' >"$HOME_DIR/.claude/CLAUDE.md"
+  printf '%s\n' 'local skill' >"$HOME_DIR/.codex/skills/local/SKILL.md"
+  printf '%s\n' 'local skill' >"$HOME_DIR/.claude/skills/local/SKILL.md"
   ln -s "$DOTFILES_ROOT/zsh/.zshenv" "$HOME_DIR/.zshenv"
   ln -s "$DOTFILES_ROOT/zsh/.zprofile" "$HOME_DIR/.zprofile"
   ln -s "$DOTFILES_ROOT/zsh/.zshrc" "$HOME_DIR/.zshrc"
   ln -s "$DOTFILES_ROOT/vim/.vimrc" "$HOME_DIR/.vimrc"
   ln -s "$DOTFILES_ROOT/git/.gitconfig" "$HOME_DIR/.gitconfig"
   ln -s "$DOTFILES_ROOT/nvim" "$HOME_DIR/.config/nvim"
-  ln -s "$DOTFILES_ROOT/agents/skills/planning" "$codex_skills/planning"
-  ln -s "$DOTFILES_ROOT/agents/codex/rules/dotfiles.rules" "$codex_rules/dotfiles.rules"
-  printf '%s\n' 'keep local approvals' >"$codex_rules/default.rules"
-  ln -s "$external_cache" "$codex_skills/gate"
-  ln -s "$DOTFILES_ROOT/agents/skills/git-commit" "$claude_skills/git-commit"
-  ln -s "$WORK_DIR/not-managed" "$codex_skills/custom"
-  printf '%s\n' \
-    "keep codex before" \
-    "<!-- dotfiles:agents:codex:start -->" \
-    "@/tmp/remove-me" \
-    "<!-- dotfiles:agents:codex:end -->" \
-    "keep codex after" >"$codex_agents"
-  printf '%s\n' \
-    "keep claude before" \
-    "<!-- dotfiles:agents:claude:start -->" \
-    "@/tmp/remove-me" \
-    "<!-- dotfiles:agents:claude:end -->" \
-    "keep claude after" >"$claude_agents"
-
   if cli_ui_test::run_cmd dotfiles_uninstall_missing_yes dotfiles uninstall; then
     cli_ui_test::fail "dotfiles uninstall without -y unexpectedly succeeded"
   fi
@@ -432,20 +190,11 @@ cli_ui_test::assert_uninstall() {
   [[ ! -e "$HOME_DIR/.vimrc" ]] || cli_ui_test::fail "managed .vimrc link was not removed"
   [[ ! -e "$HOME_DIR/.gitconfig" ]] || cli_ui_test::fail "managed .gitconfig link was not removed"
   [[ ! -e "$HOME_DIR/.config/nvim" ]] || cli_ui_test::fail "managed nvim link was not removed"
-  [[ ! -e "$codex_skills/planning" ]] || cli_ui_test::fail "managed codex skill link was not removed"
-  [[ ! -e "$codex_rules/dotfiles.rules" ]] || cli_ui_test::fail "managed Codex rules link was not removed"
-  cli_ui_test::assert_contains "$codex_rules/default.rules" "keep local approvals"
-  [[ ! -e "$codex_skills/gate" ]] || cli_ui_test::fail "managed external skill link was not removed"
-  [[ ! -e "$claude_skills/git-commit" ]] || cli_ui_test::fail "managed claude skill link was not removed"
-  [[ -L "$codex_skills/custom" ]] || cli_ui_test::fail "unmanaged skill link should be preserved"
-  cli_ui_test::assert_contains "$codex_agents" "keep codex before"
-  cli_ui_test::assert_contains "$codex_agents" "keep codex after"
-  cli_ui_test::assert_not_contains "$codex_agents" "dotfiles:agents:codex:start"
-  cli_ui_test::assert_contains "$claude_agents" "keep claude before"
-  cli_ui_test::assert_contains "$claude_agents" "keep claude after"
-  cli_ui_test::assert_not_contains "$claude_agents" "dotfiles:agents:claude:start"
-
-  rm -rf "$HOME_DIR/.codex" "$HOME_DIR/.claude" "$HOME_DIR/.config"
+  cli_ui_test::assert_contains "$HOME_DIR/.codex/AGENTS.md" "local Codex rules"
+  cli_ui_test::assert_contains "$HOME_DIR/.claude/CLAUDE.md" "local Claude rules"
+  cli_ui_test::assert_contains "$HOME_DIR/.codex/skills/local/SKILL.md" "local skill"
+  cli_ui_test::assert_contains "$HOME_DIR/.claude/skills/local/SKILL.md" "local skill"
+  rm -rf "$HOME_DIR/.config"
 
   printf 'ok uninstall\n'
 }
@@ -509,7 +258,6 @@ EOF
 cli_ui_test::main() {
   cli_ui_test::assert_dotfiles
   cli_ui_test::assert_uninstall
-  cli_ui_test::assert_agents_inventory
   cli_ui_test::assert_small_commands
   printf 'all cli ui tests passed\n'
 }

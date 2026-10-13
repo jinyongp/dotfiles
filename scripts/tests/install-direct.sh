@@ -53,8 +53,6 @@ install_direct_test::assert_alias_normalization() {
   install_direct_test::assert_equal "$(install::normalize_direct_target nvim)" "neovim" "expected nvim alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target omz)" "oh_my_zsh" "expected omz alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target desktop-apps)" "desktop_apps" "expected desktop-apps alias"
-  install_direct_test::assert_equal "$(install::normalize_direct_target codex)" "agents" "expected codex alias"
-  install_direct_test::assert_equal "$(install::normalize_direct_target codex-cli)" "agents" "expected codex-cli alias"
   install_direct_test::assert_equal "$(install::normalize_direct_target macos-defaults)" "macos_defaults" "expected macos-defaults alias"
   printf 'ok alias_normalization\n'
 }
@@ -104,22 +102,6 @@ install_direct_test::assert_packages_items_configured() {
   printf 'ok packages_items_configured\n'
 }
 
-install_direct_test::assert_agents_items_configured() {
-  install_direct_test::reset_case
-
-  install::configure_direct_install agents codex
-
-  install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "agents" "expected agents selected"
-  install_direct_test::assert_equal "$(install::get_module_items agents)" "codex" "expected agent item ids"
-  install_direct_test::assert_equal "$(install::get_module_item_labels agents)" "Codex" "expected agent item labels"
-
-  install::configure_direct_install codex
-
-  install_direct_test::assert_equal "$DOTFILES_SELECTED_MODULES" "agents" "expected codex alias to select agents"
-  install_direct_test::assert_equal "$(install::get_module_items agents)" "codex" "expected codex alias item"
-  printf 'ok agents_items_configured\n'
-}
-
 install_direct_test::assert_direct_item_dependencies_configured() {
   install_direct_test::reset_case
 
@@ -134,6 +116,19 @@ install_direct_test::assert_direct_item_dependencies_configured() {
   install_direct_test::assert_equal "$(install::get_module_item_labels desktop_apps)" "Keka, KekaExternalHelper" "expected direct desktop app dependency labels"
 
   printf 'ok direct_item_dependencies_configured\n'
+}
+
+install_direct_test::assert_agent_targets_removed() {
+  local target
+  for target in agents codex codex-cli claude claude-cli; do
+    install_direct_test::reset_case
+    if install::configure_direct_install "$target" >/dev/null 2>"$WORK_DIR/removed-target.err"; then
+      install_direct_test::fail "removed target unexpectedly succeeded: $target"
+    fi
+    grep -Fq "Error: unknown install target" "$WORK_DIR/removed-target.err" \
+      || install_direct_test::fail "expected removed target rejection: $target"
+  done
+  printf 'ok agent_targets_removed\n'
 }
 
 install_direct_test::assert_theme_target_removed() {
@@ -157,8 +152,8 @@ install_direct_test::main() {
   install_direct_test::assert_invalid_target_fails
   install_direct_test::assert_item_args_rejected_for_non_leaf_module
   install_direct_test::assert_packages_items_configured
-  install_direct_test::assert_agents_items_configured
   install_direct_test::assert_direct_item_dependencies_configured
+  install_direct_test::assert_agent_targets_removed
   install_direct_test::assert_theme_target_removed
   printf 'all install direct tests passed\n'
 }

@@ -1,7 +1,0 @@
-interface:
-  display_name: "Dev Docs"
-  short_description: "Design and write clear developer documentation"
-  default_prompt: "Use $dev-docs to design and write the best developer-facing documentation for this project."
-
-policy:
-  allow_implicit_invocation: true

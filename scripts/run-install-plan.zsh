@@ -22,7 +22,6 @@ source "$DOTFILES_ROOT/scripts/lib/catalog.sh"
 source "$DOTFILES_ROOT/scripts/lib/packages.zsh"
 source "$DOTFILES_ROOT/scripts/modules/packages.zsh"
 source "$DOTFILES_ROOT/scripts/modules/dotfiles.zsh"
-source "$DOTFILES_ROOT/scripts/modules/agents.zsh"
 source "$DOTFILES_ROOT/scripts/modules/shell.zsh"
 source "$DOTFILES_ROOT/scripts/modules/theme.zsh"
 source "$DOTFILES_ROOT/scripts/modules/neovim.zsh"
@@ -31,7 +30,6 @@ source "$DOTFILES_ROOT/scripts/modules/macos.zsh"
 typeset -ga DOTFILES_RUN_ORDER=(
   packages
   dotfiles
-  agents
   oh_my_zsh
   neovim
   fonts

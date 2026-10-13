@@ -183,13 +183,13 @@ install_profile_test::assert_profile_record_cues() {
   recommended_description="$(install_profile_test::record_field_for_id recommended 3 "${macos_records[@]}")"
 
   install_profile_test::assert_equal "$recommended_status" "3 modules · 5 packages" "expected recommended cue"
-  install_profile_test::assert_equal "$full_status" "8 modules · 12 packages · 6 plugins · 4 fonts · 6 apps" "expected macOS full cue"
+  install_profile_test::assert_equal "$full_status" "7 modules · 12 packages · 6 plugins · 4 fonts · 6 apps" "expected macOS full cue"
   install_profile_test::assert_equal "$custom_status" "manual" "expected custom cue"
   install_profile_test::assert_equal "$minimal_description" "Dotfiles only." "expected minimal description"
   install_profile_test::assert_equal "$recommended_description" "Dotfiles + base CLI + Neovim baseline." "expected recommended description"
 
   full_status="$(install_profile_test::record_field_for_id full 6 "${linux_records[@]}")"
-  install_profile_test::assert_equal "$full_status" "5 modules · 12 packages · 6 plugins" "expected linux full cue"
+  install_profile_test::assert_equal "$full_status" "4 modules · 12 packages · 6 plugins" "expected linux full cue"
 
   printf 'ok profile_record_cues\n'
 }
@@ -200,7 +200,6 @@ install_profile_test::assert_full_profile_by_platform() {
 
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "dotfiles" "full macOS should select dotfiles"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "packages" "full macOS should select packages"
-  install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "agents" "full macOS should select agents"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "oh_my_zsh" "full macOS should select oh_my_zsh"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "neovim" "full macOS should select neovim"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "fonts" "full macOS should select fonts"
@@ -212,7 +211,6 @@ install_profile_test::assert_full_profile_by_platform() {
 
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "dotfiles" "full Linux should select dotfiles"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "packages" "full Linux should select packages"
-  install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "agents" "full Linux should select agents"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "oh_my_zsh" "full Linux should select oh_my_zsh"
   install_profile_test::assert_contains_word "$DOTFILES_SELECTED_MODULES" "neovim" "full Linux should select neovim"
   install_profile_test::assert_not_contains_word "$DOTFILES_SELECTED_MODULES" "fonts" "full Linux should not select fonts"

@@ -1,7 +1,0 @@
-interface:
-  display_name: "SolidJS Development"
-  short_description: "Build and review correct version-aware SolidJS code"
-  default_prompt: "Use $solidjs-development to implement or review this SolidJS change."
-
-policy:
-  allow_implicit_invocation: true

@@ -1,6 +1,6 @@
 # Dotfiles
 
-Personal macOS and Linux shell setup: zsh, CLI tools, Neovim, agent rules, and
+Personal macOS and Linux shell setup: zsh, CLI tools, Neovim, and
 machine-local configuration defaults.
 
 ## Quick Start
@@ -45,8 +45,6 @@ Run a specific target when you only want one part of the setup.
 
 ```sh
 dotfiles install neovim
-dotfiles install agents
-dotfiles install agents codex
 dotfiles install packages taskwarrior
 dotfiles install packages fnm eza
 dotfiles install theme
@@ -61,7 +59,7 @@ config paths, see [`docs/installer.md`](docs/installer.md).
 
 ## Uninstall
 
-Run uninstall to remove dotfiles-managed symlinks and agent instruction blocks.
+Run uninstall to remove dotfiles-managed symlinks.
 It does not remove packages, apps, fonts, themes, backups, machine-local config,
 or a manual checkout.
 
@@ -80,7 +78,6 @@ rollback checklist.
 - zsh startup files and shell helpers
 - CLI packages and selected desktop apps
 - Neovim config
-- AI agent rules and skills
 - themes, fonts, and machine-local Git config helpers
 
 Machine-local overrides live under `~/.config/dotfiles`.

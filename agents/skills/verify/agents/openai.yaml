@@ -1,7 +1,0 @@
-interface:
-  display_name: "Verify"
-  short_description: "Pick and run focused validation checks"
-  default_prompt: "Use $verify to choose and run the right validation for this change."
-
-policy:
-  allow_implicit_invocation: true

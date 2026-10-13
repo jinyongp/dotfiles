@@ -1,5 +1,0 @@
-prefix_rule(
-    pattern = ["git", ["add", "commit"]],
-    decision = "allow",
-    justification = "Allow routine local Git index and commit writes.",
-)

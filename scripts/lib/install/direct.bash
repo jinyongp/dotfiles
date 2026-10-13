@@ -5,8 +5,6 @@ install::normalize_direct_target() {
     vim|nvim) printf 'neovim' ;;
     omz|oh-my-zsh) printf 'oh_my_zsh' ;;
     desktop-apps) printf 'desktop_apps' ;;
-    codex|codex-cli) printf 'agents' ;;
-    claude|claude-cli) printf 'agents' ;;
     macos-defaults) printf 'macos_defaults' ;;
     *) printf '%s' "$1" ;;
   esac
@@ -33,7 +31,6 @@ install::load_direct_item_records() {
 
   case "$module_id" in
     packages) install::read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER" ;;
-    agents) install::read_records_into_array "$array_name" catalog::agent_records ;;
     oh_my_zsh) install::read_records_into_array "$array_name" catalog::omz_plugin_records ;;
     fonts) install::read_records_into_array "$array_name" catalog::font_records ;;
     desktop_apps) install::read_records_into_array "$array_name" catalog::desktop_app_records ;;
@@ -156,7 +153,6 @@ install::print_direct_usage() {
   ui::help_commands \
     $'packages\tpackages\tInstall selected base CLI packages.' \
     $'dotfiles\tdotfiles\tLink shell, Vim, Neovim, and Git dotfiles.' \
-    $'agents\tagents\tInstall shared AI agent rules for selected adapters.' \
     $'oh_my_zsh\toh_my_zsh\tInstall oh-my-zsh and selected plugins.' \
     $'neovim\tneovim\tInstall Neovim and editor dependencies.' \
     $'fonts\tfonts\tInstall selected fonts.' \
@@ -165,13 +161,9 @@ install::print_direct_usage() {
   ui::help_records "Aliases" \
     $'vim\tvim\tAlias for neovim.' \
     $'nvim\tnvim\tAlias for neovim.' \
-    $'omz\tomz\tAlias for oh_my_zsh.' \
-    $'codex\tcodex\tAlias for agents codex.' \
-    $'codex-cli\tcodex-cli\tAlias for agents codex.'
+    $'omz\tomz\tAlias for oh_my_zsh.'
   ui::help_examples \
     "$install_path_display neovim" \
-    "$install_path_display agents" \
-    "$install_path_display agents codex" \
     "$install_path_display packages taskwarrior" \
     "$install_path_display packages fnm eza" \
     "$install_path_display desktop_apps iterm2 raycast"
@@ -217,7 +209,6 @@ install::direct_target_summary() {
   case "$1" in
     dotfiles) printf 'shell, Git, Vim, Neovim links' ;;
     packages) printf 'CLI packages' ;;
-    agents) printf 'Codex/Claude rules and skills' ;;
     oh_my_zsh) printf 'oh-my-zsh and plugins' ;;
     neovim) printf 'Neovim config and tooling' ;;
     fonts) printf 'terminal fonts' ;;
@@ -231,7 +222,6 @@ install::direct_target_example() {
   case "$1" in
     dotfiles) printf 'dfx install dotfiles' ;;
     packages) printf 'dfx install packages' ;;
-    agents) printf 'dfx install agents codex' ;;
     oh_my_zsh) printf 'dfx install omz' ;;
     neovim) printf 'dfx install neovim' ;;
     fonts) printf 'dfx install fonts' ;;
@@ -244,14 +234,8 @@ install::direct_target_example() {
 install::configure_direct_install() {
   local target="$1"
   shift || true
-  local requested_target="$target"
 
   target="$(install::normalize_direct_target "$target")"
-  case "$requested_target" in
-    codex|codex-cli) set -- codex "$@" ;;
-    claude|claude-cli) set -- claude "$@" ;;
-  esac
-
   DOTFILES_ALLOW_AUTO_LAUNCH_ZSH="0"
   DOTFILES_RUN_THEME_INSTALL="0"
   install::load_saved_runtime_defaults

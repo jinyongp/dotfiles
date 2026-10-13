@@ -24,10 +24,11 @@ env -i \
   HOME="$WORK_DIR/home" \
   PATH="$TEST_BIN" \
   SHELL="$FAKE_ZSH" \
+  DOTFILES_ROOT="$DOTFILES_ROOT" \
   ZSH_INVOCATION_LOG="$INVOCATION_LOG" \
-  "$DOTFILES_ROOT/cmd/dotfiles" agents sync
+  bash -c 'source "$DOTFILES_ROOT/scripts/lib/runtime-shared.zsh"; zsh_bin="$(dotfiles::find_zsh)"; exec "$zsh_bin" --version'
 
-expected="$(printf '%s\n' "$DOTFILES_ROOT/scripts/run-agent-skills.zsh" sync)"
+expected="--version"
 actual="$(cat "$INVOCATION_LOG")"
 
 if [[ "$actual" != "$expected" ]]; then

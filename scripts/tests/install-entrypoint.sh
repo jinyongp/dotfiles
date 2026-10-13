@@ -203,7 +203,6 @@ install_entrypoint_test::assert_list() {
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "installs"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "example"
   install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "dotfiles          shell, Git, Vim, Neovim links"
-  install_entrypoint_test::assert_contains "$WORK_DIR/list.out" "agents            Codex/Claude rules and skills"
   install_entrypoint_test::assert_not_contains "$WORK_DIR/list.out" "theme             current shell theme deps"
   install_entrypoint_test::assert_not_contains "$WORK_DIR/list.out" "dfx install theme"
   install_entrypoint_test::assert_no_stderr "list"
@@ -214,11 +213,6 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::run_dotfiles_command "dotfiles_path" path
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_path.out" "$DOTFILES_ROOT"
   install_entrypoint_test::assert_no_stderr "dotfiles_path"
-
-  install_entrypoint_test::run_dotfiles_command "dotfiles_agents_help" agents
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_help.out" "COMMANDS"
-  install_entrypoint_test::assert_not_contains "$WORK_DIR/dotfiles_agents_help.out" "DOTFILES_INSTALL_UI_MODE"
-  install_entrypoint_test::assert_no_stderr "dotfiles_agents_help"
 
   install_entrypoint_test::run_dotfiles_command "dotfiles_complete_commands" complete commands
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_commands.out" "install:run the interactive installer or direct install target"
@@ -247,57 +241,6 @@ install_entrypoint_test::assert_dotfiles_command() {
   install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_themes_list.out" "starship"
   install_entrypoint_test::assert_no_stderr "dotfiles_themes_list"
 
-  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_external_skills" complete external-skills
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "gate:gate (gate)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "humanize-korean:humanize-korean (im-not-ai)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "impeccable:impeccable (impeccable)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "impeccable-claude:impeccable (impeccable)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_external_skills.out" "devtools:devtools (devtools)"
-  install_entrypoint_test::assert_no_stderr "dotfiles_complete_external_skills"
-
-  install_entrypoint_test::run_dotfiles_command "dotfiles_complete_agent_skills" complete agent-skills
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "astro-solid-integration:astro-solid-integration (internal)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "solidjs-development:solidjs-development (internal)"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_complete_agent_skills.out" "gate:gate (gate)"
-  install_entrypoint_test::assert_no_stderr "dotfiles_complete_agent_skills"
-
-  install_entrypoint_test::run_dotfiles_command "dotfiles_agents_list" agents list
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "AGENT SKILLS"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "INTERNAL"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "EXTERNAL"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "planning"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "linked    "
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "gate"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "status    not installed"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "humanize-korean"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "codex/skills/humanize-korean"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "impeccable"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" ".agents/skills/impeccable"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "devtools"
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list.out" "source    devtools@unknown (latest)"
-  install_entrypoint_test::assert_no_stderr "dotfiles_agents_list"
-
-  install_entrypoint_test::run_dotfiles_command_json "dotfiles_agents_list_json" agents list
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "gate"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "planning"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"kind": "internal"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"adapterTargets":'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"status": "not_installed"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"adapters": ["codex","claude"]'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "humanize-korean"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"copyPolicy": "materialize_repo_symlinks"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "impeccable"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "impeccable-claude"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"id": "devtools"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json.out" '"ref": "latest"'
-  install_entrypoint_test::assert_no_stderr "dotfiles_agents_list_json"
-
-  if install_entrypoint_test::run_dotfiles_command_json "dotfiles_agents_list_json_flag" agents list --json; then
-    install_entrypoint_test::fail "agents list --json unexpectedly succeeded"
-  fi
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json_flag.err" '"type":"validation_error"'
-  install_entrypoint_test::assert_contains "$WORK_DIR/dotfiles_agents_list_json_flag.err" '"input":"--json"'
-
   printf 'ok dotfiles_command\n'
 }
 
@@ -318,7 +261,7 @@ install_entrypoint_test::assert_invalid_target() {
 
   install_entrypoint_test::assert_contains "$error_file" "Error: unknown install target"
   install_entrypoint_test::assert_contains "$error_file" "input: definitely-not-a-target"
-  install_entrypoint_test::assert_contains "$error_file" "expected: dotfiles, packages, agents, oh_my_zsh, neovim, fonts, desktop_apps, macos_defaults"
+  install_entrypoint_test::assert_contains "$error_file" "expected: dotfiles, packages, oh_my_zsh, neovim, fonts, desktop_apps, macos_defaults"
   install_entrypoint_test::assert_contains "$error_file" "usage: $DOTFILES_ROOT/install <module> [item...]"
   install_entrypoint_test::assert_contains "$error_file" "next: $DOTFILES_ROOT/install list"
   printf 'ok invalid_target\n'
@@ -329,12 +272,12 @@ install_entrypoint_test::assert_structured_direct_errors() {
 
   output_file="$WORK_DIR/invalid_item.out"
   error_file="$WORK_DIR/invalid_item.err"
-  if env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM="xterm-256color" bash "$DOTFILES_ROOT/install" agents not-an-agent >"$output_file" 2>"$error_file"; then
+  if env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM="xterm-256color" bash "$DOTFILES_ROOT/install" packages not-a-package >"$output_file" 2>"$error_file"; then
     install_entrypoint_test::fail "invalid direct item unexpectedly succeeded"
   fi
   install_entrypoint_test::assert_contains "$error_file" "Error: unknown item for install target"
-  install_entrypoint_test::assert_contains "$error_file" "target: agents"
-  install_entrypoint_test::assert_contains "$error_file" "input: not-an-agent"
+  install_entrypoint_test::assert_contains "$error_file" "target: packages"
+  install_entrypoint_test::assert_contains "$error_file" "input: not-a-package"
 
   output_file="$WORK_DIR/extra_item.out"
   error_file="$WORK_DIR/extra_item.err"

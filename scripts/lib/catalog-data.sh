@@ -81,38 +81,3 @@ packages	zoxide	fzf	zoxide requires fzf for interactive selection.
 desktop_apps	keka	kekaexternalhelper	Keka requires KekaExternalHelper for Finder integration.
 EOF
 }
-
-# Columns:
-# 1. source id
-# 2. source type (git | github-release)
-# 3. source URL
-# 4. ref or release channel
-# 5. release archive template, or -
-# 6. release checksum template, or -
-# 7. companion command for version matching, or -
-catalog_data::external_skill_source_rows() {
-  cat <<'EOF'
-gate	git	https://github.com/jinyongp/gate.git	main	-	-	-
-im-not-ai	git	https://github.com/epoko77-ai/im-not-ai.git	main	-	-	-
-impeccable	git	https://github.com/pbakaus/impeccable.git	main	-	-	-
-devtools	github-release	https://github.com/jinyongp/devtools	latest	devtools-skill_{version}.tar.gz	devtools-skill_{version}.tar.gz.sha256	devtools
-EOF
-}
-
-# Columns:
-# 1. artifact id
-# 2. source id
-# 3. skill directory path
-# 4. install name
-# 5. adapters (comma-separated)
-# 6. kind
-# 7. copy policy (preserve | materialize_repo_symlinks)
-catalog_data::external_skill_artifact_rows() {
-  cat <<'EOF'
-gate	gate	skills/gate	gate	codex,claude	skill	preserve
-humanize-korean	im-not-ai	codex/skills/humanize-korean	humanize-korean	codex	skill	materialize_repo_symlinks
-impeccable	impeccable	.agents/skills/impeccable	impeccable	codex	skill	preserve
-impeccable-claude	impeccable	.claude/skills/impeccable	impeccable	claude	skill	preserve
-devtools	devtools	devtools	devtools	codex,claude	skill	preserve
-EOF
-}

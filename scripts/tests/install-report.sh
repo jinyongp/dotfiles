@@ -64,17 +64,10 @@ install_report_test::main() {
     "Managed link already in place: ~/.vimrc"
     "Managed link already in place: ~/.zprofile"
     "Managed link already in place: ~/.gitconfig"
-    "Agent skill link already in place: ~/.codex/skills/git-commit"
-    "Agent skill link already in place: ~/.codex/skills/planning"
-    "Agent skill link already in place: ~/.claude/skills/git-commit"
-    "External agent skill cached copy: gate"
-    "External agent skill cached copy: humanize-korean"
-    "Claude instruction block"
     "Machine-local Git identity"
   )
   DOTFILES_RESULT_SKIPPED_ITEMS=(
     "TypeScript editor tooling"
-    "Agent skill already exists: ~/.codex/skills/local-only"
   )
   DOTFILES_RESULT_CREATED_FILES=()
   DOTFILES_RESULT_UPDATED_FILES=(
@@ -97,13 +90,8 @@ install_report_test::main() {
   install_report_test::assert_contains "$output" "Post-install Report" "missing report title"
   install_report_test::assert_contains "$output" "REUSED" "missing reused section"
   install_report_test::assert_contains "$output" "Managed links already in place: ~/.vimrc, ~/.zprofile, ~/.gitconfig" "expected managed link aggregation"
-  install_report_test::assert_contains "$output" "Agent skill links already in place: ~/.codex/skills (git-commit, planning)" "expected codex skill link aggregation"
-  install_report_test::assert_contains "$output" "Agent skill links already in place: ~/.claude/skills (git-commit)" "expected claude skill link aggregation"
-  install_report_test::assert_contains "$output" "External agent skill cache: gate, humanize-korean" "expected external skill cache aggregation"
-  install_report_test::assert_contains "$output" "Agent instruction blocks already current: Claude" "expected agent instruction block aggregation"
   install_report_test::assert_contains "$output" "SKIPPED" "missing skipped section"
   install_report_test::assert_contains "$output" "TypeScript editor tooling" "expected skipped item in report"
-  install_report_test::assert_contains "$output" "Existing agent skills preserved: ~/.codex/skills/local-only" "expected existing agent skill aggregation"
   install_report_test::assert_contains "$output" "FILE CHANGES" "missing file changes section"
   install_report_test::assert_contains "$output" "Updated: ~/.config/dotfiles/install.env, ~/.config/dotfiles/git/root.local.ini" "expected updated files aggregation"
   install_report_test::assert_contains "$output" "Git personal config" "missing git config section"
@@ -119,9 +107,6 @@ install_report_test::main() {
   install_report_test::assert_not_contains "$output" "Completed work" "generic completed-work section should be hidden"
   install_report_test::assert_not_contains "$output" "Saved installer state" "low-signal completed item should be filtered"
   install_report_test::assert_not_contains "$output" "Machine-local Git identity" "git identity reuse should be absorbed by git section"
-  install_report_test::assert_not_contains "$output" "Agent skill link already in place:" "raw agent skill reused entries should be aggregated"
-  install_report_test::assert_not_contains "$output" "Agent skill already exists:" "raw agent skill skipped entries should be aggregated"
-  install_report_test::assert_not_contains "$output" "External agent skill cached copy:" "raw external skill cache entries should be aggregated"
   install_report_test::assert_not_contains "$output" "None" "empty-section placeholder should be hidden"
 
   print -- "all install report tests passed"

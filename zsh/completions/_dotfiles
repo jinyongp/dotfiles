@@ -24,13 +24,6 @@ case "$CURRENT" in
         )
         _describe -V -t uninstall-options 'uninstall option' entries
         ;;
-      agents)
-        entries=(
-          'list:list internal and external agent skills'
-          'sync:update sources and reconcile agent skill links'
-        )
-        _describe -V -t agents-commands 'agents command' entries
-        ;;
       themes)
         entries=("${(@f)$(dotfiles complete theme-commands 2>/dev/null)}")
         _describe -V -t themes-commands 'themes command' entries
@@ -44,14 +37,6 @@ case "$CURRENT" in
         if (( ${#entries[@]} > 0 )); then
           _describe -V -t install-items 'install item' entries
         fi
-        ;;
-      agents)
-        case "$target" in
-          sync)
-            entries=("${(@f)$(dotfiles complete agent-skills 2>/dev/null)}")
-            _describe -V -t agent-skills 'agent skill' entries
-            ;;
-        esac
         ;;
       themes)
         case "$target" in

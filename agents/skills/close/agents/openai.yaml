@@ -1,7 +1,0 @@
-interface:
-  display_name: "Close"
-  short_description: "Check completion, validation, risks, and commit readiness"
-  default_prompt: "Use $close to check completion of this work and report what remains."
-
-policy:
-  allow_implicit_invocation: true

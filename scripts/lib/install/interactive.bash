@@ -150,7 +150,6 @@ install::select_modules() {
 install::leaf_prompt_title() {
   case "$1" in
     packages) echo "Select base CLI packages." ;;
-    agents) echo "Select agent adapters." ;;
     oh_my_zsh) echo "Select oh-my-zsh plugins." ;;
     fonts) echo "Select fonts to install." ;;
     desktop_apps) echo "Select desktop apps to install." ;;
@@ -160,7 +159,6 @@ install::leaf_prompt_title() {
 install::leaf_prompt_hint() {
   case "$1" in
     packages) echo "Use ↑/↓ to move, Space to toggle packages, Enter to confirm." ;;
-    agents) echo "Use ↑/↓ to move, Space to toggle agent adapters, Enter to confirm." ;;
     oh_my_zsh) echo "Use ↑/↓ to move, Space to toggle plugins, Enter to confirm." ;;
     fonts) echo "Use ↑/↓ to move, Space to toggle fonts, Enter to confirm." ;;
     desktop_apps) echo "Use ↑/↓ to move, Space to toggle apps, Enter to confirm." ;;
@@ -175,10 +173,6 @@ install::load_leaf_records() {
     packages)
       install::read_records_into_array "$array_name" catalog::package_records "$DOTFILES_PACKAGE_MANAGER"
       install::annotate_package_records "$array_name"
-      ;;
-    agents)
-      install::read_records_into_array "$array_name" catalog::agent_records
-      install::annotate_agent_records "$array_name"
       ;;
     oh_my_zsh)
       install::read_records_into_array "$array_name" catalog::omz_plugin_records
@@ -250,7 +244,7 @@ install::apply_leaf_selection() {
   install::set_module_items "$module_id" "$leaf_ids" "$leaf_labels"
 
   case "$module_id" in
-    packages|agents|fonts|desktop_apps)
+    packages|fonts|desktop_apps)
       if [[ -z "$leaf_ids" ]]; then
         install::clear_module_items "$module_id"
         DOTFILES_SELECTED_MODULES="$(install::remove_word "$DOTFILES_SELECTED_MODULES" "$module_id")"

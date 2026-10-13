@@ -106,8 +106,8 @@ install_execution_test::simple_step() {
 }
 
 install_execution_test::quiet_step() {
-  dotfiles::record_reused_quiet "Agent skill link already in place: ~/.codex/skills/git-commit"
-  dotfiles::record_skipped_quiet "Agent skill already exists: ~/.codex/skills/local-only"
+  dotfiles::record_reused_quiet "Managed link already in place: ~/.zshrc"
+  dotfiles::record_skipped_quiet "Optional editor tooling"
 }
 
 install_execution_test::foreground_step() {
@@ -234,15 +234,15 @@ install_execution_test::assert_quiet_events() {
   TERM=xterm-256color
 
   {
-    dotfiles::execution_run_step agents "AI Agents" install_execution_test::quiet_step
+    dotfiles::execution_run_step dotfiles "Dotfiles" install_execution_test::quiet_step
   } >"$output_file" 2>&1
 
   output="$(install_execution_test::normalize_file "$output_file")"
 
-  install_execution_test::assert_contains "$output" "◆  AI Agents" "missing quiet-event module header"
+  install_execution_test::assert_contains "$output" "◆  Dotfiles" "missing quiet-event module header"
   install_execution_test::assert_contains "$output" "completed  1 reused, 1 skipped" "quiet events should still affect summary counts"
-  install_execution_test::assert_not_contains "$output" "Agent skill link already in place" "quiet reused event should not be printed inline"
-  install_execution_test::assert_not_contains "$output" "Agent skill already exists" "quiet skipped event should not be printed inline"
+  install_execution_test::assert_not_contains "$output" "Managed link already in place" "quiet reused event should not be printed inline"
+  install_execution_test::assert_not_contains "$output" "Optional editor tooling" "quiet skipped event should not be printed inline"
   print -- "ok quiet_events"
 }
 

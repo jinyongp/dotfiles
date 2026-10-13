@@ -64,9 +64,9 @@ catalog::profile_default_modules() {
       ;;
     full)
       if [[ "$platform" == "macos" ]]; then
-        echo "dotfiles packages agents oh_my_zsh neovim fonts desktop_apps macos_defaults"
+        echo "dotfiles packages oh_my_zsh neovim fonts desktop_apps macos_defaults"
       else
-        echo "dotfiles packages agents oh_my_zsh neovim"
+        echo "dotfiles packages oh_my_zsh neovim"
       fi
       ;;
     custom)
@@ -247,7 +247,6 @@ catalog::module_records() {
 cat <<'EOF'
 dotfiles	Dotfiles	Link ~/.zshenv, ~/.zprofile, ~/.zshrc, ~/.vimrc, ~/.config/nvim, and ~/.gitconfig, then prepare local Git config files.	0	0
 packages	Base CLI	Install optional CLI packages like jq, gh, fd, eza, fzf, zoxide, tldr, gnupg, diff-so-fancy, fnm, gate, and Taskwarrior.	0	0
-agents	AI Agents	Install shared AI agent rules for selected Codex/Claude adapters while preserving local state.	0	0
 oh_my_zsh	oh-my-zsh	Install the oh-my-zsh framework and optionally clone extra plugins.	0	0
 neovim	Neovim	Install Neovim with search tooling and optional TypeScript editor extras.	0	0
 EOF
@@ -265,7 +264,6 @@ catalog::module_label() {
   case "$1" in
     packages) echo "Base CLI" ;;
     dotfiles) echo "Dotfiles" ;;
-    agents) echo "AI Agents" ;;
     oh_my_zsh) echo "oh-my-zsh" ;;
     neovim) echo "Neovim" ;;
     fonts) echo "Fonts" ;;
@@ -276,7 +274,7 @@ catalog::module_label() {
 
 catalog::module_is_leaf() {
   case "$1" in
-    packages|agents|oh_my_zsh|fonts|desktop_apps) return 0 ;;
+    packages|oh_my_zsh|fonts|desktop_apps) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -382,34 +380,6 @@ catalog::omz_plugin_label() {
   esac
 }
 
-catalog::agent_ids() {
-  cat <<'EOF'
-codex
-EOF
-}
-
-catalog::agent_records() {
-  cat <<'EOF'
-codex	Codex	Update ~/.codex/AGENTS.md with shared dotfiles agent rules.	0	0
-claude	Claude	Update ~/.claude/CLAUDE.md with shared dotfiles agent rules.	0	0
-EOF
-}
-
-catalog::agent_label() {
-  case "$1" in
-    codex) echo "Codex" ;;
-    claude) echo "Claude" ;;
-  esac
-}
-
-catalog::external_skill_source_records() {
-  catalog_data::external_skill_source_rows
-}
-
-catalog::external_skill_artifact_records() {
-  catalog_data::external_skill_artifact_rows
-}
-
 catalog::font_ids() {
   catalog_data::font_rows | awk -F '\t' '{ print $1 }'
 }
@@ -485,7 +455,6 @@ catalog::item_label() {
 
   case "$module" in
     packages) catalog::package_label "$item_id" ;;
-    agents) catalog::agent_label "$item_id" ;;
     oh_my_zsh) catalog::omz_plugin_label "$item_id" ;;
     fonts) catalog::font_label "$item_id" ;;
     desktop_apps) catalog::desktop_app_label "$item_id" ;;

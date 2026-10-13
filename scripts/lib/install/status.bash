@@ -58,17 +58,6 @@ install::desktop_app_is_installed() {
   install::brew_cask_is_installed "$(catalog::desktop_app_source "$1")"
 }
 
-install::agent_is_installed() {
-  case "$1" in
-    codex)
-      command -v codex >/dev/null 2>&1 || [[ -d "$HOME/.codex" ]]
-      ;;
-    *)
-      return 1
-      ;;
-  esac
-}
-
 install::theme_status_for() {
   local theme_id="$1"
 
@@ -159,31 +148,6 @@ install::annotate_omz_plugin_records() {
       selected=0
       disabled=1
       status="installed"
-    fi
-
-    install::array_record_set "$array_name" "$index" "$(install::compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"
-    index=$((index + 1))
-  done
-}
-
-install::annotate_agent_records() {
-  local array_name="$1"
-  local count index=0
-  local record id label description selected disabled status
-
-  count="$(install::array_record_count "$array_name")"
-  while [[ "$index" -lt "$count" ]]; do
-    record="$(install::array_record_get "$array_name" "$index")"
-    id="$(prompt::record_field "$record" 1)"
-    label="$(prompt::record_field "$record" 2)"
-    description="$(prompt::record_field "$record" 3)"
-    selected=0
-    disabled=0
-    status="not installed"
-
-    if install::agent_is_installed "$id"; then
-      selected=1
-      status="detected"
     fi
 
     install::array_record_set "$array_name" "$index" "$(install::compose_prompt_record "$id" "$label" "$description" "$selected" "$disabled" "$status")"

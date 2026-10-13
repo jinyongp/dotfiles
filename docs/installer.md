@@ -96,10 +96,6 @@ You can skip the interactive flow and run a single target directly.
 
 ```sh
 dotfiles install neovim
-dotfiles install agents
-dotfiles install agents codex
-dotfiles agents list
-dotfiles agents sync
 dotfiles install packages taskwarrior
 dotfiles install packages fnm eza
 dotfiles install theme
@@ -112,8 +108,6 @@ Notes:
 - leaf modules such as `packages`, `oh_my_zsh`, `fonts`, and `desktop_apps` accept item IDs after the target name
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`
-- direct `agents` installs shared AI agent rules for detected tools; pass `codex` to prepare Codex config even when the CLI is not installed
-- `dotfiles agents sync` refreshes managed instruction blocks and rules for detected agents, updates external sources, and reconciles internal and external skill links; `dotfiles agents sync <skill...>` keeps the operation scoped to the named skills and leaves instruction blocks unchanged; existing conflicting files or directories are preserved
 - `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/task` shim stays ahead in PATH and delegates to that binary
 
 ## Conditional Prompts
@@ -165,15 +159,6 @@ Machine-local overrides and generated config live outside the repository.
 - backups for replaced linked files: `~/.config/dotfiles/backups/<timestamp>`
 - Git path overrides: `~/.config/dotfiles/git/root.local.ini`
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
-AI agent setup is intentionally additive. `./install agents` keeps shared rule files in the repo-managed `agents/rules/` directory and shared skill sources in `agents/skills/`, then adds or updates a marked include block in `~/.codex/AGENTS.md`.
-For Codex, it also links `agents/codex/rules/dotfiles.rules` to `~/.codex/rules/dotfiles.rules`. Codex-managed approvals remain in `~/.codex/rules/default.rules` and are preserved. Run `dotfiles install agents codex` to apply or refresh the link, then restart Codex.
-For Codex and Claude, it links every repository-managed skill under
-`agents/skills/<name>` into the matching `~/.codex/skills/<name>` or
-`~/.claude/skills/<name>` path when the target does not already exist.
-External skills are declared as source records plus artifact records. Sources define either a Git repository and ref or a versioned GitHub release. Artifacts define the skill path, install name, target adapters, kind, and copy policy. During `./install agents`, the installer downloads missing or stale external skill artifacts into `~/.config/dotfiles/agents/external-skills/<artifact>`, records the resolved revision and artifact metadata in `~/.config/dotfiles/agents/external-skills.lock`, and links each artifact only into its configured adapters. Artifacts that use repo-internal symlinks can opt into symlink materialization so cached skills stay self-contained. Run `dotfiles agents sync` to refresh detected agent instruction blocks and rules, external cache entries, and repository-managed and external skill links. Pass skill names to refresh only those skills without changing instruction blocks. Existing conflicting targets are reported and preserved.
-
-External sources may be Git refs or versioned GitHub release artifacts. Release artifacts are downloaded with their published checksum, rejected when the checksum or archive layout is invalid, and kept on the same release version as an installed companion CLI. The devtools skill uses the `devtools-skill_<version>.tar.gz` artifact from the matching devtools release.
-It does not replace tool home directories and does not manage auth, sessions, history, sqlite files, caches, plugin caches, worktrees, or other local runtime state.
 
 Project-local task mode is opt-in per repository. When `.tasks/taskrc` exists in
 the current directory or a parent, the repo-managed `cmd/task` shim sets
@@ -197,14 +182,14 @@ Examples:
 
 ## Uninstall and Rollback
 
-Run uninstall to remove dotfiles-managed symlinks and agent instruction blocks.
+Run uninstall to remove dotfiles-managed symlinks.
 
 ```sh
 dotfiles uninstall -y
 ```
 
 The command removes only these items when they point to the active dotfiles
-checkout or dotfiles external skill cache:
+checkout:
 
 - `~/.zshenv`
 - `~/.zprofile`
@@ -212,22 +197,6 @@ checkout or dotfiles external skill cache:
 - `~/.vimrc`
 - `~/.gitconfig`
 - `~/.config/nvim`
-- `~/.codex/skills/<name>`
-- `~/.codex/rules/dotfiles.rules`
-- `~/.claude/skills/<name>`
-
-It also removes matching managed instruction blocks from `~/.codex/AGENTS.md`
-and `~/.claude/CLAUDE.md`.
-
-```text
-<!-- dotfiles:agents:codex:start -->
-...
-<!-- dotfiles:agents:codex:end -->
-
-<!-- dotfiles:agents:claude:start -->
-...
-<!-- dotfiles:agents:claude:end -->
-```
 
 The command preserves packages, fonts, desktop apps, themes, backups,
 machine-local config, and manual repository checkouts.
@@ -248,7 +217,7 @@ ls -la "$HOME/.config/dotfiles/backups/<timestamp>"
 
 Machine-local files under `~/.config/dotfiles` are intentionally preserved.
 Remove that directory only when you no longer need local shell overrides, Git
-identity files, backups, external agent skill caches, or install state.
+identity files, backups, or install state.
 
 ```sh
 rm -rf "$HOME/.config/dotfiles"

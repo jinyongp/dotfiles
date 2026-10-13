@@ -1,7 +1,0 @@
-interface:
-  display_name: "Minify"
-  short_description: "Compress replies while preserving polished prose"
-  default_prompt: "Use $minify to answer briefly while keeping durable prose natural."
-
-policy:
-  allow_implicit_invocation: true

@@ -251,32 +251,11 @@ dotfiles::report_reused_items() {
   local line
   local -a lines=()
   local -a managed_links=()
-  local -a agent_skill_dirs=()
-  local -a external_skill_ids=()
-  local -a agent_instruction_blocks=()
-  local -A agent_skill_names_by_dir=()
-  local path_display path_dir path_name dir names_text
-  local -a names=()
 
   for line in "${DOTFILES_RESULT_REUSED_ITEMS[@]}"; do
     case "$line" in
       "Managed link already in place: "*)
         managed_links+=("${line#Managed link already in place: }")
-        ;;
-      "Agent skill link already in place: "*)
-        path_display="${line#Agent skill link already in place: }"
-        path_dir="${path_display:h}"
-        path_name="${path_display:t}"
-        if ! dotfiles::array_contains "$path_dir" "${agent_skill_dirs[@]}"; then
-          agent_skill_dirs+=("$path_dir")
-        fi
-        agent_skill_names_by_dir[$path_dir]="${agent_skill_names_by_dir[$path_dir]:-}${agent_skill_names_by_dir[$path_dir]:+ }$path_name"
-        ;;
-      "External agent skill cached copy: "*)
-        external_skill_ids+=("${line#External agent skill cached copy: }")
-        ;;
-      *" instruction block")
-        agent_instruction_blocks+=("${line% instruction block}")
         ;;
       "Machine-local Git identity")
         if [[ " ${DOTFILES_SELECTED_MODULES:-} " == *" dotfiles "* ]]; then
@@ -294,44 +273,11 @@ dotfiles::report_reused_items() {
     lines+=("Managed links already in place: $(dotfiles::report_join_items "${managed_links[@]}")")
   fi
 
-  for dir in "${agent_skill_dirs[@]}"; do
-    names_text="${agent_skill_names_by_dir[$dir]}"
-    names=("${=names_text}")
-    lines+=("Agent skill links already in place: $dir ($(dotfiles::report_join_items "${names[@]}"))")
-  done
-
-  if (( ${#external_skill_ids[@]} > 0 )); then
-    lines+=("External agent skill cache: $(dotfiles::report_join_items "${external_skill_ids[@]}")")
-  fi
-
-  if (( ${#agent_instruction_blocks[@]} > 0 )); then
-    lines+=("Agent instruction blocks already current: $(dotfiles::report_join_items "${agent_instruction_blocks[@]}")")
-  fi
-
   printf '%s\n' "${lines[@]}"
 }
 
 dotfiles::report_skipped_items() {
-  local line
-  local -a lines=()
-  local -a agent_skill_paths=()
-
-  for line in "${DOTFILES_RESULT_SKIPPED_ITEMS[@]}"; do
-    case "$line" in
-      "Agent skill already exists: "*)
-        agent_skill_paths+=("${line#Agent skill already exists: }")
-        ;;
-      *)
-        lines+=("$line")
-        ;;
-    esac
-  done
-
-  if (( ${#agent_skill_paths[@]} > 0 )); then
-    lines+=("Existing agent skills preserved: $(dotfiles::report_join_items "${agent_skill_paths[@]}")")
-  fi
-
-  printf '%s\n' "${lines[@]}"
+  printf '%s\n' "${DOTFILES_RESULT_SKIPPED_ITEMS[@]}"
 }
 
 dotfiles::report_file_change_items() {
