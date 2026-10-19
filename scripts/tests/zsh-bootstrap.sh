@@ -21,6 +21,18 @@ zsh_bootstrap_test::write_executable() {
 }
 
 zsh_bootstrap_test::setup_fixture() {
+  # Use bundled zsh functions; host completion addons vary between CI images.
+  ZSH_TEST_FPATH="$("$ZSH_BIN" -fc '
+    typeset -a bundled
+    for directory in $fpath; do
+      case "$directory" in
+        */zsh/functions|*/zsh/functions/*|*/zsh/*/functions|*/zsh/*/functions/*)
+          bundled+=("$directory") ;;
+      esac
+    done
+    print -r -- "${(j.:.)bundled}"
+  ')"
+  [[ -n "$ZSH_TEST_FPATH" ]] || zsh_bootstrap_test::fail "bundled zsh functions not found"
   WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/zsh-bootstrap.XXXXXX")"
   HOME_DIR="$WORK_DIR/home"
   INITIAL_BIN="$WORK_DIR/initial-bin"
@@ -177,6 +189,7 @@ zsh_bootstrap_test::run_zsh() {
     USER="${USER:-dotfiles}" \
     LOGNAME="${USER:-dotfiles}" \
     PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+    FPATH="$ZSH_TEST_FPATH" \
     ZDOTDIR="$HOME_DIR" \
     TERM="xterm-256color" \
     TMPDIR="$TEST_TMPDIR/" \
@@ -363,6 +376,7 @@ zsh_bootstrap_test::assert_set_e_direct_bootstrap() {
     USER="${USER:-dotfiles}" \
     LOGNAME="${USER:-dotfiles}" \
     PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+    FPATH="$ZSH_TEST_FPATH" \
     TERM="xterm-256color" \
     TMPDIR="$TEST_TMPDIR/" \
     DOTFILES_ROOT="$DOTFILES_ROOT" \
@@ -500,6 +514,7 @@ zsh_bootstrap_test::assert_vscode_injection_does_not_resource_zshrc() {
     USER="${USER:-dotfiles}" \
     LOGNAME="${USER:-dotfiles}" \
     PATH="$INITIAL_BIN:/usr/bin:/bin:/usr/sbin:/sbin" \
+    FPATH="$ZSH_TEST_FPATH" \
     ZDOTDIR="$HOME_DIR" \
     TERM="xterm-256color" \
     TERM_PROGRAM="vscode" \
