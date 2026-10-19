@@ -1,0 +1,30 @@
+{
+  "caddy": {
+    "version": "2.11.7",
+    "sha256": {
+      "linux_amd64": "727b91701a392de6ebc5027509f548bf39979e5216340d0faed8fa5e69c84f8b",
+      "linux_arm64": "d8fc6d179a5d283028a472a5618564f6ad8a86fed513e64f032b3b0b7cc45e42",
+      "darwin_arm64": "cda3030e5d5b13eb9f0b6fb541037f633bddd958c070c5f561d7a5cccb581665"
+    }
+  },
+  "traefik": {
+    "version": "3.7.15",
+    "sha256": {
+      "linux_amd64": "5b9f51199fcb7a3b5f7ae0f9dae8dcf01efadafd92c5fca96ea2822eca81f8e6",
+      "linux_arm64": "1866d8e831b95d14b599bb59eb20d2033b979c0cb1e347b48a0866a9b810454e",
+      "darwin_arm64": "402f59cef47bbba629dda7ee34e99897648634fac8dc020fb992a7cdb034d323"
+    }
+  },
+  "actionlint": {
+    "version": "1.7.12",
+    "sha256": {
+      "linux_amd64": "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8",
+      "linux_arm64": "325e971b6ba9bfa504672e29be93c24981eeb1c07576d730e9f7c8805afff0c6",
+      "darwin_arm64": "aba9ced2dee8d27fecca3dc7feb1a7f9a52caefa1eb46f3271ea66b6e0e6953f"
+    }
+  },
+  "nginx": {
+    "version": "1.31.7",
+    "sha256": "89ea8a3dc171511f7325043b50e4c036248d9fad5feb7ec809c0b82d5df42c65"
+  }
+}

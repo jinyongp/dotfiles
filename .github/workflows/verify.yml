@@ -1,0 +1,72 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-26.04, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.x'
+          check-latest: true
+
+      - name: Install system dependencies
+        shell: bash
+        run: |
+          if [[ "$RUNNER_OS" == Linux ]]; then
+            sudo apt-get update
+            sudo apt-get install --no-install-recommends -y build-essential libssl-dev openssl zsh lsof shellcheck perl util-linux
+          else
+            brew install openssl@3 shellcheck
+          fi
+
+      - name: Cache native verification tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/dotfiles-ci-tools
+          key: verification-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/ci/tool-versions.json', 'scripts/ci/setup-tools.py') }}
+
+      - name: Prepare native verification tools
+        shell: bash
+        run: |
+          python3 -B scripts/ci/setup-tools.py --dir "$RUNNER_TEMP/dotfiles-ci-tools"
+          echo "$RUNNER_TEMP/dotfiles-ci-tools/bin" >> "$GITHUB_PATH"
+          if [[ "$RUNNER_OS" == macOS ]]; then
+            echo "$(brew --prefix openssl@3)/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Run all verification
+        run: python3 -B scripts/verify.py --log-dir "${{ runner.temp }}/dotfiles-verification"
+
+      - name: Retain failure logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: verification-${{ matrix.os }}
+          path: ${{ runner.temp }}/dotfiles-verification
+          retention-days: 1
+          if-no-files-found: ignore

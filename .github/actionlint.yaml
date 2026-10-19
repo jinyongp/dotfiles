@@ -1,0 +1,5 @@
+# Official GitHub-hosted labels not listed in actionlint v1.7.12.
+# This only extends validation; the workflow uses standard hosted runners.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
