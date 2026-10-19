@@ -31,7 +31,7 @@ find_real_task() {
     [[ "$path_entry" != "$shim_dir" ]] || continue
 
     candidate="$path_entry/task"
-    [[ -x "$candidate" ]] || continue
+    [[ -f "$candidate" && -x "$candidate" ]] || continue
 
     candidate_real="$candidate"
     if command -v realpath >/dev/null 2>&1; then

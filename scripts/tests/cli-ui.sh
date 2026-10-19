@@ -276,7 +276,7 @@ EOF
   chmod +x "$real_task_bin/task"
 
   env -i HOME="$HOME_DIR" \
-    PATH="$DOTFILES_ROOT/cmd/bin:$real_task_bin:/usr/bin:/bin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:$DOTFILES_ROOT/cmd:$real_task_bin:/usr/bin:/bin" \
     task 'two words' '' --dash >"$WORK_DIR/task_forwarding.out" 2>"$WORK_DIR/task_forwarding.err" || status=$?
   [[ "$status" == 23 ]] || cli_ui_test::fail "task exit status changed: $status"
   [[ ! -s "$WORK_DIR/task_forwarding.err" ]] || cli_ui_test::fail "task forwarding wrote to stderr"
