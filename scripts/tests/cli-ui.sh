@@ -223,8 +223,8 @@ cli_ui_test::assert_small_commands() {
   cli_ui_test::run_cmd kill_port_help kill-port --help
   cli_ui_test::assert_contains "$WORK_DIR/kill_port_help.out" "kill-port 3000"
   cli_ui_test::assert_not_contains "$WORK_DIR/kill_port_help.out" "main.sh"
-  if cli_ui_test::run_cmd_json kill_port_invalid kill-port invalid; then
-    cli_ui_test::fail "kill-port invalid port unexpectedly succeeded"
+  if cli_ui_test::run_cmd_json kill_port_invalid kill-port ftp://app.test; then
+    cli_ui_test::fail "kill-port invalid target unexpectedly succeeded"
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/kill_port_invalid.err"
 
