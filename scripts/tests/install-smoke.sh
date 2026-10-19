@@ -689,16 +689,28 @@ install_smoke_test::assert_interactive_minimal() {
 
 install_smoke_test::assert_interactive_recommended() {
   local normalized_transcript
+  local existing_gh="${1:-0}"
+  local gh_available=0
 
   install_smoke_test::reset_case_config
-  install_smoke_test::setup_case "interactive-recommended"
+  install_smoke_test::setup_case "interactive-recommended-$existing_gh"
+  if [[ "$existing_gh" == "1" ]]; then
+    install_smoke_test::write_executable "$INITIAL_BIN/gh" '#!/bin/sh' 'exit 0'
+  fi
+  if install_smoke_test::with_env bash -c 'command -v gh >/dev/null 2>&1'; then
+    gh_available=1
+  fi
   install_smoke_test::run_interactive_install $'\r\r\r\r\r'
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_transcript="$(install_smoke_test::normalize_file "$TRANSCRIPT_FILE")"
   install_smoke_test::assert_contains "$normalized_transcript" "Review selected items?" "recommended interactive flow should offer review gate"
   install_smoke_test::assert_contains "$normalized_transcript" "Machine-local Git identity." "recommended interactive flow should open the Git identity gate"
-  install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install gh" "recommended interactive flow should install gh"
+  if [[ "$gh_available" == "1" ]]; then
+    install_smoke_test::assert_not_contains "$(cat "$BREW_LOG_FILE")" "install gh" "recommended interactive flow should reuse existing gh"
+  else
+    install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install gh" "recommended interactive flow should install missing gh"
+  fi
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fd" "recommended interactive flow should install fd"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install eza" "recommended interactive flow should install eza"
   install_smoke_test::assert_file_contains "$BREW_LOG_FILE" "install fnm" "recommended interactive flow should install fnm"
@@ -709,7 +721,7 @@ install_smoke_test::assert_interactive_recommended() {
   install_smoke_test::assert_not_contains "$(cat "$BREW_LOG_FILE")" "install diff-so-fancy" "recommended interactive flow should not install diff-so-fancy by default"
   install_smoke_test::assert_login_zsh_launched "$ZSH_LOG_FILE"
   install_smoke_test::assert_git_status_unchanged
-  printf 'ok interactive_recommended\n'
+  printf 'ok interactive_recommended existing_gh=%s\n' "$existing_gh"
 }
 
 install_smoke_test::main() {
@@ -723,6 +735,7 @@ install_smoke_test::main() {
   install_smoke_test::assert_direct_macos_defaults
   install_smoke_test::assert_interactive_minimal
   install_smoke_test::assert_interactive_recommended
+  install_smoke_test::assert_interactive_recommended 1
   printf 'all install smoke tests passed\n'
 }
 
