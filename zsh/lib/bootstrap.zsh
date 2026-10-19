@@ -16,5 +16,6 @@ dotfiles_configure_locale
 dotfiles_configure_base_toolchain
 dotfiles_source_if_exists "$DOTFILES_ENV_ZSH"
 dotfiles_prepend_path "$DOTFILES/cmd/bin"
+typeset -g DOTFILES_BOOTSTRAP_PATH="$PATH"
 
 unset _dotfiles_bootstrap_path

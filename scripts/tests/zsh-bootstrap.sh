@@ -246,6 +246,29 @@ zsh_bootstrap_test::assert_noninteractive_fnm_version_file() {
   printf 'ok %s\n' "$name"
 }
 
+zsh_bootstrap_test::assert_login_profile_restores_toolchain_priority() {
+  local name="login_profile_toolchain_priority"
+  local project_dir="$WORK_DIR/login-project"
+  local system_bin="$WORK_DIR/system-bin"
+
+  mkdir -p "$project_dir"
+  printf '22\n' >"$project_dir/.node-version"
+  zsh_bootstrap_test::write_executable "$system_bin/node" '#!/bin/sh' 'printf "system-node\n"'
+  zsh_bootstrap_test::write_executable "$system_bin/brew" '#!/bin/sh' 'exit 0'
+  zsh_bootstrap_test::write_executable "$system_bin/fnm" '#!/bin/sh' 'exit 0'
+  (
+    cd "$project_dir" || exit 1
+    zsh_bootstrap_test::run_zsh "$name" -c '
+      export PATH="'"$system_bin"':$PATH"
+      source "$HOME/.zprofile"
+      node
+    '
+  )
+  zsh_bootstrap_test::assert_output "$name" "project-node"
+  zsh_bootstrap_test::assert_no_stderr "$name"
+  printf 'ok %s\n' "$name"
+}
+
 zsh_bootstrap_test::assert_noninteractive_fnm_package_engines() {
   local name="zsh_lc_fnm_package_engines"
   local project_dir="$WORK_DIR/engines-project"
@@ -266,7 +289,7 @@ zsh_bootstrap_test::assert_noninteractive_fnm_package_engines() {
 zsh_bootstrap_test::assert_bootstrap_guard_not_exported() {
   local name="bootstrap_guard_scope"
 
-  zsh_bootstrap_test::run_zsh "$name" -c 'if env | grep -q "^DOTFILES_BOOTSTRAP_LOADED="; then print -r -- guard-exported; exit 1; fi; print -r -- guard-ok'
+  zsh_bootstrap_test::run_zsh "$name" -c 'if env | grep -Eq "^DOTFILES_BOOTSTRAP_(LOADED|PATH)="; then print -r -- guard-exported; exit 1; fi; print -r -- guard-ok'
   zsh_bootstrap_test::assert_output "$name" "guard-ok"
   zsh_bootstrap_test::assert_no_stderr "$name"
   printf 'ok %s\n' "$name"
@@ -503,6 +526,7 @@ zsh_bootstrap_test::main() {
   zsh_bootstrap_test::assert_toolchain_case "zsh_c" -c 'source "$0"' "$CHECK_SCRIPT"
   zsh_bootstrap_test::assert_toolchain_case "zsh_lc" -lc 'source "$0"' "$CHECK_SCRIPT"
   zsh_bootstrap_test::assert_toolchain_case "zsh_script" "$CHECK_SCRIPT"
+  zsh_bootstrap_test::assert_login_profile_restores_toolchain_priority
   zsh_bootstrap_test::assert_noninteractive_fnm_version_file
   zsh_bootstrap_test::assert_noninteractive_fnm_package_engines
   zsh_bootstrap_test::assert_noninteractive_fnm_mode

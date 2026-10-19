@@ -243,7 +243,7 @@ If any of those files already exist, the installer moves them into `~/.config/do
 Startup responsibilities are split by shell phase:
 
 - `~/.zshenv` loads the minimal non-interactive-safe environment, including Homebrew, fnm, npm global bin, and pnpm paths
-- `~/.zprofile` loads login-shell-only local overrides
+- `~/.zprofile` restores toolchain path priority after system login profiles, then loads login-shell-only local overrides
 - `~/.zshrc` loads interactive behavior such as aliases, completions, themes, plugins, and oh-my-zsh
 
 ## Managed File Headers

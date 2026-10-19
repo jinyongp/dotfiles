@@ -12,7 +12,7 @@
 #     source ~/.orbstack/shell/init.zsh 2>/dev/null || :
 #
 # Notes
-#   Homebrew shellenv is already handled by the shared bootstrap. Keep prompt,
+#   Restore toolchain paths after system login profiles reorder PATH. Keep prompt,
 #   aliases, completions, and other interactive behavior in ~/.zshrc or
 #   ~/.config/dotfiles/local.zsh instead.
 
@@ -22,6 +22,14 @@ export DOTFILES="${DOTFILES:-${DOTFILES_ROOT:-${_dotfiles_zprofile_path:h:h}}}"
 if [[ "${DOTFILES_BOOTSTRAP_LOADED:-0}" != "1" && -f "$DOTFILES/zsh/lib/bootstrap.zsh" ]]; then
   source "$DOTFILES/zsh/lib/bootstrap.zsh"
 fi
+
+# /etc/zprofile (including macOS path_helper) runs after ~/.zshenv.
+typeset -ga _dotfiles_login_paths
+_dotfiles_login_paths=("${(@s.:.)DOTFILES_BOOTSTRAP_PATH}")
+for _dotfiles_login_path in "${(@Oa)_dotfiles_login_paths}"; do
+  dotfiles_prepend_path "$_dotfiles_login_path"
+done
+unset _dotfiles_login_paths _dotfiles_login_path
 
 dotfiles_source_if_exists "$DOTFILES_PROFILE_ZSH"
 
