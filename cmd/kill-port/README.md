@@ -36,6 +36,11 @@ TCP admin discovery is limited to the detected proxy's own listening sockets
 reload configurations, or send requests to the supplied application URL. An
 unavailable API or unreadable configuration produces an error.
 
+Bare-domain discovery excludes Traefik's built-in API/dashboard routers on
+dedicated management ports. Admin routers sharing an application port, and
+explicitly requested management ports, remain subject to normal routing checks;
+internal admin services are never selected as backend processes.
+
 nginx config includes resolve relative to the main configuration directory.
 Configuration files, include directories, and symlinks newer than visible worker
 start times are rejected: reload nginx before tracing. Directory checks detect

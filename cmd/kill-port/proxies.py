@@ -226,6 +226,10 @@ def traefik_rule(rule, request):
     return matched
 
 
+def traefik_admin_router(router):
+    return router.get("provider") == "internal" and router.get("service") in ("api@internal", "dashboard@internal")
+
+
 class Traefik:
     def __init__(self, args, listeners):
         self.address, self.routers = discover_api(listeners, "/api/http/routers", lambda value:
@@ -235,16 +239,21 @@ class Traefik:
                             for item in read_json(self.address, "/api/entrypoints")}
 
     def resolve(self, request, port=None):
+        enabled = [router for router in self.routers if router.get("status") == "enabled"]
+        service_ports = {self.entrypoints[name] for router in enabled if not traefik_admin_router(router)
+                         for name in router.get("entryPoints", []) if name in self.entrypoints}
         routers = []
-        for router in self.routers:
-            if router.get("status") != "enabled":
-                continue
+        for router in enabled:
             if request.scheme is not None and (router.get("tls") is not None) != (request.scheme == "https"):
                 continue
             ports = {self.entrypoints[name] for name in router.get("entryPoints", []) if name in self.entrypoints}
             if not ports:
                 raise TraceError("Traefik router has no identifiable entrypoint")
             if (port or request.port) is not None and (port or request.port) not in ports:
+                continue
+            # Bare domains discover services, excluding dedicated management
+            # ports. Shared or explicitly requested ports retain admin routing.
+            if port is None and request.port is None and traefik_admin_router(router) and ports.isdisjoint(service_ports):
                 continue
             if traefik_rule(router["rule"], request):
                 routers.append(router)

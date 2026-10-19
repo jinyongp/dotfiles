@@ -165,6 +165,63 @@ class CaddyRoutes(unittest.TestCase):
 
 
 class TraefikRoutes(unittest.TestCase):
+    def add_admin_routers(self, reader, entrypoint="traefik", port=8080):
+        reader.entrypoints[entrypoint] = port
+        reader.routers[:0] = [
+            {"name": "api@internal", "provider": "internal", "rule": "PathPrefix(`/api`)",
+             "service": "api@internal", "entryPoints": [entrypoint], "status": "enabled",
+             "priority": 9223372036854775806},
+            {"name": "dashboard@internal", "provider": "internal", "rule": "PathPrefix(`/`)",
+             "service": "dashboard@internal", "entryPoints": [entrypoint], "status": "enabled",
+             "middlewares": ["dashboard_redirect@internal", "dashboard_stripprefix@internal"],
+             "priority": 9223372036854775805}]
+
+    def test_dedicated_admin_routers_do_not_obscure_a_service_or_unrelated_host(self):
+        reader = self.make_reader()
+        reader.routers = reader.routers[:1]
+        self.add_admin_routers(reader)
+        self.assertEqual(reader.resolve(Request("app.test")).port, 3000)
+        self.assertIsNone(reader.resolve(Request("unrelated.test")))
+
+    def test_admin_discovery_preserves_application_path_ambiguity_and_priority(self):
+        reader = self.make_reader()
+        self.add_admin_routers(reader)
+        with self.assertRaisesRegex(TraceError, "multiple targets"):
+            reader.resolve(Request("app.test"))
+        self.assertEqual(reader.resolve(parse_target("https://app.test/api/users")).port, 3001)
+
+    def test_explicit_admin_port_is_never_treated_as_a_backend(self):
+        reader = self.make_reader()
+        self.add_admin_routers(reader)
+        with self.assertRaisesRegex(TraceError, "unsupported Traefik service"):
+            reader.resolve(Request("app.test"), port=8080)
+        for path, error in (("/api/http/routers", "unsupported Traefik service"), ("/dashboard/", "middleware")):
+            with self.subTest(path=path), self.assertRaisesRegex(TraceError, error):
+                reader.resolve(parse_target("http://app.test:8080" + path))
+
+    def test_shared_application_port_keeps_admin_routes_in_routing_decisions(self):
+        for entrypoint in ("websecure", "same-port-alias"):
+            reader = self.make_reader()
+            reader.routers = reader.routers[:1]
+            reader.routers[0].pop("tls")
+            self.add_admin_routers(reader, entrypoint, 443)
+            reader.routers = [router for router in reader.routers if router["name"] != "dashboard@internal"]
+            with self.subTest(entrypoint=entrypoint):
+                with self.assertRaisesRegex(TraceError, "unsupported Traefik service"):
+                    reader.resolve(Request("app.test"))
+                with self.assertRaisesRegex(TraceError, "unsupported Traefik service"):
+                    reader.resolve(parse_target("http://app.test:443/api/http/routers"))
+                self.assertEqual(reader.resolve(parse_target("http://app.test:443/users")).port, 3000)
+
+    def test_user_defined_admin_routes_and_other_internal_services_are_not_ignored(self):
+        for provider, service in (("file", "api@internal"), ("internal", "noop@internal")):
+            reader = self.make_reader()
+            reader.routers = [{"name": "custom@" + provider, "provider": provider,
+                               "rule": "Host(`app.test`)", "service": service,
+                               "entryPoints": ["websecure"], "status": "enabled"}]
+            with self.subTest(provider=provider, service=service), self.assertRaisesRegex(TraceError, "unsupported"):
+                reader.resolve(Request("app.test"))
+
     def test_wildcard_host_rules_are_rejected_before_selecting_a_fallback(self):
         reader = self.make_reader()
         reader.routers[1]["rule"] = "Host(`*.test`)"
