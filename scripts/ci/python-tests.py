@@ -15,7 +15,7 @@ def interrupted(signum, frame):
 signal.signal(signal.SIGTERM, interrupted)
 root = Path(__file__).resolve().parents[2]
 suite = unittest.defaultTestLoader.discover(str(root / "cmd/kill-port/tests"))
-result = unittest.TextTestRunner(verbosity=2).run(suite)
+result = unittest.TextTestRunner(verbosity=2, failfast=True).run(suite)
 if result.skipped:
     print("Required tests were skipped:", file=sys.stderr)
     for test, reason in result.skipped:

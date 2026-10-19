@@ -14,7 +14,9 @@ import sys
 import tempfile
 import time
 import unittest
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler
+
+from loopback_http import LoopbackHTTPServer
 
 
 ENTRY = Path(__file__).resolve().parents[2] / "bin" / "kill-port"
@@ -245,6 +247,6 @@ if __name__ == "__main__" and sys.argv[1:2] == ["--backend"]:
         def log_message(self, *args):
             pass
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
+    server = LoopbackHTTPServer(("127.0.0.1", 0), Handler)
     print(json.dumps({"port": server.server_port}), flush=True)
     server.serve_forever()

@@ -59,7 +59,8 @@ Logs are written to a new temporary run directory. Use
 parent. Each run records a check summary, individual command logs, and native
 proxy logs. The summary records each check's group, exit code, and duration. A
 failure stops its group; independent groups finish and preserve their logs. Any
-failed group fails the full run. Timed-out checks terminate their process group
+failed group fails the full run. The Python suite stops at its first failing test
+so the failure details are reported before the group timeout. Timed-out checks terminate their process group
 and allow the native fixture to clean up its proxy groups. Ctrl-C and SIGTERM stop
 all groups and clean up active checks before returning a nonzero exit status.
 

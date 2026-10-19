@@ -6,6 +6,8 @@ import json
 import socket
 import socketserver
 
+from loopback_http import LoopbackHTTPServer
+
 parser = argparse.ArgumentParser()
 parser.add_argument("kind", choices=("service", "caddy", "gate"))
 parser.add_argument("--socket")
@@ -51,7 +53,7 @@ if args.kind == "service":
         connection, _ = listener.accept()
         connection.close()
 elif args.kind == "caddy":
-    server = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+    server = LoopbackHTTPServer(("127.0.0.1", 0), Handler)
     print(json.dumps({"port": port, "admin": server.server_port}), flush=True)
     server.serve_forever()
 else:
