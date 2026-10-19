@@ -370,12 +370,12 @@ zsh_bootstrap_test::assert_shared_runtime_paths() {
 
   zsh_bootstrap_test::run_zsh "$name" -c '
     case ":$PATH:" in
-      *":'"$DOTFILES_ROOT"'/cmd:"*) ;;
+      *":'"$DOTFILES_ROOT"'/cmd/bin:"*) ;;
       *) print -r -- "missing-dotfiles-cmd-path"; exit 1 ;;
     esac
 
     case ":$PATH:" in
-      ":'"$DOTFILES_ROOT"'/cmd:"*) ;;
+      ":'"$DOTFILES_ROOT"'/cmd/bin:"*) ;;
       *) print -r -- "dotfiles-cmd-not-first"; exit 1 ;;
     esac
 
@@ -445,7 +445,7 @@ zsh_bootstrap_test::assert_task_shim_project_local() {
   (
     cd "$project_real_dir" || exit 1
     zsh_bootstrap_test::run_zsh "$name" -c '
-      export PATH="'"$DOTFILES_ROOT"'/cmd:'"$WORK_DIR"'/real-task-bin:/usr/bin:/bin:/usr/sbin:/sbin"
+      export PATH="'"$DOTFILES_ROOT"'/cmd/bin:'"$WORK_DIR"'/real-task-bin:/usr/bin:/bin:/usr/sbin:/sbin"
       task list
     '
   )

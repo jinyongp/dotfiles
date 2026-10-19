@@ -135,7 +135,9 @@ install_entrypoint_test::assert_syntax() {
   local file
 
   bash -n "$DOTFILES_ROOT/install"
-  bash -n "$DOTFILES_ROOT/cmd/dotfiles"
+  for file in "$DOTFILES_ROOT"/cmd/bin/* "$DOTFILES_ROOT"/cmd/*/main.sh; do
+    bash -n "$file"
+  done
   bash -n "$DOTFILES_ROOT/scripts/install-remote.bash"
   for file in "$DOTFILES_ROOT"/scripts/lib/install/*.bash; do
     bash -n "$file"
@@ -157,7 +159,7 @@ install_entrypoint_test::run_dotfiles_command() {
     LOGNAME="${USER:-dotfiles}" \
     XDG_CONFIG_HOME="$CONFIG_DIR" \
     DOTFILES_PLATFORM="macos" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     dotfiles "$@" >"$output_file" 2>"$error_file"
 }
@@ -176,7 +178,7 @@ install_entrypoint_test::run_dotfiles_command_json() {
     XDG_CONFIG_HOME="$CONFIG_DIR" \
     DOTFILES_PLATFORM="macos" \
     DOTFILES_INSTALL_UI_MODE="json" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     dotfiles "$@" >"$output_file" 2>"$error_file"
 }

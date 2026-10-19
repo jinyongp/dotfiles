@@ -3,7 +3,7 @@
 set -euo pipefail
 
 base="$(basename "$0")"
-DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
 source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"

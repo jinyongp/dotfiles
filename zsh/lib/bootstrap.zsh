@@ -15,6 +15,6 @@ dotfiles_detect_platform || true
 dotfiles_configure_locale
 dotfiles_configure_base_toolchain
 dotfiles_source_if_exists "$DOTFILES_ENV_ZSH"
-dotfiles_prepend_path "$DOTFILES/cmd"
+dotfiles_prepend_path "$DOTFILES/cmd/bin"
 
 unset _dotfiles_bootstrap_path

@@ -11,7 +11,7 @@ git clone https://github.com/jinyongp/dotfiles.git ~/.dotfiles
 ~/.dotfiles/install
 ```
 
-After the shell dotfiles are installed, `$DOTFILES/cmd` is available on `PATH`, so the same flow is available through the `dotfiles` command.
+After the shell dotfiles are installed, `$DOTFILES/cmd/bin` is available on `PATH`, so the same flow is available through the `dotfiles` command.
 
 ```sh
 dotfiles install
@@ -108,7 +108,7 @@ Notes:
 - leaf modules such as `packages`, `oh_my_zsh`, `fonts`, and `desktop_apps` accept item IDs after the target name
 - `vim` and `nvim` are accepted as aliases for the `neovim` target
 - direct `neovim` installs also link the repo-managed `~/.config/nvim`
-- `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/task` shim stays ahead in PATH and delegates to that binary
+- `packages taskwarrior` installs the real Taskwarrior binary; the repo-managed `cmd/bin/task` shim stays ahead in PATH and delegates to that binary
 
 ## Conditional Prompts
 
@@ -161,7 +161,7 @@ Machine-local overrides and generated config live outside the repository.
 - Git identity and signing config: `~/.config/dotfiles/git/personal.local.ini`
 
 Project-local task mode is opt-in per repository. When `.tasks/taskrc` exists in
-the current directory or a parent, the repo-managed `cmd/task` shim sets
+the current directory or a parent, the repo-managed `cmd/bin/task` shim sets
 `TASKRC` and `TASKDATA` to that project's `.tasks/` root before delegating to
 the real Taskwarrior binary. If no project-local config is found, it falls back
 to the normal global Taskwarrior config.

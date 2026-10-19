@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 source "$DOTFILES_ROOT/scripts/lib/ui/help.sh"
 source "$DOTFILES_ROOT/scripts/lib/ui/errors.sh"
@@ -203,11 +203,11 @@ dotfiles::doctor() {
     failed=1
   fi
 
-  if [[ -d "$DOTFILES_ROOT/zsh" && -d "$DOTFILES_ROOT/cmd" ]]; then
+  if [[ -d "$DOTFILES_ROOT/zsh" && -d "$DOTFILES_ROOT/cmd/bin" ]]; then
     printf '%s\n' "$(ui::status completed "required directories present")"
   else
     printf -v root_field 'root\t%s' "$DOTFILES_ROOT"
-    printf -v expected_field 'expected\t%s' 'zsh, cmd'
+    printf -v expected_field 'expected\t%s' 'zsh, cmd/bin'
     ui::validation_error "layout is missing expected directories" \
       "$root_field" \
       "$expected_field"

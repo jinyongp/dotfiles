@@ -3,7 +3,7 @@
 set -euo pipefail
 
 cmd="$(basename "$0")"
-DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+DOTFILES_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 tmp_dir=""
 clone_log=""
 

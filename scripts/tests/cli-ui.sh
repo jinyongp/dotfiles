@@ -47,7 +47,7 @@ cli_ui_test::run_cmd() {
     LOGNAME="${USER:-dotfiles}" \
     XDG_CONFIG_HOME="$CONFIG_DIR" \
     DOTFILES_PLATFORM="macos" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     "$@" >"$WORK_DIR/$name.out" 2>"$WORK_DIR/$name.err"
 }
@@ -63,7 +63,7 @@ cli_ui_test::run_cmd_json() {
     XDG_CONFIG_HOME="$CONFIG_DIR" \
     DOTFILES_PLATFORM="macos" \
     DOTFILES_INSTALL_UI_MODE="json" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
     "$@" >"$WORK_DIR/$name.out" 2>"$WORK_DIR/$name.err"
 }
@@ -129,7 +129,7 @@ EOF
     XDG_CONFIG_HOME="$CONFIG_DIR" \
     DOTFILES_ROOT="$DOTFILES_ROOT" \
     DOTFILES_PLATFORM="macos" \
-    PATH="$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" \
+    PATH="$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
     TERM="xterm-256color" \
   zsh -f -c 'source "$DOTFILES_ROOT/zsh/lib/bootstrap.zsh"; source "$DOTFILES_ROOT/zsh/alias.zsh"; type dfx; eval "dfx --help"; eval "dfx list"' >"$WORK_DIR/dfx_help_list.out" 2>"$WORK_DIR/dfx_help_list.err"
   cli_ui_test::assert_contains "$WORK_DIR/dfx_help_list.out" "dfx is an alias"
@@ -153,7 +153,7 @@ printf 'unexpected git invocation: %s\n' "$*" >&2
 exit 2
 EOF
   chmod +x "$fake_git_path/git"
-  if env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" DOTFILES_PLATFORM=macos DOTFILES_INSTALL_UI_MODE=json PATH="$fake_git_path:$DOTFILES_ROOT/cmd:/usr/bin:/bin:/usr/sbin:/sbin" TERM=xterm-256color dotfiles update >"$WORK_DIR/dotfiles_update_dirty.out" 2>"$WORK_DIR/dotfiles_update_dirty.err"; then
+  if env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" DOTFILES_PLATFORM=macos DOTFILES_INSTALL_UI_MODE=json PATH="$fake_git_path:$DOTFILES_ROOT/cmd/bin:/usr/bin:/bin:/usr/sbin:/sbin" TERM=xterm-256color dotfiles update >"$WORK_DIR/dotfiles_update_dirty.out" 2>"$WORK_DIR/dotfiles_update_dirty.err"; then
     cli_ui_test::fail "dotfiles update dirty worktree unexpectedly succeeded"
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/dotfiles_update_dirty.err"
@@ -220,12 +220,20 @@ cli_ui_test::assert_small_commands() {
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/colorls_invalid.err"
 
+  cli_ui_test::run_cmd kill_port_help kill-port --help
+  cli_ui_test::assert_contains "$WORK_DIR/kill_port_help.out" "kill-port 3000"
+  cli_ui_test::assert_not_contains "$WORK_DIR/kill_port_help.out" "main.sh"
+  if cli_ui_test::run_cmd_json kill_port_invalid kill-port invalid; then
+    cli_ui_test::fail "kill-port invalid port unexpectedly succeeded"
+  fi
+  cli_ui_test::assert_json_file "$WORK_DIR/kill_port_invalid.err"
+
   cli_ui_test::run_cmd cloc_help cloc-git --help
   cli_ui_test::assert_not_contains "$WORK_DIR/cloc_help.out" "Usage:"
   tmp_path="$WORK_DIR/path"
   mkdir -p "$tmp_path"
   ln -s "$(command -v git)" "$tmp_path/git"
-  if env -i DOTFILES_INSTALL_UI_MODE=json HOME="$HOME_DIR" PATH="$tmp_path:/usr/bin:/bin" TERM=xterm-256color "$DOTFILES_ROOT/cmd/cloc-git" https://github.com/owner/repo >"$WORK_DIR/cloc_missing.out" 2>"$WORK_DIR/cloc_missing.err"; then
+  if env -i DOTFILES_INSTALL_UI_MODE=json HOME="$HOME_DIR" PATH="$tmp_path:/usr/bin:/bin" TERM=xterm-256color "$DOTFILES_ROOT/cmd/bin/cloc-git" https://github.com/owner/repo >"$WORK_DIR/cloc_missing.out" 2>"$WORK_DIR/cloc_missing.err"; then
     cli_ui_test::fail "cloc-git without cloc unexpectedly succeeded"
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/cloc_missing.err"
@@ -242,7 +250,7 @@ EOF
 exit 0
 EOF
   chmod +x "$clone_path/git" "$clone_path/cloc"
-  if env -i DOTFILES_INSTALL_UI_MODE=json HOME="$HOME_DIR" PATH="$clone_path:/usr/bin:/bin" TERM=xterm-256color "$DOTFILES_ROOT/cmd/cloc-git" https://github.com/owner/repo >"$WORK_DIR/cloc_clone.out" 2>"$WORK_DIR/cloc_clone.err"; then
+  if env -i DOTFILES_INSTALL_UI_MODE=json HOME="$HOME_DIR" PATH="$clone_path:/usr/bin:/bin" TERM=xterm-256color "$DOTFILES_ROOT/cmd/bin/cloc-git" https://github.com/owner/repo >"$WORK_DIR/cloc_clone.out" 2>"$WORK_DIR/cloc_clone.err"; then
     cli_ui_test::fail "cloc-git clone failure unexpectedly succeeded"
   fi
   cli_ui_test::assert_json_file "$WORK_DIR/cloc_clone.err"
@@ -255,10 +263,37 @@ EOF
   printf 'ok small_commands\n'
 }
 
+cli_ui_test::assert_task_forwarding() {
+  local real_task_bin="$WORK_DIR/real-task-bin"
+  local status=0
+
+  mkdir -p "$real_task_bin"
+  cat >"$real_task_bin/task" <<'EOF'
+#!/usr/bin/env bash
+printf '<%s>\n' "$@"
+exit 23
+EOF
+  chmod +x "$real_task_bin/task"
+
+  env -i HOME="$HOME_DIR" \
+    PATH="$DOTFILES_ROOT/cmd/bin:$real_task_bin:/usr/bin:/bin" \
+    task 'two words' '' --dash >"$WORK_DIR/task_forwarding.out" 2>"$WORK_DIR/task_forwarding.err" || status=$?
+  [[ "$status" == 23 ]] || cli_ui_test::fail "task exit status changed: $status"
+  [[ ! -s "$WORK_DIR/task_forwarding.err" ]] || cli_ui_test::fail "task forwarding wrote to stderr"
+  diff -u "$WORK_DIR/task_forwarding.out" - <<'EOF'
+<two words>
+<>
+<--dash>
+EOF
+
+  printf 'ok task_forwarding\n'
+}
+
 cli_ui_test::main() {
   cli_ui_test::assert_dotfiles
   cli_ui_test::assert_uninstall
   cli_ui_test::assert_small_commands
+  cli_ui_test::assert_task_forwarding
   printf 'all cli ui tests passed\n'
 }
 

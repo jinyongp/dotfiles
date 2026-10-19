@@ -594,7 +594,7 @@ install_smoke_test::assert_themes_use() {
   ln -s "$DOTFILES_ROOT/zsh/.zshrc" "$HOME_DIR/.zshrc"
 
   install_smoke_test::with_env \
-    "$DOTFILES_ROOT/cmd/dotfiles" themes use starship >"$OUTPUT_FILE" 2>"$ERROR_FILE"
+    "$DOTFILES_ROOT/cmd/bin/dotfiles" themes use starship >"$OUTPUT_FILE" 2>"$ERROR_FILE"
   install_smoke_test::assert_no_stderr "$ERROR_FILE"
 
   normalized_output="$(install_smoke_test::normalize_file "$OUTPUT_FILE")"
