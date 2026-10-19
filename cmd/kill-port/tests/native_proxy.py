@@ -152,7 +152,8 @@ class NativeProxyTestCase(unittest.TestCase):
                           "; server_name " + host + ";\n" +
                           ("ssl_certificate " + str(self.cert) + "; ssl_certificate_key " + str(self.key) + ";\n" if tls else "") +
                           body + "\n} }\n")
-        time.sleep(1.2)  # Disk config must predate second-precision worker timestamps.
+        # Both Linux boot time and ps start times can lose a fractional second.
+        time.sleep(2.2)  # Keep fresh disk config strictly older than worker timestamps.
         child = self.start([BINARIES["nginx"], "-p", self.runtime, "-c", config], "nginx")
         self.listening(port)
         return child, port

@@ -30,6 +30,12 @@ zsh_bootstrap_test::setup_fixture() {
   USER_LOCAL_BIN="$HOME_DIR/.local/bin"
   NPM_GLOBAL_BIN="$HOME_DIR/Library/Application Support/npm-global/bin"
   FNM_INSTALL_DIR="$HOME_DIR/Library/Application Support/fnm"
+  PNPM_TEST_HOME="$HOME_DIR/Library/pnpm"
+  if [[ "${OSTYPE:-}" != darwin* ]]; then
+    NPM_GLOBAL_BIN="$HOME_DIR/.local/share/npm-global/bin"
+    FNM_INSTALL_DIR="$HOME_DIR/.local/share/fnm"
+    PNPM_TEST_HOME="$HOME_DIR/.local/share/pnpm"
+  fi
   VSCODE_SHELL_INTEGRATION_SCRIPT="$WORK_DIR/vscode-shellIntegration-rc.zsh"
   FAKE_LOCALE_LIST=$'C\nC.utf8\nko_KR.utf8'
 
@@ -390,7 +396,7 @@ zsh_bootstrap_test::assert_shared_runtime_paths() {
     esac
 
     case ":$PATH:" in
-      *":'"$HOME_DIR"'/Library/pnpm:"*) ;;
+      *":'"$PNPM_TEST_HOME"':"*) ;;
       *) print -r -- "missing-pnpm-home-path"; exit 1 ;;
     esac
 
@@ -420,7 +426,7 @@ install_env=$HOME_DIR/.config/dotfiles/install.env
 env_zsh=$HOME_DIR/.config/dotfiles/env.zsh
 profile_zsh=$HOME_DIR/.config/dotfiles/profile.zsh
 local_zsh=$HOME_DIR/.config/dotfiles/local.zsh
-pnpm_home=$HOME_DIR/Library/pnpm
+pnpm_home=$PNPM_TEST_HOME
 fnm_multishell=$expected_runtime_dir/fnm_multishell
 paths-ok
 EOF

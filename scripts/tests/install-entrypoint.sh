@@ -191,7 +191,7 @@ install_entrypoint_test::assert_help() {
   install_entrypoint_test::assert_no_stderr "help"
 
   install_entrypoint_test::run_install_with_home "$REPO_HOME_DIR" "help_home" help
-  install_entrypoint_test::assert_contains "$WORK_DIR/help_home.out" "~/.dotfiles/install neovim"
+  install_entrypoint_test::assert_contains "$WORK_DIR/help_home.out" "~/${DOTFILES_ROOT##*/}/install neovim"
   install_entrypoint_test::assert_not_contains "$WORK_DIR/help_home.out" "Usage:"
   install_entrypoint_test::assert_no_stderr "help_home"
   printf 'ok help\n'
@@ -249,7 +249,11 @@ install_entrypoint_test::assert_dotfiles_command() {
 install_entrypoint_test::assert_invalid_target() {
   local output_file="$WORK_DIR/invalid.out"
   local error_file="$WORK_DIR/invalid.err"
+  local expected_targets="dotfiles, packages, oh_my_zsh, neovim"
 
+  if [[ "${OSTYPE:-}" == darwin* ]]; then
+    expected_targets+=", fonts, desktop_apps, macos_defaults"
+  fi
   if env -i \
     HOME="$HOME_DIR" \
     USER="${USER:-dotfiles}" \
@@ -263,7 +267,7 @@ install_entrypoint_test::assert_invalid_target() {
 
   install_entrypoint_test::assert_contains "$error_file" "Error: unknown install target"
   install_entrypoint_test::assert_contains "$error_file" "input: definitely-not-a-target"
-  install_entrypoint_test::assert_contains "$error_file" "expected: dotfiles, packages, oh_my_zsh, neovim, fonts, desktop_apps, macos_defaults"
+  install_entrypoint_test::assert_contains "$error_file" "expected: $expected_targets"
   install_entrypoint_test::assert_contains "$error_file" "usage: $DOTFILES_ROOT/install <module> [item...]"
   install_entrypoint_test::assert_contains "$error_file" "next: $DOTFILES_ROOT/install list"
   printf 'ok invalid_target\n'
@@ -370,7 +374,7 @@ install_entrypoint_test::assert_modes() {
   output_file="$WORK_DIR/json_macos_apt.out"
   error_file="$WORK_DIR/json_macos_apt.err"
   json_request='{"schema":"dotfiles.install.request.v1","profile":"custom","modules":["packages"],"packageManager":"apt","summaryAction":"cancel"}'
-  if printf '%s' "$json_request" | env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" DOTFILES_INSTALL_UI_MODE=json DOTFILES_PLATFORM=macos PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM="xterm-256color" bash "$DOTFILES_ROOT/install" >"$output_file" 2>"$error_file"; then
+  if printf '%s' "$json_request" | env -i HOME="$HOME_DIR" USER="${USER:-dotfiles}" LOGNAME="${USER:-dotfiles}" XDG_CONFIG_HOME="$CONFIG_DIR" DOTFILES_INSTALL_UI_MODE=json OSTYPE=darwin PATH="/usr/bin:/bin:/usr/sbin:/sbin" TERM="xterm-256color" bash "$DOTFILES_ROOT/install" >"$output_file" 2>"$error_file"; then
     install_entrypoint_test::fail "JSON macOS apt package manager unexpectedly succeeded"
   fi
   python3 -m json.tool "$error_file" >/dev/null

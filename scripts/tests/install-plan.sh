@@ -121,6 +121,7 @@ install_plan_test::assert_macos_defaults_needs_no_theme_or_package_manager() {
   install_plan_test::reset_case
   DOTFILES_SELECTED_MODULES="macos_defaults"
   DOTFILES_REQUESTED_MODULES="$DOTFILES_SELECTED_MODULES"
+  DOTFILES_RUN_THEME_INSTALL="0"
 
   install::resolve_install_plan
 

@@ -465,8 +465,14 @@ install_smoke_test::run_interactive_install() {
 
   [[ -n "$SCRIPT_BIN" ]] || install_smoke_test::fail "script command is required for interactive smoke tests"
 
-  printf '%b' "$key_sequence" | install_smoke_test::with_env \
-    "$SCRIPT_BIN" -q "$TRANSCRIPT_FILE" bash "$DOTFILES_ROOT/install" >"$OUTPUT_FILE" 2>"$ERROR_FILE"
+  if [[ "${OSTYPE:-}" == linux* ]]; then
+    printf '%b' "$key_sequence" | install_smoke_test::with_env \
+      env SMOKE_INSTALL_ENTRY="$DOTFILES_ROOT/install" \
+      "$SCRIPT_BIN" -q -e -c 'exec bash "$SMOKE_INSTALL_ENTRY"' "$TRANSCRIPT_FILE" >"$OUTPUT_FILE" 2>"$ERROR_FILE"
+  else
+    printf '%b' "$key_sequence" | install_smoke_test::with_env \
+      "$SCRIPT_BIN" -q "$TRANSCRIPT_FILE" bash "$DOTFILES_ROOT/install" >"$OUTPUT_FILE" 2>"$ERROR_FILE"
+  fi
 }
 
 install_smoke_test::single_backup_dir() {
