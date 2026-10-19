@@ -11,6 +11,11 @@ It runs Bash/zsh syntax checks, ShellCheck, actionlint, every shell test under
 checks errors across Bash sources and warnings in the `kill-port` and `task`
 entrypoints, preserving the existing focused warning checks.
 
+Within each OS job, three groups run concurrently: static checks (including the
+verification runner's regression tests), shell tests, and the Python suite. Checks
+inside each group run sequentially. Native HTTP and TLS tests share process/socket
+discovery, so they stay sequential within the Python group.
+
 The Python suite includes real Caddy, nginx, and Traefik HTTP/TLS integration.
 It verifies routing, signals, proxy survival, path/Host/SNI forwarding, protocol
 mismatches, management routes, and refusal of unsupported or stale configurations.
@@ -52,8 +57,11 @@ python3 -B -m unittest discover -s cmd/kill-port/tests -v
 Logs are written to a new temporary run directory. Use
 `python3 -B scripts/verify.py --log-dir /tmp/dotfiles-verification` to choose their
 parent. Each run records a check summary, individual command logs, and native
-proxy logs. Checks stop at the first failing stage. Timed-out checks terminate
-their process group and allow the native fixture to clean up its proxy groups.
+proxy logs. The summary records each check's group, exit code, and duration. A
+failure stops its group; independent groups finish and preserve their logs. Any
+failed group fails the full run. Timed-out checks terminate their process group
+and allow the native fixture to clean up its proxy groups. Ctrl-C and SIGTERM stop
+all groups and clean up active checks before returning a nonzero exit status.
 
 ## GitHub Actions
 

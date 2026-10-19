@@ -2,6 +2,7 @@
 """Run the same complete verification locally and in GitHub Actions."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import json
 import os
@@ -11,10 +12,84 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def run_groups(groups, logs, env, timeout=300):
+    """Run three independent groups, preserving order and fail-fast within each."""
+    results = []
+    lock = threading.Lock()
+    stopped = threading.Event()
+
+    def run(group, name, command):
+        started = time.monotonic()
+        log = logs / (name + ".log")
+        with lock:
+            print("Checking " + group + "/" + name, flush=True)
+        try:
+            with log.open("w") as output:
+                child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=output, stderr=subprocess.STDOUT,
+                                         start_new_session=True)
+                while True:
+                    try:
+                        code = child.wait(timeout=.2)
+                        break
+                    except subprocess.TimeoutExpired:
+                        if not stopped.is_set() and time.monotonic() - started < timeout:
+                            continue
+                        try:
+                            os.killpg(child.pid, signal.SIGTERM)
+                        except ProcessLookupError:
+                            pass
+                        try:
+                            child.wait(timeout=45)
+                        except subprocess.TimeoutExpired:
+                            os.killpg(child.pid, signal.SIGKILL)
+                            child.wait()
+                        output.write("\nCheck timed out or was interrupted\n")
+                        code = 124
+                        break
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            with log.open("a") as output:
+                output.write("\n" + str(exc) + "\n")
+            code = 1
+        with lock:
+            results.append({"group": group, "check": name, "exit_code": code,
+                            "seconds": round(time.monotonic() - started, 2)})
+            (logs / "summary.json").write_text(json.dumps(results, indent=2) + "\n")
+            print(("PASS " if code == 0 else "FAIL ") + group + "/" + name, flush=True)
+            if code:
+                print(log.read_text()[-12000:], file=sys.stderr)
+        return code == 0
+
+    def run_group(group, checks):
+        for name, command in checks:
+            if stopped.is_set() or not run(group, name, command):
+                return False
+        return True
+
+    def interrupted(signum, frame):
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGTERM, interrupted)
+    try:
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            try:
+                futures = [executor.submit(run_group, group, checks) for group, checks in groups.items()]
+                passed = True
+                for future in as_completed(futures):
+                    passed = future.result() and passed
+            except KeyboardInterrupt:
+                stopped.set()
+                print("Verification interrupted; cleaning up active checks", flush=True)
+                return 130
+        return 0 if passed else 1
+    finally:
+        signal.signal(signal.SIGTERM, previous)
 
 
 def main():
@@ -27,37 +102,6 @@ def main():
                                 dir=args.log_dir))
     print("Verification logs: " + str(logs), flush=True)
     env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", KILL_PORT_NATIVE_LOG_DIR=str(logs / "native"))
-    results = []
-
-    def run(name, command, timeout=300):
-        started = time.monotonic()
-        log = logs / (name + ".log")
-        print("Checking " + name, flush=True)
-        try:
-            with log.open("w") as output:
-                child = subprocess.Popen(command, cwd=ROOT, env=env, stdout=output, stderr=subprocess.STDOUT,
-                                         start_new_session=True)
-                try:
-                    code = child.wait(timeout=timeout)
-                except (subprocess.TimeoutExpired, KeyboardInterrupt):
-                    os.killpg(child.pid, signal.SIGTERM)
-                    try:
-                        child.wait(timeout=45)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(child.pid, signal.SIGKILL)
-                        child.wait()
-                    output.write("\nCheck timed out or was interrupted\n")
-                    code = 124
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            with log.open("a") as output:
-                output.write("\n" + str(exc) + "\n")
-            code = 1
-        results.append({"check": name, "exit_code": code, "seconds": round(time.monotonic() - started, 2)})
-        (logs / "summary.json").write_text(json.dumps(results, indent=2) + "\n")
-        print(("PASS " if code == 0 else "FAIL ") + name, flush=True)
-        if code:
-            print(log.read_text()[-12000:], file=sys.stderr)
-        return code == 0
 
     required = ("bash", "zsh", "git", "perl", "openssl", "lsof", "shellcheck", "actionlint")
     missing = [name for name in required if not shutil.which(name)]
@@ -80,21 +124,22 @@ def main():
             shells["zsh"].append(str(path))
         elif path.suffix in (".sh", ".bash") or header.endswith((b"bash", b"/sh")):
             shells["bash"].append(str(path))
-    for shell, paths in shells.items():
-        if not run(shell + "-syntax", [shell, "-c", 'for checked_file in "$@"; do ' + shell + ' -n "$checked_file" || exit; done', shell, *paths]):
-            return 1
-    if not run("shellcheck", ["shellcheck", "--shell=bash", "--severity=error", *shells["bash"]]):
-        return 1
-    if not run("cli-shellcheck", ["shellcheck", "--severity=warning", str(ROOT / "cmd/kill-port/main.sh"), str(ROOT / "cmd/task/main.sh")]):
-        return 1
-    if not run("workflows", ["actionlint"]):
-        return 1
+    static = [(shell + "-syntax", [shell, "-c", 'for checked_file in "$@"; do ' + shell + ' -n "$checked_file" || exit; done', shell, *paths])
+              for shell, paths in shells.items()]
+    static += [
+        ("shellcheck", ["shellcheck", "--shell=bash", "--severity=error", *shells["bash"]]),
+        ("cli-shellcheck", ["shellcheck", "--severity=warning", str(ROOT / "cmd/kill-port/main.sh"), str(ROOT / "cmd/task/main.sh")]),
+        ("workflows", ["actionlint"]),
+        ("verification-runner", [sys.executable, "-B", "-m", "unittest", "discover", "-s", "scripts/ci", "-p", "test_verify.py", "-v"]),
+    ]
+    shell_tests = []
     for test in sorted((ROOT / "scripts/tests").iterdir()):
         if test.suffix in (".sh", ".zsh"):
-            if not run(test.stem, ["zsh" if str(test) in shells["zsh"] else "bash", str(test)]):
-                return 1
-    if not run("python", [sys.executable, "-B", str(ROOT / "scripts/ci/python-tests.py")]):
-        return 1
+            shell_tests.append((test.stem, ["zsh" if str(test) in shells["zsh"] else "bash", str(test)]))
+    code = run_groups({"static": static, "shell": shell_tests,
+                       "python": [("python", [sys.executable, "-B", str(ROOT / "scripts/ci/python-tests.py")])]}, logs, env)
+    if code:
+        return code
     print("All verification passed: " + str(logs), flush=True)
     return 0
 
