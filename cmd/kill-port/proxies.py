@@ -6,7 +6,8 @@ import shlex
 from urllib.parse import urlsplit
 
 from discover import read_json, resolve_addresses
-from model import TraceError, canonical_ip, forwarded_host, host_matches, split_address, unique, upstream, validate_path
+from model import (TraceError, canonical_ip, forwarded_host, host_matches, incoming_sni,
+                   split_address, tls_server_name, unique, upstream, validate_path)
 
 
 def admin_addresses(listeners):
@@ -125,7 +126,8 @@ def caddy_routes(routes, request):
                     raise TraceError("unsupported Caddy upstream definition")
                 values = [upstream(item["dial"], current, host=host) for item in destinations]
                 if "tls" in handler.get("transport", {}):
-                    values = [replace(value, scheme="https") for value in values]
+                    name = handler["transport"]["tls"].get("server_name")
+                    values = [replace(value, scheme="https", sni=tls_server_name(name or value.address)) for value in values]
                 resolved.append(unique(values, "Caddy upstream"))
             elif kind == "rewrite":
                 allowed = {"handler", "strip_path_prefix"}
@@ -210,7 +212,14 @@ class Caddy:
                 selected.append(listener_port)
             if not selected:
                 continue
-            targets.extend(caddy_routes(server.get("routes", []), request))
+            resolved = caddy_routes(server.get("routes", []), request)
+            strict = server.get("strict_sni_host")
+            if strict is None:
+                strict = any(policy.get("client_authentication") is not None
+                             for policy in (server.get("tls_connection_policies") or []))
+            if resolved and request.scheme == "https" and strict and incoming_sni(request, port) != request.host:
+                raise TraceError("Caddy strict SNI/Host check rejects or cannot establish this TLS route")
+            targets.extend(resolved)
         return unique(targets, "Caddy route") if targets else None
 
 
@@ -260,6 +269,9 @@ class Traefik:
         enabled = [router for router in self.routers if router.get("status") == "enabled"]
         service_ports = {self.entrypoints[name] for router in enabled if not traefik_admin_router(router)
                          for name in router.get("entryPoints", []) if name in self.entrypoints}
+        custom_tls_ports = {self.entrypoints[name] for router in enabled if router.get("tls") is not None
+                            and router["tls"].get("options", "default") not in ("", "default")
+                            for name in router.get("entryPoints", []) if name in self.entrypoints}
         routers = []
         for router in enabled:
             if request.scheme is not None and (router.get("tls") is not None) != (request.scheme == "https"):
@@ -282,6 +294,10 @@ class Traefik:
         for router in routers:
             if router.get("middlewares"):
                 raise TraceError("Traefik middleware may change routing; cannot resolve safely")
+            if router.get("tls") is not None and incoming_sni(request, port) != request.host:
+                router_ports = {self.entrypoints[name] for name in router.get("entryPoints", []) if name in self.entrypoints}
+                if router_ports & custom_tls_ports:
+                    raise TraceError("Traefik custom TLS options require a known matching SNI and Host")
             service_name = router["service"]
             if "@" not in service_name:
                 service_name += "@" + router["provider"]
@@ -298,6 +314,10 @@ class Traefik:
                 if urlsplit(destination["url"]).path not in ("", "/"):
                     raise TraceError("Traefik upstream URL path rewriting is not supported")
                 value = upstream(destination["url"], request)
+                if value.scheme == "https" and balancer.get("serversTransport") not in (None, "", "default@internal"):
+                    # The service API names the transport but does not expose
+                    # its serverName override. Retain that uncertainty.
+                    value = replace(value, sni=None)
                 if host == "":
                     value = replace(value, host=value.address)
                 values.append(value)

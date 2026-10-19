@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from discover import Listener, Snapshot, parse_listeners
-from model import Request, TraceError, forwarded_host, host_matches, parse_target, split_address
+from model import Request, TraceError, forwarded_host, host_matches, parse_target, split_address, upstream
 from nginx import Nginx, parse_config, resolve_config
 from proxies import Caddy, Traefik, caddy_path, caddy_routes, traefik_rule
 import trace as tracer
@@ -27,9 +27,16 @@ def proxy_route(host, port, path=None):
 class InputsAndSockets(unittest.TestCase):
     def test_host_and_url_have_distinct_path_meanings(self):
         self.assertEqual(parse_target("APP.test."), Request("app.test"))
-        self.assertEqual(parse_target("https://app.test/api"), Request("app.test", 443, "/api", "https"))
+        self.assertEqual(parse_target("https://app.test/api"), Request("app.test", 443, "/api", "https", sni="app.test"))
         self.assertEqual(parse_target("localhost:3000").port, 3000)
         self.assertEqual(parse_target("http://[::1]:3000").host, "::1")
+
+    def test_tls_sni_is_separate_from_http_host_and_is_reset_at_each_hop(self):
+        request = parse_target("https://app.test/")
+        self.assertEqual(upstream("https://backend.test:8443", request).sni, "backend.test")
+        self.assertEqual(upstream("https://127.0.0.1:8443", request).sni, "")
+        self.assertIsNone(upstream("http://127.0.0.1:3000", request).sni)
+        self.assertEqual(parse_target("https://[::1]/").sni, "")
 
     def test_reject_inputs_that_cannot_be_routed_statically(self):
         for value in ("ftp://app.test", "https://u:p@app.test", "app.test:0", "app.test:65536",
@@ -75,6 +82,33 @@ class InputsAndSockets(unittest.TestCase):
 
 
 class CaddyRoutes(unittest.TestCase):
+    def test_strict_sni_requires_the_actual_tls_server_name(self):
+        reader = Caddy.__new__(Caddy)
+        reader.http_port, reader.https_port = 80, 443
+        server = {"listen": [":8443"], "tls_connection_policies": [{}], "strict_sni_host": True,
+                  "routes": [proxy_route("app.test", 3000)]}
+        reader.servers = {"web": server}
+        for sni in (None, "", "other.test"):
+            request = Request("app.test", 8443, "/", "https", "127.0.0.1", sni=sni)
+            with self.subTest(sni=sni), self.assertRaisesRegex(TraceError, "SNI"):
+                reader.resolve(request, 8443)
+        self.assertEqual(reader.resolve(parse_target("https://app.test:8443/")).port, 3000)
+        server.pop("strict_sni_host")
+        server["tls_connection_policies"][0]["client_authentication"] = {}
+        mismatch = Request("app.test", 8443, "/", "https", "127.0.0.1", sni="other.test")
+        with self.assertRaisesRegex(TraceError, "SNI"):
+            reader.resolve(mismatch, 8443)
+        server["strict_sni_host"] = False
+        self.assertEqual(reader.resolve(mismatch, 8443).port, 3000)
+
+    def test_explicit_upstream_sni_and_host_remain_distinct(self):
+        route = proxy_route("app.test", 8443)
+        handler = route["handle"][0]
+        handler["transport"] = {"protocol": "http", "tls": {"server_name": "tls.test"}}
+        handler["headers"] = {"request": {"set": {"Host": ["http.test"]}}}
+        target = caddy_routes([route], Request("app.test"))[0]
+        self.assertEqual((target.scheme, target.host, target.sni), ("https", "http.test", "tls.test"))
+
     def test_tls_mode_includes_implicit_policies_and_the_configured_http_port(self):
         for policies, automatic, http_port, expected in (
                 ([{}], {"disable": True}, 80, "https"),
@@ -187,6 +221,24 @@ class CaddyRoutes(unittest.TestCase):
 
 
 class TraefikRoutes(unittest.TestCase):
+    def test_custom_upstream_transport_does_not_guess_its_sni_override(self):
+        reader = self.make_reader()
+        balancer = reader.services["web@file"]["loadBalancer"]
+        balancer["servers"] = [{"url": "https://backend.test:8443"}]
+        self.assertEqual(reader.resolve(parse_target("https://app.test/")).sni, "backend.test")
+        balancer["serversTransport"] = "trusted@file"
+        self.assertIsNone(reader.resolve(parse_target("https://app.test/")).sni)
+
+    def test_custom_tls_options_preserve_sni_host_checks(self):
+        reader = self.make_reader()
+        reader.routers = reader.routers[:1]
+        reader.routers[0]["tls"] = {"options": "guarded@file"}
+        self.assertEqual(reader.resolve(parse_target("https://app.test/")).port, 3000)
+        for sni in (None, "", "other.test"):
+            request = Request("app.test", 443, "/", "https", "127.0.0.1", sni=sni)
+            with self.subTest(sni=sni), self.assertRaisesRegex(TraceError, "SNI"):
+                reader.resolve(request, 443)
+
     def add_admin_routers(self, reader, entrypoint="traefik", port=8080):
         reader.entrypoints[entrypoint] = port
         reader.routers[:0] = [
@@ -298,6 +350,36 @@ class TraefikRoutes(unittest.TestCase):
 
 
 class NginxRoutes(unittest.TestCase):
+    def test_tls_handshake_uses_sni_before_http_host(self):
+        http = self.config('''http {
+            server { listen 8443 ssl default_server; ssl_reject_handshake on; }
+            server { listen 8443 ssl; server_name app.test;
+                location / { proxy_pass http://127.0.0.1:3000; } }
+        }''')
+        self.assertEqual(resolve_config(http, parse_target("https://app.test:8443/")).port, 3000)
+        self.assertIsNone(resolve_config(http, Request("unrelated.test")))
+        for sni in (None, "", "other.test"):
+            request = Request("app.test", 8443, "/", "https", "127.0.0.1", sni=sni)
+            with self.subTest(sni=sni), self.assertRaisesRegex(TraceError, "TLS"):
+                resolve_config(http, request, 8443)
+        http = self.config('''http { ssl_reject_handshake on;
+            server { listen 8443 ssl; server_name app.test; ssl_reject_handshake off;
+                location / { proxy_pass http://127.0.0.1:3000; } }
+        }''')
+        self.assertEqual(resolve_config(http, parse_target("https://app.test:8443/")).port, 3000)
+
+    def test_upstream_tls_sni_follows_nginx_options_and_not_the_host_override(self):
+        for options, expected in (("", ""), ("proxy_ssl_server_name on;", ""),
+                                  ("proxy_ssl_server_name on; proxy_ssl_name tls.test;", "tls.test"),
+                                  ("proxy_ssl_server_name on; proxy_ssl_name $host;", "app.test")):
+            http = self.config('''http { server { listen 8080; server_name app.test;
+                location / { proxy_set_header Host http.test; ''' + options + '''
+                    proxy_pass https://127.0.0.1:8443; }
+            } }''')
+            with self.subTest(options=options):
+                target = resolve_config(http, parse_target("http://app.test:8080/"))
+                self.assertEqual((target.host, target.sni), ("http.test", expected))
+
     def test_tls_is_a_listener_property_shared_by_virtual_hosts(self):
         http = self.config('''http {
             server { listen 8443 ssl; server_name first.test;

@@ -17,6 +17,8 @@ class Request:
     path: str = None
     scheme: str = None
     address: str = None
+    # None means unknown; an empty string means TLS without SNI.
+    sni: str = None
 
 
 def validate_path(path):
@@ -48,7 +50,8 @@ def parse_target(value):
         validate_path(path)
         if url.query:
             raise ValueError("query-dependent routing is not supported; use a path-only URL")
-        return Request(host, port, path, url.scheme or None)
+        return Request(host, port, path, url.scheme or None,
+                       sni=tls_server_name(host) if url.scheme == "https" else None)
     except (ValueError, UnicodeError) as exc:
         raise TraceError("invalid target: " + str(exc)) from exc
 
@@ -82,6 +85,7 @@ def upstream(value, request, host=None, path=None):
     target = parse_target(value)
     return replace(request, address=target.host, port=target.port,
                    scheme=target.scheme, host=host or request.host,
+                   sni=target.sni,
                    path=request.path if path is None else path)
 
 
@@ -107,6 +111,23 @@ def forwarded_host(value):
     except ValueError:
         parsed = parse_target(value)
         return parsed.host
+
+
+def tls_server_name(value):
+    host = forwarded_host(value)
+    try:
+        ipaddress.ip_address(host)
+        return ""
+    except ValueError:
+        return host
+
+
+def incoming_sni(request, port=None):
+    if request.sni is not None:
+        return request.sni
+    if port is None and request.address is None:
+        return tls_server_name(request.host)
+    return None
 
 
 def canonical_ip(value):

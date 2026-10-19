@@ -45,6 +45,13 @@ Explicit HTTP/HTTPS targets must match the proxy listener's protocol. Caddy's
 automatic HTTPS policies and configured HTTP port are included in that check;
 nginx TLS settings apply to all virtual hosts sharing the same listening address.
 
+TLS SNI is tracked separately from HTTP Host across proxy hops. Caddy's explicit
+TLS server name and nginx's `proxy_ssl_server_name`/`proxy_ssl_name` settings are
+retained when checking nginx handshake rejection, Caddy strict SNI/Host matching,
+and Traefik custom TLS options. Unknown SNI stops tracing when those checks depend
+on it. In particular, Traefik's service API names custom upstream transports but
+does not expose their SNI overrides; their SNI is treated as unknown.
+
 nginx config includes resolve relative to the main configuration directory.
 Configuration files, include directories, and symlinks newer than visible worker
 start times are rejected: reload nginx before tracing. Directory checks detect

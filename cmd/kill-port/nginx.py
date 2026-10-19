@@ -14,7 +14,8 @@ import sys
 from urllib.parse import urlsplit
 
 from discover import command, executable, resolve_addresses
-from model import TraceError, canonical_ip, forwarded_host, split_address, unique, upstream, validate_path
+from model import (TraceError, canonical_ip, forwarded_host, incoming_sni, split_address,
+                   tls_server_name, unique, upstream, validate_path)
 
 
 @dataclass
@@ -241,6 +242,21 @@ def select_servers(http, request, port):
             server = defaults[0] if defaults else entries[0][0]
         else:
             continue
+        if endpoint in tls_endpoints:
+            def rejects(server):
+                directives = named(server.children, "ssl_reject_handshake") or named(http, "ssl_reject_handshake")
+                return bool(directives and directives[-1].args == ["on"])
+            sni = incoming_sni(request, port)
+            if sni is None:
+                if any(rejects(server) for server, _ in entries):
+                    raise TraceError("nginx TLS handshake rejection depends on unknown SNI context")
+            else:
+                ranks = [(server_name_rank(server, sni), server) for server, _ in entries] if sni else []
+                best = max((rank for rank, _ in ranks), default=(0, 0))
+                tls_server = (next(server for rank, server in ranks if rank == best) if best != (0, 0) else
+                              next((server for server, default in entries if default), entries[0][0]))
+                if rejects(tls_server):
+                    raise TraceError("nginx TLS handshake is rejected for the requested SNI")
         if not any(item is server for item in selected):
             selected.append(server)
     return selected
@@ -301,6 +317,22 @@ def resolve_config(http, request, port=None):
                 prefix = location.args[-1]
                 path = target_path + request.path[len(prefix):]
             validate_path(path)
+            if value.scheme == "https":
+                def option(name):
+                    return named(location.children, name) or named(server.children, name) or named(http, name)
+                enabled = option("proxy_ssl_server_name")
+                sni = ""
+                if enabled and enabled[-1].args == ["on"]:
+                    names = option("proxy_ssl_name")
+                    name = names[-1].args[0] if names else "$proxy_host"
+                    if name == "$proxy_host":
+                        name = proxy_host
+                    elif name in ("$host", "$http_host"):
+                        name = request.host
+                    elif "$" in name:
+                        raise TraceError("nginx upstream TLS SNI is dynamic")
+                    sni = tls_server_name(name)
+                value = replace(value, sni=sni)
             targets.append(replace(value, host=forwarded_host(host), path=path))
     return unique(targets, "nginx route") if targets else None
 
