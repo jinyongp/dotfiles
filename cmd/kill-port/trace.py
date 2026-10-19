@@ -6,7 +6,7 @@ import signal
 import sys
 
 from discover import Snapshot, command, identity
-from model import TraceError, parse_target, unique
+from model import TraceError, parse_target, unique, validate_path
 from nginx import Nginx
 from proxies import Caddy, Gate, Traefik
 
@@ -44,7 +44,7 @@ class Resolver:
             key = (kind, listener.pid)
             try:
                 args = command(["ps", "-p", str(listener.pid), "-o", "args="]).strip()
-                if kind == "nginx" and "worker process" in args:
+                if kind == "nginx" and args.startswith("nginx: worker process"):
                     key = (kind, int(command(["ps", "-p", str(listener.pid), "-o", "ppid="]).strip()))
                 group = groups.setdefault(key, [args, []])
                 group[1].append(listener)
@@ -101,6 +101,7 @@ class Resolver:
 
         seen = set()
         for _ in range(16):
+            validate_path(current.path)
             if current in seen:
                 raise TraceError("reverse-proxy routing cycle detected")
             seen.add(current)

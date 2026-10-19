@@ -3,16 +3,18 @@
 from dataclasses import dataclass, replace
 from datetime import datetime
 import glob
+import ipaddress
 import os
 from pathlib import Path
 import re
 import shlex
 import socket
 import subprocess
+import sys
 from urllib.parse import urlsplit
 
-from discover import command, executable
-from model import TraceError, forwarded_host, host_matches, split_address, unique, upstream
+from discover import command, executable, resolve_addresses
+from model import TraceError, canonical_ip, forwarded_host, split_address, unique, upstream, validate_path
 
 
 @dataclass
@@ -66,12 +68,24 @@ def tokenize(text):
     return tokens
 
 
+def check_config_time(path, loaded_at, label):
+    if Path(path).stat().st_mtime >= loaded_at:
+        raise TraceError("nginx " + label + " changed since workers started; reload nginx before tracing: " + str(path))
+
+
 def parse_config(path, prefix, loaded_at, stack=()):
-    path = Path(path).resolve()
+    source = Path(path).absolute()
+    for entry in (source, *source.parents):
+        if entry.is_symlink():
+            check_config_time(entry.parent, loaded_at, "symlink directory")
+            if entry.lstat().st_mtime >= loaded_at:
+                raise TraceError("nginx config symlink changed since workers started: " + str(entry))
+    path = source.resolve()
     if path in stack or len(stack) >= 16:
         raise TraceError("cyclic/deep nginx include: " + str(path))
-    if path.stat().st_mtime >= loaded_at:
-        raise TraceError("nginx config changed since workers started; reload nginx before tracing: " + str(path))
+    check_config_time(path, loaded_at, "config")
+    check_config_time(source.parent, loaded_at, "config directory")
+    check_config_time(path.parent, loaded_at, "config directory")
     tokens = iter(tokenize(path.read_text()))
 
     def block(nested=False):
@@ -86,6 +100,14 @@ def parse_config(path, prefix, loaded_at, stack=()):
                     if len(args) != 1 or "$" in args[0]:
                         raise TraceError("dynamic nginx include")
                     pattern = args[0] if os.path.isabs(args[0]) else str(Path(prefix) / args[0])
+                    # Deleting/renaming a glob include need not touch the main
+                    # config or surviving files. Check directory metadata too.
+                    fixed = Path(pattern)
+                    while glob.has_magic(str(fixed)) or not fixed.exists():
+                        fixed = fixed.parent
+                    check_config_time(fixed if fixed.is_dir() else fixed.parent, loaded_at, "include directory")
+                    for directory in glob.glob(str(Path(pattern).parent)):
+                        check_config_time(directory, loaded_at, "include directory")
                     matches = sorted(glob.glob(pattern))
                     if not matches and not glob.has_magic(pattern):
                         raise TraceError("missing nginx include: " + pattern)
@@ -112,18 +134,25 @@ def named(nodes, name):
 
 def select_location(nodes, request):
     locations = named(nodes, "location")
+    if any(location.args and location.args[0].startswith("$") for location in locations):
+        raise TraceError("nginx predicate/dynamic locations are not supported")
     if any(location.args and location.args[0].startswith("@") for location in locations):
         raise TraceError("nginx named/internal locations are not supported")
     if request.path is None:
         if any(location.args and location.args[0] in ("~", "~*") for location in locations):
             raise TraceError("nginx regex locations require unsupported PCRE matching")
         return locations or [Directive("location", ["/"], [])]
+    # nginx uses case-insensitive filename comparison on macOS. It only folds
+    # ASCII bytes, so Unicode lower()/casefold() would select different routes.
+    fold = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+    def compare(value):
+        return value.translate(fold) if sys.platform == "darwin" else value
     for location in locations:
-        if location.args[:1] == ["="] and location.args[1:] == [request.path]:
+        if location.args[:1] == ["="] and location.args[1:] and compare(location.args[1]) == compare(request.path):
             return [location]
     prefixes = [location for location in locations if location.args and
                 location.args[0] not in ("=", "~", "~*", "@") and
-                request.path.startswith(location.args[-1])]
+                compare(request.path).startswith(compare(location.args[-1]))]
     best = max(prefixes, key=lambda location: len(location.args[-1]), default=None)
     if best and best.args[0] == "^~":
         return [best]
@@ -132,52 +161,89 @@ def select_location(nodes, request):
     return [best] if best else [Directive("location", ["/"], [])]
 
 
-def resolve_config(http, request, port=None):
-    servers, defaults = [], []
-    addresses = None
-    if port is not None:
+def listen_addresses(value):
+    if value.startswith("unix:"):
+        return []
+    if value.isdigit():
+        host, port = "0.0.0.0", int(value)
+    else:
         try:
-            addresses = {item[4][0] for item in socket.getaddrinfo(request.address or request.host, port, type=socket.SOCK_STREAM)}
-        except OSError as exc:
-            raise TraceError("cannot resolve nginx listener address") from exc
+            host, port = str(ipaddress.ip_address(value.strip("[]"))), 80
+        except ValueError:
+            host, port = split_address(value) if ":" in value else (value, 80)
+    if host == "*":
+        host = "0.0.0.0"
+    if not 1 <= port <= 65535:
+        raise TraceError("invalid nginx listen port")
+    try:
+        return [(canonical_ip(item[4][0]), port) for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except OSError as exc:
+        raise TraceError("cannot resolve nginx listen address: " + host) from exc
+
+
+def server_name_rank(server, host):
+    rank = (0, 0)
+    for directive in named(server.children, "server_name"):
+        for pattern in directive.args:
+            pattern = pattern.lower().rstrip(".")
+            if pattern.startswith("~") or "$" in pattern:
+                raise TraceError("nginx regex/dynamic server_name cannot be resolved")
+            if pattern == host:
+                rank = max(rank, (3, len(pattern)))
+            elif pattern.startswith(".") and (host == pattern[1:] or host.endswith(pattern)):
+                rank = max(rank, (2, len(pattern)))
+            elif pattern.startswith("*.") and host.endswith(pattern[1:]):
+                rank = max(rank, (2, len(pattern) - 1))
+            elif pattern.endswith(".*") and host.startswith(pattern[:-1]):
+                rank = max(rank, (1, len(pattern) - 1))
+    return rank
+
+
+def select_servers(http, request, port):
+    groups = {}
     for server in named(http, "server"):
         listeners = named(server.children, "listen")
-        ports = set()
-        for listener in listeners:
-            value = listener.args[0]
-            if value.startswith("unix:"):
-                continue
-            address, listener_port = ("*", int(value)) if value.isdigit() else split_address(value)
-            wildcard = addresses is not None and (
-                (address in ("*", "0.0.0.0") and any(":" not in item for item in addresses)) or
-                (address == "::" and any(":" in item for item in addresses)))
-            if addresses is None or wildcard or address in addresses:
-                ports.add(listener_port)
-        if not listeners:
-            ports = {80}
-        if (port or request.port) is not None and (port or request.port) not in ports:
+        for listener in listeners or [Directive("listen", ["80"])]:
+            for endpoint in listen_addresses(listener.args[0]):
+                if (port or request.port) is not None and endpoint[1] != (port or request.port):
+                    continue
+                entries = groups.setdefault(endpoint, [])
+                if not any(item[0] is server for item in entries):
+                    entries.append((server, "default_server" in listener.args))
+    endpoints = list(groups)
+    if port is not None:
+        addresses = resolve_addresses(request.address or request.host, port)
+        endpoints = []
+        for address in sorted(addresses):
+            exact = (address, port)
+            wildcard = ("::" if ":" in address else "0.0.0.0", port)
+            endpoint = exact if exact in groups else wildcard
+            if endpoint in groups and endpoint not in endpoints:
+                endpoints.append(endpoint)
+    selected = []
+    for endpoint in endpoints:
+        entries = groups[endpoint]
+        ranks = [(server_name_rank(server, request.host), server) for server, _ in entries]
+        best = max((rank for rank, _ in ranks), default=(0, 0))
+        if best != (0, 0):
+            # nginx keeps the first declaration on duplicate server names.
+            server = next(server for rank, server in ranks if rank == best)
+        elif port is not None:
+            if request.scheme == "https":
+                raise TraceError("nginx TLS default virtual host cannot be inferred without its SNI context")
+            defaults = [server for server, default in entries if default]
+            if len(defaults) > 1:
+                raise TraceError("ambiguous nginx default server")
+            server = defaults[0] if defaults else entries[0][0]
+        else:
             continue
-        if port is not None:
-            explicit_default = any("default_server" in listener.args for listener in listeners)
-            defaults.append((explicit_default, server))
-        patterns = [value for node in named(server.children, "server_name") for value in node.args]
-        if any(pattern.startswith("~") for pattern in patterns):
-            raise TraceError("nginx regex server_name cannot be resolved")
-        if any(host_matches(request.host, pattern) for pattern in patterns):
-            rank = 2 if request.host in patterns else 1
-            for listener_port in ports:
-                servers.append((rank, server, listener_port))
-    if not servers:
-        if not defaults:
-            return None
-        # A downstream request already has proven local socket ownership. nginx
-        # uses that listener's default server when its Host has no named match.
-        selected = [server for explicit, server in defaults if explicit]
-        if len(selected) > 1:
-            raise TraceError("ambiguous nginx default server")
-        servers = [(1, selected[0] if selected else defaults[0][1], port)]
-    servers = [server for rank, server, listener_port in servers
-               if rank == max(item[0] for item in servers if item[2] == listener_port)]
+        if not any(item is server for item in selected):
+            selected.append(server)
+    return selected
+
+
+def resolve_config(http, request, port=None):
+    servers = select_servers(http, request, port)
     targets = []
     for server in servers:
         inherited = http + server.children
@@ -210,7 +276,8 @@ def resolve_config(http, request, port=None):
                         raise TraceError("nginx upstream has conditional server selection")
                     address = node.args[0]
                     destinations.append(upstream(address if ":" in address else address + ":80", request))
-                value = unique(destinations, "nginx upstream")
+                selected_upstream = unique(destinations, "nginx upstream")
+                value = replace(value, address=selected_upstream.address, port=selected_upstream.port)
             host = proxy_host
             headers = named(location.children, "proxy_set_header") or named(server.children, "proxy_set_header") or named(http, "proxy_set_header")
             for header in headers:
@@ -229,14 +296,46 @@ def resolve_config(http, request, port=None):
                     raise TraceError("nginx proxy_pass path rewrite requires a full URL")
                 prefix = location.args[-1]
                 path = target_path + request.path[len(prefix):]
+            validate_path(path)
             targets.append(replace(value, host=forwarded_host(host), path=path))
     return unique(targets, "nginx route") if targets else None
+
+
+def start_options(args):
+    words = shlex.split(args.removeprefix("nginx: master process "))
+    if not words:
+        raise TraceError("nginx process arguments are not visible")
+    options = {}
+    index = 1
+    while index < len(words):
+        word = words[index]
+        if word == "-q":
+            index += 1
+            continue
+        flag = word[:2]
+        if flag not in ("-c", "-p", "-e", "-g"):
+            raise TraceError("ambiguous/unsupported nginx process arguments; use absolute paths without spaces")
+        value = word[2:]
+        if not value:
+            index += 1
+            if index >= len(words):
+                raise TraceError("nginx process option is missing its argument: " + flag)
+            value = words[index]
+        if flag == "-g":
+            if value == "daemon" and index + 1 < len(words):
+                index += 1
+                value += " " + words[index]
+            if not re.fullmatch(r"daemon\s+(on|off);", value):
+                raise TraceError("nginx global runtime directives beyond daemon on/off are not supported")
+        options[flag] = value
+        index += 1
+    return options
 
 
 class Nginx:
     def __init__(self, args, listeners):
         pid = listeners[0].pid
-        if "worker process" in args:
+        if args.startswith("nginx: worker process"):
             pid = int(command(["ps", "-p", str(pid), "-o", "ppid="]).strip())
             args = command(["ps", "-p", str(pid), "-o", "args="]).strip()
         self.key = pid
@@ -248,18 +347,13 @@ class Nginx:
             raise TraceError("cannot inspect nginx build settings: " + str(exc)) from exc
         if result.returncode:
             raise TraceError("cannot read nginx build settings")
-        settings = dict(re.findall(r"--(prefix|conf-path)=([^\s]+)", result.stderr))
-        words = shlex.split(args.removeprefix("nginx: master process "))
-        if "-g" in words:
-            globals_text = " ".join(words[words.index("-g") + 1:])
-            if not re.fullmatch(r"daemon\s+(on|off);", globals_text):
-                raise TraceError("nginx global runtime directives beyond daemon on/off are not supported")
-        def option(flag, default):
-            if flag in words:
-                return words[words.index(flag) + 1]
-            return next((word[len(flag):] for word in words if word.startswith(flag) and len(word) > len(flag)), default)
-        prefix = option("-p", settings.get("prefix", "/usr/local/nginx"))
-        path = option("-c", settings.get("conf-path", "conf/nginx.conf"))
+        build_words = shlex.split(result.stderr.split("configure arguments:", 1)[-1])
+        settings = dict(word[2:].split("=", 1) for word in build_words if word.startswith(("--prefix=", "--conf-path=")))
+        options = start_options(args)
+        prefix = options.get("-p", settings.get("prefix", "/usr/local/nginx"))
+        if not os.path.isabs(prefix):
+            raise TraceError("nginx relative prefixes cannot be recovered from a daemon; use an absolute -p path")
+        path = options.get("-c", settings.get("conf-path", "conf/nginx.conf"))
         if not os.path.isabs(path):
             path = str(Path(prefix) / path)
         starts = []

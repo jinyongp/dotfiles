@@ -56,6 +56,15 @@ def identity(pid):
     return value
 
 
+def resolve_addresses(host, port):
+    if host == "localhost" or host.endswith(".localhost"):
+        return {"127.0.0.1", "::1"}
+    try:
+        return {canonical_ip(item[4][0]) for item in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)}
+    except OSError as exc:
+        raise TraceError("cannot resolve address " + host + ": " + str(exc)) from exc
+
+
 class Snapshot:
     def __init__(self):
         self.listeners = parse_listeners(command(
@@ -65,13 +74,7 @@ class Snapshot:
 
     def owners(self, request):
         host = request.address or request.host
-        if host == "localhost" or host.endswith(".localhost"):
-            addresses = {"127.0.0.1", "::1"}
-        else:
-            try:
-                addresses = {canonical_ip(item[4][0]) for item in socket.getaddrinfo(host, request.port, type=socket.SOCK_STREAM)}
-            except OSError as exc:
-                raise TraceError("cannot resolve upstream " + host + ": " + str(exc)) from exc
+        addresses = resolve_addresses(host, request.port)
         if not addresses or any(address not in self.local and not ipaddress.ip_address(address).is_loopback
                                 for address in addresses):
             raise TraceError("upstream is remote or not a visible local address: " + host)

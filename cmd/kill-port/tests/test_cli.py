@@ -47,22 +47,25 @@ class CommandIntegration(unittest.TestCase):
     def run_cli(self, *args, env=None):
         return subprocess.run([str(ENTRY), *args], capture_output=True, text=True, timeout=15, env=env)
 
-    def test_live_admin_chain_only_signals_final_service(self):
-        service, backend = self.start("service")
-        gate, middle = self.start("gate", "--socket", str(self.root / "gate.sock"), "--upstream", str(backend["port"]))
-        caddy, frontend = self.start("caddy", "--upstream", str(middle["port"]))
+    def inventory_env(self, records):
         # Admin APIs and service PIDs are real. Only process/socket inventory is
         # supplied so these Python fixtures can represent distinct proxy binaries.
         inventory = ""
-        for child, name, ports in ((caddy, "caddy", [frontend["port"], frontend["admin"]]),
-                                   (gate, "gate", [middle["port"]]), (service, "python3", [backend["port"]])):
+        for child, name, ports in records:
             inventory += "p{}\nc{}\n".format(child.pid, name)
             for index, port in enumerate(ports):
                 inventory += "f{}\ntIPv4\nn127.0.0.1:{}\n".format(index, port)
         script = self.root / "lsof"
         script.write_text("#!" + sys.executable + "\nimport sys\nsys.stdout.write(" + repr(inventory) + ")\n")
         script.chmod(0o755)
-        env = dict(os.environ, PATH=str(self.root) + os.pathsep + os.environ["PATH"])
+        return dict(os.environ, PATH=str(self.root) + os.pathsep + os.environ["PATH"])
+
+    def test_live_admin_chain_only_signals_final_service(self):
+        service, backend = self.start("service")
+        gate, middle = self.start("gate", "--socket", str(self.root / "gate.sock"), "--upstream", str(backend["port"]))
+        caddy, frontend = self.start("caddy", "--upstream", str(middle["port"]))
+        env = self.inventory_env(((caddy, "caddy", [frontend["port"], frontend["admin"]]),
+                                  (gate, "gate", [middle["port"]]), (service, "python3", [backend["port"]])))
         dry = self.run_cli("--dry-run", "app.test", env=env)
         self.assertEqual(dry.returncode, 0, dry.stderr)
         self.assertIn("caddy (PID " + str(caddy.pid), dry.stdout)
@@ -72,6 +75,22 @@ class CommandIntegration(unittest.TestCase):
         result = self.run_cli("app.test", env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(service.wait(timeout=3), -signal.SIGTERM)
+        self.assertIsNone(caddy.poll())
+        self.assertIsNone(gate.poll())
+
+    def test_forwarded_host_only_force_stops_its_selected_service(self):
+        wrong, other = self.start("service")
+        service, backend = self.start("service")
+        gate, middle = self.start("gate", "--socket", str(self.root / "gate.sock"),
+                                  "--upstream", str(other["port"]), "--alternate-upstream", str(backend["port"]))
+        caddy, frontend = self.start("caddy", "--upstream", str(middle["port"]), "--forward-host", "backend.test")
+        env = self.inventory_env(((caddy, "caddy", [frontend["port"], frontend["admin"]]),
+                                  (gate, "gate", [middle["port"]]), (wrong, "python3", [other["port"]]),
+                                  (service, "python3", [backend["port"]])))
+        result = self.run_cli("--force", "app.test", env=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(service.wait(timeout=3), -signal.SIGKILL)
+        self.assertIsNone(wrong.poll())
         self.assertIsNone(caddy.poll())
         self.assertIsNone(gate.poll())
 

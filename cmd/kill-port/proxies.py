@@ -5,8 +5,8 @@ import re
 import shlex
 from urllib.parse import urlsplit
 
-from discover import read_json
-from model import TraceError, forwarded_host, host_matches, split_address, unique, upstream
+from discover import read_json, resolve_addresses
+from model import TraceError, canonical_ip, forwarded_host, host_matches, split_address, unique, upstream, validate_path
 
 
 def admin_addresses(listeners):
@@ -77,6 +77,24 @@ def caddy_match(matchers, request):
     return False
 
 
+def caddy_request_headers(headers, request):
+    if set(headers) - {"set", "delete", "replace", "add"}:
+        raise TraceError("unsupported Caddy upstream request header operations")
+    if headers.get("delete") or headers.get("replace") or headers.get("add"):
+        raise TraceError("Caddy upstream request headers require unsupported transformations")
+    host = request.host
+    for key, values in headers.get("set", {}).items():
+        if "{" in key:
+            raise TraceError("Caddy request header name is dynamic")
+        if key.lower() == "host":
+            value = unique(values, "Caddy upstream Host")
+            if value not in ("{http.request.host}", "{http.request.hostport}"):
+                if "{" in value:
+                    raise TraceError("Caddy upstream Host is dynamic")
+                host = forwarded_host(value)
+    return replace(request, host=host)
+
+
 def caddy_routes(routes, request):
     targets = []
     for route in routes:
@@ -101,16 +119,7 @@ def caddy_routes(routes, request):
                 if "tls" in handler.get("transport", {}) and not any(
                         key.lower() == "host" for key in headers.get("set", {})):
                     raise TraceError("Caddy HTTPS upstream requires an explicit Host header for tracing")
-                if headers.get("delete") or headers.get("replace") or headers.get("add"):
-                    raise TraceError("Caddy upstream request headers require unsupported transformations")
-                host = current.host
-                for key, values in headers.get("set", {}).items():
-                    if key.lower() == "host":
-                        value = unique(values, "Caddy upstream Host")
-                        if value not in ("{http.request.host}", "{http.request.hostport}"):
-                            if "{" in value:
-                                raise TraceError("Caddy upstream Host is dynamic")
-                            host = forwarded_host(value)
+                host = caddy_request_headers(headers, current).host
                 destinations = handler.get("upstreams", [])
                 if not destinations or any(set(item) - {"dial", "max_requests"} for item in destinations):
                     raise TraceError("unsupported Caddy upstream definition")
@@ -125,9 +134,18 @@ def caddy_routes(routes, request):
                 if not any(item.get("handler") == "reverse_proxy" for item in handlers[index + 1:]):
                     raise TraceError("Caddy rewrites across routes are not supported")
                 prefix = handler.get("strip_path_prefix", "")
-                path = current.path[len(prefix):] if current.path.startswith(prefix) else current.path
-                current = replace(current, path=path or "/")
-            elif kind in ("headers", "encode"):
+                if prefix:
+                    prefix = prefix if prefix.startswith("/") else "/" + prefix
+                    if any(char in prefix for char in "{}$"):
+                        raise TraceError("Caddy strip prefix is dynamic")
+                    validate_path(prefix)
+                path = current.path[len(prefix):] if current.path.lower().startswith(prefix.lower()) else current.path
+                path = path if path.startswith("/") else "/" + path
+                validate_path(path)
+                current = replace(current, path=path)
+            elif kind == "headers":
+                current = caddy_request_headers(handler.get("request", {}), current)
+            elif kind == "encode":
                 continue
             elif kind == "static_response":
                 # Redirects/static responses are not upstream services.
@@ -139,6 +157,10 @@ def caddy_routes(routes, request):
         targets.extend(resolved)
         if not resolved and (route.get("group") or route.get("terminal")):
             raise TraceError("Caddy grouped/terminal route has no determinable upstream service")
+        if not resolved and current != request:
+            if request.path is None and any("path" in match for match in route.get("match", [])):
+                raise TraceError("Caddy path-dependent request header changes require a full URL")
+            request = current
         # A reverse proxy handles a concrete request. With no path, inspect all
         # routes so a path-specific service cannot be silently overlooked.
         if request.path is not None and (resolved or route.get("terminal")):
@@ -154,9 +176,21 @@ class Caddy:
 
     def resolve(self, request, port=None):
         targets = []
+        addresses = resolve_addresses(request.address or request.host, port) if port is not None else None
         for server in self.servers.values():
-            ports = {split_address(value)[1] for value in server.get("listen", [])}
-            if (port or request.port) is not None and (port or request.port) not in ports:
+            listeners = [split_address(value) for value in server.get("listen", [])]
+            selected = []
+            for address, listener_port in listeners:
+                if (port or request.port) is not None and (port or request.port) != listener_port:
+                    continue
+                if addresses is not None:
+                    bound = ({"127.0.0.1", "::1"} if address == "localhost" else {canonical_ip(address)})
+                    wildcard = address == "*" or (address == "0.0.0.0" and any(":" not in item for item in addresses)) or (
+                        address == "::" and any(":" in item for item in addresses))
+                    if not wildcard and not bound & addresses:
+                        continue
+                selected.append(listener_port)
+            if not selected:
                 continue
             targets.extend(caddy_routes(server.get("routes", []), request))
         return unique(targets, "Caddy route") if targets else None
@@ -179,6 +213,9 @@ def traefik_rule(rule, request):
                 continue
             values = [a or b for a, b in values]
             if kind == "Host":
+                if any("*" in value for value in values):
+                    unknown = True
+                    continue
                 valid &= request.host in [value.lower().rstrip(".") for value in values]
             elif request.path is not None:
                 valid &= any(request.path == value if kind == "Path" else request.path.startswith(value)
@@ -212,8 +249,8 @@ class Traefik:
             if traefik_rule(router["rule"], request):
                 routers.append(router)
         if request.path is not None and routers:
-            priority = max(router.get("priority") or len(router["rule"]) for router in routers)
-            routers = [router for router in routers if (router.get("priority") or len(router["rule"])) == priority]
+            priority = max(router.get("priority") or len(router["rule"].encode("utf-8")) for router in routers)
+            routers = [router for router in routers if (router.get("priority") or len(router["rule"].encode("utf-8"))) == priority]
         targets = []
         for router in routers:
             if router.get("middlewares"):
