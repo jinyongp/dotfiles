@@ -172,7 +172,22 @@ class Caddy:
     def __init__(self, args, listeners):
         self.address, config = discover_api(listeners, "/config/", lambda value:
                                            isinstance(value, dict) and "apps" in value)
-        self.servers = config.get("apps", {}).get("http", {}).get("servers", {})
+        http = config.get("apps", {}).get("http", {})
+        self.servers = http.get("servers", {})
+        self.http_port, self.https_port = http.get("http_port") or 80, http.get("https_port") or 443
+
+    def uses_tls(self, server, listeners):
+        policies = server.get("tls_connection_policies")
+        if policies is not None:
+            return bool(policies)
+        automatic = server.get("automatic_https", {})
+        if automatic.get("disable"):
+            return False
+        # Auto HTTPS adds a TLS policy at runtime; GET /config retains the
+        # original configuration, so also account for its implicit policy.
+        return all(number == self.https_port for _, number in listeners) or any(
+            host not in automatic.get("skip", []) for route in server.get("routes", [])
+            for match in route.get("match", []) for host in match.get("host", []))
 
     def resolve(self, request, port=None):
         targets = []
@@ -182,6 +197,9 @@ class Caddy:
             selected = []
             for address, listener_port in listeners:
                 if (port or request.port) is not None and (port or request.port) != listener_port:
+                    continue
+                tls = listener_port != self.http_port and self.uses_tls(server, listeners)
+                if request.scheme is not None and (request.scheme == "https") != tls:
                     continue
                 if addresses is not None:
                     bound = ({"127.0.0.1", "::1"} if address == "localhost" else {canonical_ip(address)})

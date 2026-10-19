@@ -41,6 +41,10 @@ dedicated management ports. Admin routers sharing an application port, and
 explicitly requested management ports, remain subject to normal routing checks;
 internal admin services are never selected as backend processes.
 
+Explicit HTTP/HTTPS targets must match the proxy listener's protocol. Caddy's
+automatic HTTPS policies and configured HTTP port are included in that check;
+nginx TLS settings apply to all virtual hosts sharing the same listening address.
+
 nginx config includes resolve relative to the main configuration directory.
 Configuration files, include directories, and symlinks newer than visible worker
 start times are rejected: reload nginx before tracing. Directory checks detect

@@ -200,13 +200,15 @@ def server_name_rank(server, host):
 
 
 def select_servers(http, request, port):
-    groups = {}
+    groups, tls_endpoints = {}, set()
     for server in named(http, "server"):
         listeners = named(server.children, "listen")
         for listener in listeners or [Directive("listen", ["80"])]:
             for endpoint in listen_addresses(listener.args[0]):
                 if (port or request.port) is not None and endpoint[1] != (port or request.port):
                     continue
+                if "ssl" in listener.args:
+                    tls_endpoints.add(endpoint)
                 entries = groups.setdefault(endpoint, [])
                 if not any(item[0] is server for item in entries):
                     entries.append((server, "default_server" in listener.args))
@@ -222,6 +224,8 @@ def select_servers(http, request, port):
                 endpoints.append(endpoint)
     selected = []
     for endpoint in endpoints:
+        if request.scheme is not None and (request.scheme == "https") != (endpoint in tls_endpoints):
+            continue
         entries = groups[endpoint]
         ranks = [(server_name_rank(server, request.host), server) for server, _ in entries]
         best = max((rank for rank, _ in ranks), default=(0, 0))

@@ -234,6 +234,56 @@ class NativeTLS(unittest.TestCase):
     def test_traefik_https_ingress(self):
         self.ingress("traefik")
 
+    def protocol_mismatch(self, kind, tls):
+        backend = self.backend("selected")
+        host = "mismatch.kp.localhost"
+        if kind == "caddy":
+            proxy, port = self.caddy(host, "reverse_proxy 127.0.0.1:" + str(backend[1]), tls=tls)
+        else:
+            proxy, port = self.nginx(host, "location / { proxy_pass http://127.0.0.1:" + str(backend[1]) + "; }", tls=tls)
+        self.assert_response(port, host, "selected", tls=tls)
+        if tls:
+            self.assertNotEqual(request(port, host)[0], 200)
+        else:
+            with self.assertRaises(ssl.SSLError):
+                request(port, host, cert=self.cert)
+        self.cli(("http" if tls else "https") + "://" + host + ":" + str(port) + "/", reject="cannot resolve")
+        self.assert_response(port, host, "selected", tls=tls)
+
+    def test_caddy_http_to_tls_is_rejected(self):
+        self.protocol_mismatch("caddy", True)
+
+    def test_caddy_implicit_automatic_https_policy(self):
+        backend = self.backend("selected")
+        host = "automatic.kp.localhost"
+        port, admin = free_port(), free_port()
+        config = self.conf / "caddy.json"
+        config.write_text(json.dumps({"admin": {"listen": "127.0.0.1:" + str(admin), "config": {"persist": False}},
+                                      "apps": {"tls": {"certificates": {"load_files": [
+                                          {"certificate": str(self.cert), "key": str(self.key)}]}},
+                                               "http": {"servers": {"web": {
+                                                   "listen": ["127.0.0.1:" + str(port)],
+                                                   "automatic_https": {"disable_redirects": True, "disable_certificates": True},
+                                                   "routes": [{"match": [{"host": [host]}], "handle": [{
+                                                       "handler": "reverse_proxy", "upstreams": [{
+                                                           "dial": "127.0.0.1:" + str(backend[1])}]}]}]}}}}}))
+        proxy = self.start([BINARIES["caddy"], "run", "--config", config], "caddy")
+        self.listening(port)
+        self.assert_response(port, host, "selected", tls=True)
+        exported = json.loads(request(admin, "127.0.0.1:" + str(admin), "/config/")[1])
+        self.assertNotIn("tls_connection_policies", exported["apps"]["http"]["servers"]["web"])
+        self.cli("http://" + host + ":" + str(port) + "/", reject="cannot resolve")
+        self.cli("https://" + host + ":" + str(port) + "/", backend)
+
+    def test_caddy_https_to_plain_is_rejected(self):
+        self.protocol_mismatch("caddy", False)
+
+    def test_nginx_http_to_tls_is_rejected(self):
+        self.protocol_mismatch("nginx", True)
+
+    def test_nginx_https_to_plain_is_rejected(self):
+        self.protocol_mismatch("nginx", False)
+
     def upstream(self, kind):
         backend = self.backend("selected")
         host = "inner.kp.localhost"

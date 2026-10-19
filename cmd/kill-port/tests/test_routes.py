@@ -75,8 +75,29 @@ class InputsAndSockets(unittest.TestCase):
 
 
 class CaddyRoutes(unittest.TestCase):
+    def test_tls_mode_includes_implicit_policies_and_the_configured_http_port(self):
+        for policies, automatic, http_port, expected in (
+                ([{}], {"disable": True}, 80, "https"),
+                (None, {}, 80, "https"),
+                ([], {}, 80, "http"),
+                (None, {"disable": True}, 80, "http"),
+                (None, {"skip": ["app.test"]}, 80, "http"),
+                ([{}], {}, 8443, "http")):
+            server = {"listen": [":8443"], "routes": [proxy_route("app.test", 3000)],
+                      "automatic_https": automatic}
+            if policies is not None:
+                server["tls_connection_policies"] = policies
+            config = {"apps": {"http": {"http_port": http_port, "servers": {"web": server}}}}
+            with self.subTest(policies=policies, automatic=automatic, http_port=http_port), \
+                    patch("proxies.discover_api", return_value=(("127.0.0.1", 2019), config)):
+                reader = Caddy("caddy", [])
+                self.assertEqual(reader.resolve(parse_target(expected + "://app.test:8443/")).port, 3000)
+                wrong = "http" if expected == "https" else "https"
+                self.assertIsNone(reader.resolve(parse_target(wrong + "://app.test:8443/")))
+
     def test_downstream_listener_address_excludes_other_virtual_servers(self):
         reader = Caddy.__new__(Caddy)
+        reader.http_port, reader.https_port = 80, 443
         reader.servers = {
             "other-address": {"listen": ["127.0.0.1:8080"], "routes": [proxy_route("app.test", 3000)]},
             "actual-address": {"listen": ["127.0.0.2:8080"], "routes": [
@@ -138,6 +159,7 @@ class CaddyRoutes(unittest.TestCase):
     def test_path_selection_and_bare_domain_ambiguity(self):
         routes = [proxy_route("app.test", 3001, "/api*"), proxy_route("app.test", 3000)]
         caddy = Caddy.__new__(Caddy)
+        caddy.http_port, caddy.https_port = 80, 443
         caddy.servers = {"web": {"listen": [":443"], "routes": routes}}
         self.assertEqual(caddy.resolve(parse_target("https://app.test/api/users")).port, 3001)
         self.assertEqual(caddy.resolve(parse_target("https://app.test/")).port, 3000)
@@ -276,6 +298,20 @@ class TraefikRoutes(unittest.TestCase):
 
 
 class NginxRoutes(unittest.TestCase):
+    def test_tls_is_a_listener_property_shared_by_virtual_hosts(self):
+        http = self.config('''http {
+            server { listen 8443 ssl; server_name first.test;
+                location / { proxy_pass http://127.0.0.1:3000; } }
+            server { listen 8443; server_name app.test;
+                location / { proxy_pass http://127.0.0.1:3001; } }
+            server { listen 8080; server_name app.test;
+                location / { proxy_pass http://127.0.0.1:3002; } }
+        }''')
+        self.assertEqual(resolve_config(http, parse_target("https://app.test:8443/")).port, 3001)
+        self.assertEqual(resolve_config(http, parse_target("http://app.test:8080/")).port, 3002)
+        self.assertIsNone(resolve_config(http, parse_target("http://app.test:8443/")))
+        self.assertIsNone(resolve_config(http, parse_target("https://app.test:8080/")))
+
     def test_deleted_glob_include_is_not_treated_as_the_loaded_route_table(self):
         directory = self.root / "conf.d"
         directory.mkdir()
@@ -301,7 +337,7 @@ class NginxRoutes(unittest.TestCase):
 
     def test_explicit_process_config_overrides_the_compiled_default(self):
         config = self.root / "explicit.conf"
-        config.write_text('http { server { listen 443; server_name app.test; location / { proxy_pass http://127.0.0.1:3001; } } }')
+        config.write_text('http { server { listen 443 ssl; server_name app.test; location / { proxy_pass http://127.0.0.1:3001; } } }')
         stamp = datetime.fromtimestamp(time.time() + 60).strftime("%a %b %d %H:%M:%S %Y")
         build = SimpleNamespace(returncode=0, stderr="configure arguments: --prefix=/usr/local/nginx --conf-path=/missing/default.conf")
         for args in (f"nginx -p{self.root} -cexplicit.conf -g daemon off;", f"nginx -p {self.root} -c explicit.conf -g 'daemon off;'"):
@@ -323,7 +359,7 @@ class NginxRoutes(unittest.TestCase):
 
     def test_quoted_build_config_path_is_read_without_losing_spaces(self):
         config = self.root / "nginx config.conf"
-        config.write_text('http { server { listen 443; server_name app.test; location / { proxy_pass http://127.0.0.1:3001; } } }')
+        config.write_text('http { server { listen 443 ssl; server_name app.test; location / { proxy_pass http://127.0.0.1:3001; } } }')
         stamp = datetime.fromtimestamp(time.time() + 60).strftime("%a %b %d %H:%M:%S %Y")
         build = SimpleNamespace(returncode=0, stderr="configure arguments: --prefix=/usr/local/nginx --conf-path='" + str(config) + "'")
         with patch("nginx.executable", return_value="/usr/sbin/nginx"), patch("nginx.command", return_value=stamp), \
@@ -334,7 +370,7 @@ class NginxRoutes(unittest.TestCase):
     def test_dynamic_location_and_unix_upstream_are_rejected(self):
         for body in ('location $predicate { proxy_pass http://127.0.0.1:3000; }',
                      'location / { proxy_pass http://unix:/tmp/backend.sock:; }'):
-            http = self.config('http { server { listen 443; server_name app.test; ' + body + ' } }')
+            http = self.config('http { server { listen 443 ssl; server_name app.test; ' + body + ' } }')
             with self.subTest(body=body), self.assertRaises(TraceError):
                 resolve_config(http, parse_target("https://app.test/api"))
 
@@ -398,14 +434,14 @@ class NginxRoutes(unittest.TestCase):
         self.assertEqual(resolve_config(http, request, port=8080).port, 3001)
 
     def test_unnormalized_rewritten_upstream_path_is_rejected(self):
-        http = self.config('''http { server { listen 443; server_name app.test;
+        http = self.config('''http { server { listen 443 ssl; server_name app.test;
             location /api { proxy_pass http://127.0.0.1:8080/base/; }
         } }''')
         with self.assertRaises(TraceError):
             resolve_config(http, parse_target("https://app.test/api/users"))
 
     def test_location_case_matching_tracks_the_host_platform(self):
-        http = self.config('''http { server { listen 443; server_name app.test;
+        http = self.config('''http { server { listen 443 ssl; server_name app.test;
             location /api { proxy_pass http://127.0.0.1:3001; }
             location / { proxy_pass http://127.0.0.1:3000; }
         } }''')
@@ -415,8 +451,8 @@ class NginxRoutes(unittest.TestCase):
 
     def test_server_name_wildcards_use_nginx_specificity(self):
         http = self.config('''http {
-            server { listen 443; server_name *.test; location / { proxy_pass http://127.0.0.1:3000; } }
-            server { listen 443; server_name *.dev.test; location / { proxy_pass http://127.0.0.1:3001; } }
+            server { listen 443 ssl; server_name *.test; location / { proxy_pass http://127.0.0.1:3000; } }
+            server { listen 443 ssl; server_name *.dev.test; location / { proxy_pass http://127.0.0.1:3001; } }
         }''')
         self.assertEqual(resolve_config(http, parse_target("https://api.deep.dev.test/")).port, 3001)
 
@@ -441,7 +477,7 @@ class NginxRoutes(unittest.TestCase):
                 'location ~ /api { proxy_pass http://127.0.0.1:3000; }',
                 'location / { proxy_pass http://$backend; }',
                 'location / { if ($x) { return 403; } proxy_pass http://127.0.0.1:3000; }'):
-            http = self.config('http { server { listen 443; server_name app.test; ' + body + ' } }')
+            http = self.config('http { server { listen 443 ssl; server_name app.test; ' + body + ' } }')
             with self.subTest(body=body), self.assertRaises(TraceError):
                 resolve_config(http, parse_target("https://app.test/api"))
 
