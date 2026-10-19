@@ -98,6 +98,22 @@ and route changes before signalling. CLI tests
 exercise real admin API servers and disposable service processes with supplied
 socket inventory, plus numeric termination with real `lsof` socket ownership.
 
+Optional native TLS checks require Caddy, nginx built with `http_ssl_module`,
+Traefik, OpenSSL, and process/socket inspection permissions:
+
+```sh
+KILL_PORT_NATIVE_CADDY=/path/to/caddy \
+KILL_PORT_NATIVE_NGINX=/path/to/nginx \
+KILL_PORT_NATIVE_TRAEFIK=/path/to/traefik \
+python3 -B -m unittest discover -s cmd/kill-port/tests -p test_native_tls.py -v
+```
+
+These checks generate temporary certificates, verify them through explicit trust
+files, run the actual proxy binaries on loopback ports, and signal disposable
+backends. They cover HTTPS ingress, TLS upstreams with explicit SNI, and a
+three-proxy TLS chain. No system trust-store changes are needed. They are skipped
+when the required binaries are unavailable.
+
 API references: [Caddy](https://caddyserver.com/docs/api),
 [nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass),
 [Traefik](https://doc.traefik.io/traefik/reference/install-configuration/api-dashboard/).
